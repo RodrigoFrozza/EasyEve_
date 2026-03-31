@@ -110,6 +110,7 @@ export const authOptions: NextAuthOptions = {
 
           if (!existingChar) {
             const charData = await fetchCharacterData(charProfile.characterId, account.access_token!)
+            const charDataAny = charData as { total_sp?: number; wallet?: number; location?: string; ship?: string; shipTypeId?: number }
             
             await prisma.character.create({
               data: {
@@ -117,11 +118,11 @@ export const authOptions: NextAuthOptions = {
                 name: charProfile.name,
                 ownerHash: charProfile.characterOwnerHash,
                 userId: dbUser.id,
-                totalSp: charData.total_sp || 0,
-                walletBalance: charData.wallet || 0,
-                location: charData.location,
-                ship: charData.ship,
-                shipTypeId: charData.shipTypeId,
+                totalSp: charDataAny.total_sp || 0,
+                walletBalance: charDataAny.wallet || 0,
+                location: charDataAny.location,
+                ship: charDataAny.ship,
+                shipTypeId: charDataAny.shipTypeId,
               },
             })
           } else if (existingChar.userId !== dbUser.id) {
