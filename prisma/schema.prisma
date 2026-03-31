@@ -51,9 +51,9 @@ model Fit {
   shipTypeId  Int
   shipName    String
   modules     Json     @default("[]")
- 估算 dps     Int?
- 估算 tank    Int?
- 估算 cost    Float?
+  dps        Int?
+  tank       Int?
+  cost       Float?
   
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
