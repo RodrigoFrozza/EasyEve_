@@ -44,7 +44,7 @@ export default async function DashboardPage() {
     }
   })
 
-  const characters = user?.characters || []
+  const characters: Array<{ id: number; name: string; totalSp: number; walletBalance: number; location: string | null; ship: string | null }> = user?.characters || []
   const mainCharacter = characters[0]
 
   const totalSP = characters.reduce((sum: number, c: { totalSp: number }) => sum + c.totalSp, 0)
