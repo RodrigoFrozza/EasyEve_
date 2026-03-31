@@ -57,14 +57,14 @@ export const authOptions: NextAuthOptions = {
           return {
             id: String(eveData.CharacterID),
             name: eveData.CharacterName,
-            email: null,
+            email: undefined,
             image: portraitUrl,
             characterId: eveData.CharacterID,
             characterOwnerHash: eveData.CharacterOwnerHash,
             corporationId: eveData.CorporationID,
             corporationName: corpInfo.name || `Corp ${eveData.CorporationID}`,
             allianceId: eveData.AllianceID,
-            allianceName: allianceInfo?.name || null,
+            allianceName: allianceInfo?.name || undefined,
             tokenExpiry: eveData.ExpiresOn,
           }
         },
