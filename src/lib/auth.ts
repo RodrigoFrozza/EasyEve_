@@ -1,6 +1,6 @@
 import { NextAuthOptions } from 'next-auth'
 import { prisma } from './prisma'
-import { getCharacterInfo, getAccessToken, getCharacterPortraitUrl, fetchCharacterData, getCorporationInfo, getAllianceInfo } from './esi'
+import { getCharacterInfo, getAccessToken, getCharacterPortraitUrl, getCharacterAvatarUrl, fetchCharacterData, getCorporationInfo, getAllianceInfo } from './esi'
 
 export const authOptions: NextAuthOptions = {
   providers: [
