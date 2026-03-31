@@ -173,7 +173,8 @@ export const authOptions: NextAuthOptions = {
         
         if (user) {
           session.user.id = user.id
-          session.user.characters = user.characters.map(c => ({
+          const PrismaChar = { id: 0, name: '', totalSp: 0, walletBalance: 0, location: null as string | null, ship: null as string | null }
+          session.user.characters = user.characters.map((c: typeof PrismaChar) => ({
             id: c.id,
             name: c.name,
             totalSp: c.totalSp,
