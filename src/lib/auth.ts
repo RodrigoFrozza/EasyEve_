@@ -18,10 +18,7 @@ export const authOptions: NextAuthOptions = {
       token: {
         url: 'https://login.eveonline.com/v2/oauth/token',
         async request({ provider, params, checks }) {
-          const tokenUrl = typeof provider.token === 'object' && provider.token !== null && 'url' in provider.token 
-            ? provider.token.url 
-            : 'https://login.eveonline.com/v2/oauth/token'
-          const response = await fetch(tokenUrl, {
+          const response = await fetch('https://login.eveonline.com/v2/oauth/token', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
