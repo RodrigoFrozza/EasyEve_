@@ -1,0 +1,253 @@
+const EVE_SSO_BASE_URL = 'https://login.eveonline.com/v2/oauth'
+const ESI_BASE_URL = 'https://esi.evetech.net/latest'
+
+export interface EveCharacter {
+  character_id: number
+  character_name: string
+  expires_on: string
+  scopes: string
+  token_type: string
+  character_owner_hash: string
+  intellectual_property: string
+}
+
+export interface CharacterInfo {
+  character_id: number
+  name: string
+  corporation_id: number
+  corporation_name: string
+  alliance_id?: number
+  alliance_name?: string
+  birthday: string
+  gender: string
+  race_id: number
+  ancestry_id?: number
+  bloodline_id: number
+  description?: string
+  security_status?: number
+}
+
+export interface CharacterSkills {
+  total_sp: number
+  free_sp: number
+  skills: Skill[]
+  queues: SkillQueueItem[]
+}
+
+export interface Skill {
+  skill_id: number
+  skillpoints_in_skill: number
+  trained_skill_level: number
+  active_skill_level: number
+  skill_type_name?: string
+}
+
+export interface SkillQueueItem {
+  skill_id: number
+  finish_date: string
+  level: number
+  queue_position: number
+  skill_type_name?: string
+}
+
+export async function getAccessToken(code: string) {
+  const response = await fetch(`${EVE_SSO_BASE_URL}/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${Buffer.from(
+        `${process.env.EVE_CLIENT_ID}:${process.env.EVE_CLIENT_SECRET}`
+      ).toString('base64')}`,
+    },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to get access token')
+  }
+
+  return response.json()
+}
+
+export async function getCharacterInfo(accessToken: string): Promise<EveCharacter> {
+  const response = await fetch(`${ESI_BASE_URL}/verify`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to verify token')
+  }
+
+  return response.json()
+}
+
+export async function fetchCharacterData(characterId: number, accessToken: string) {
+  const [info, location, ship, wallet] = await Promise.all([
+    getCharacterPublicInfo(characterId),
+    getCharacterLocation(characterId, accessToken),
+    getCharacterShip(characterId, accessToken),
+    getCharacterWallet(characterId, accessToken),
+  ])
+
+  return {
+    ...info,
+    ...location,
+    ...ship,
+    wallet,
+  }
+}
+
+async function getCharacterPublicInfo(characterId: number): Promise<Partial<CharacterInfo>> {
+  const response = await fetch(`${ESI_BASE_URL}/characters/${characterId}/`)
+  
+  if (!response.ok) {
+    throw new Error('Failed to get character info')
+  }
+
+  return response.json()
+}
+
+async function getCharacterLocation(characterId: number, accessToken: string) {
+  try {
+    const response = await fetch(`${ESI_BASE_URL}/characters/${characterId}/location/`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+
+    if (!response.ok) return {}
+
+    const data = await response.json()
+    
+    const solarSystemName = await getSolarSystemName(data.solar_system_id)
+    
+    return {
+      location: solarSystemName,
+      station_id: data.station_id,
+      structure_id: data.structure_id,
+    }
+  } catch {
+    return {}
+  }
+}
+
+async function getCharacterShip(characterId: number, accessToken: string) {
+  try {
+    const response = await fetch(`${ESI_BASE_URL}/characters/${characterId}/ship/`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+
+    if (!response.ok) return {}
+
+    const data = await response.json()
+    
+    const shipName = await getTypeName(data.ship_type_id)
+    
+    return {
+      ship: shipName,
+      shipTypeId: data.ship_type_id,
+    }
+  } catch {
+    return {}
+  }
+}
+
+async function getCharacterWallet(characterId: number, accessToken: string) {
+  try {
+    const response = await fetch(`${ESI_BASE_URL}/characters/${characterId}/wallet/`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+
+    if (!response.ok) return 0
+
+    return response.json()
+  } catch {
+    return 0
+  }
+}
+
+export async function getCharacterSkills(characterId: number, accessToken: string): Promise<CharacterSkills> {
+  const [skillsResponse, queueResponse] = await Promise.all([
+    fetch(`${ESI_BASE_URL}/characters/${characterId}/skills/`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }),
+    fetch(`${ESI_BASE_URL}/characters/${characterId}/skillqueue/`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }),
+  ])
+
+  const skills = await skillsResponse.json()
+  const queue = await queueResponse.json()
+
+  return {
+    total_sp: skills.total_sp,
+    free_sp: skills.free_points,
+    skills: skills.skills || [],
+    queues: queue || [],
+  }
+}
+
+export async function getTypeName(typeId: number): Promise<string> {
+  try {
+    const response = await fetch(`https://esi.evetech.net/latest/universe/types/${typeId}/?datasource=tranquility`)
+    if (!response.ok) return `Type ${typeId}`
+    const data = await response.json()
+    return data.name || `Type ${typeId}`
+  } catch {
+    return `Type ${typeId}`
+  }
+}
+
+export async function getSolarSystemName(systemId: number): Promise<string> {
+  try {
+    const response = await fetch(`https://esi.evetech.net/latest/universe/systems/${systemId}/?datasource=tranquility`)
+    if (!response.ok) return `System ${systemId}`
+    const data = await response.json()
+    return data.name || `System ${systemId}`
+  } catch {
+    return `System ${systemId}`
+  }
+}
+
+export async function getCorporationInfo(corpId: number) {
+  try {
+    const response = await fetch(`${ESI_BASE_URL}/corporations/${corpId}/`)
+    if (!response.ok) return { name: `Corp ${corpId}` }
+    const data = await response.json()
+    return {
+      name: data.name,
+      ticker: data.ticker,
+      alliance_id: data.alliance_id,
+    }
+  } catch {
+    return { name: `Corp ${corpId}` }
+  }
+}
+
+export async function getAllianceInfo(allianceId: number) {
+  try {
+    const response = await fetch(`${ESI_BASE_URL}/alliances/${allianceId}/`)
+    if (!response.ok) return { name: `Alliance ${allianceId}` }
+    const data = await response.json()
+    return { name: data.name, ticker: data.ticker }
+  } catch {
+    return { name: `Alliance ${allianceId}` }
+  }
+}
+
+export function getCharacterPortraitUrl(characterId: number, size: number = 128): string {
+  return `https://images.evetools.dev/corporation/${characterId}/${size}`
+}
+
+export function getCharacterAvatarUrl(characterId: number, size: number = 128): string {
+  return `https://images.evetools.dev/character/${characterId}/${size}`
+}

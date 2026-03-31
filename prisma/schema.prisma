@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String       @id @default(cuid())
+  eveSubject    String       @unique
+  email         String?
+  name          String?
+  characters    Character[]
+  fits          Fit[]
+  miningSessions MiningSession[]
+  rattingSessions RattingSession[]
+  abyssalSessions AbyssalSession[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Character {
+  id              Int       @id
+  name            String
+  ownerHash       String    @unique
+  accessToken     String?
+  refreshToken    String?
+  tokenExpiresAt  DateTime?
+  
+  totalSp         Int       @default(0)
+  walletBalance   Float     @default(0)
+  location        String?
+  ship            String?
+  shipTypeId      Int?
+  
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  lastFetchedAt   DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Fit {
+  id          String   @id @default(cuid())
+  name        String
+  shipTypeId  Int
+  shipName    String
+  modules     Json     @default("[]")
+ 估算 dps     Int?
+ 估算 tank    Int?
+ 估算 cost    Float?
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model MiningSession {
+  id            String   @id @default(cuid())
+  startTime     DateTime
+  endTime       DateTime?
+  systemId      Int?
+  systemName    String?
+  oreType       String?
+  quantity      Float    @default(0)
+  estimatedIsk  Float    @default(0)
+  
+  characterId   Int?
+  
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+}
+
+model RattingSession {
+  id            String   @id @default(cuid())
+  startTime     DateTime
+  endTime       DateTime?
+  siteType      String?
+  bounty        Float    @default(0)
+  sitesCompleted Int    @default(0)
+  
+  characterId   Int?
+  
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+}
+
+model AbyssalSession {
+  id            String   @id @default(cuid())
+  startTime     DateTime
+  endTime       DateTime?
+  filamentType  String?
+  tier          Int      @default(1)
+  loot          Float    @default(0)
+  iskPerMinute  Float    @default(0)
+  survived      Boolean  @default(true)
+  
+  characterId   Int?
+  
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+}
