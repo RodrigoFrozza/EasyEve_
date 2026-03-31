@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -49,7 +50,7 @@ export default async function CharactersPage() {
         
         <TabsContent value="all" className="mt-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {characters.map((char) => (
+            {characters.map((char: Prisma.CharacterGetPayload<object>) => (
               <CharacterCard key={char.id} character={char} isMain={char.id === characters[0]?.id} />
             ))}
           </div>

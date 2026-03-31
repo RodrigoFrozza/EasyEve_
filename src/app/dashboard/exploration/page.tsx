@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatISK, formatNumber } from '@/lib/utils'
-import { Plus, Search, Compass, MapPin, Clock, Treasure, Eye, Filter } from 'lucide-react'
+import { Plus, Search, Compass, MapPin, Clock, Gem, Eye, Filter } from 'lucide-react'
 
 interface Signature {
   id: string
@@ -141,7 +141,7 @@ export default function ExplorationPage() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/20">
-                <Treasure className="h-6 w-6 text-green-400" />
+                <Gem className="h-6 w-6 text-green-400" />
               </div>
               <div>
                 <p className="text-sm text-gray-400">Total Value</p>
@@ -257,7 +257,7 @@ export default function ExplorationPage() {
                     )}
                     {sig.status === 'scanned' && (
                       <Button size="sm" variant="outline" onClick={() => updateStatus(sig.id, 'completed')}>
-                        <Treasure className="mr-2 h-4 w-4" />
+                        <Gem className="mr-2 h-4 w-4" />
                         Loot
                       </Button>
                     )}
