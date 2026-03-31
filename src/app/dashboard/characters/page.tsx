@@ -20,6 +20,16 @@ interface CharacterData {
   lastFetchedAt: Date | null
 }
 
+interface PrismaCharacter {
+  id: number
+  name: string
+  totalSp: number
+  walletBalance: number
+  location: string | null
+  ship: string | null
+  lastFetchedAt: Date | null
+}
+
 export default async function CharactersPage() {
   const session = await getServerSession(authOptions)
   
@@ -36,7 +46,7 @@ export default async function CharactersPage() {
     }
   })
 
-  const characters: CharacterData[] = (user?.characters || []).map(c => ({
+  const characters: CharacterData[] = (user?.characters || []).map((c: PrismaCharacter) => ({
     id: c.id,
     name: c.name,
     totalSp: c.totalSp,
