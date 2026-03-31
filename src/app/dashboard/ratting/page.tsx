@@ -85,8 +85,8 @@ export default function RattingPage() {
     setIsRecording(false)
   }
 
-  const totalBounty = sessions.reduce((sum, s) => sum + s.bounty, 0)
-  const totalSites = sessions.reduce((sum, s) => sum + s.sitesCompleted, 0)
+  const totalBounty = sessions.reduce((sum: number, s: RattingSession) => sum + s.bounty, 0)
+  const totalSites = sessions.reduce((sum: number, s: RattingSession) => sum + s.sitesCompleted, 0)
   const activeSessions = sessions.filter(s => s.status === 'active').length
 
   return (

@@ -75,7 +75,7 @@ export default function FleetCalculatorPage() {
     }))
   }
 
-  const totalFleetIskPerHour = participants.reduce((sum, p) => sum + p.iskPerHour, 0)
+  const totalFleetIskPerHour = participants.reduce((sum: number, p: FleetParticipant) => sum + p.iskPerHour, 0)
   const iskPerParticipant = participants.length > 0 ? totalFleetIskPerHour / participants.length : 0
   const totalEarnings = iskPerParticipant * duration
 

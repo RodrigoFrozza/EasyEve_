@@ -95,8 +95,8 @@ export default function MiningPage() {
     setIsRecording(false)
   }
 
-  const totalMined = sessions.reduce((sum, s) => sum + s.quantity, 0)
-  const totalEarnings = sessions.reduce((sum, s) => sum + s.estimatedIsk, 0)
+  const totalMined = sessions.reduce((sum: number, s: MiningSession) => sum + s.quantity, 0)
+  const totalEarnings = sessions.reduce((sum: number, s: MiningSession) => sum + s.estimatedIsk, 0)
   const activeSessions = sessions.filter(s => s.status === 'active').length
 
   return (

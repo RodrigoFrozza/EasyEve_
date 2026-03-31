@@ -61,7 +61,7 @@ export default function ExplorationPage() {
     return matchesSearch && matchesType
   })
 
-  const totalValue = signatures.filter(s => s.status === 'completed').reduce((sum, s) => sum + (s.value || 0), 0)
+  const totalValue = signatures.filter(s => s.status === 'completed').reduce((sum: number, s: Signature) => sum + (s.value || 0), 0)
   const sitesScanned = signatures.filter(s => s.status === 'scanned' || s.status === 'completed').length
 
   const addSignature = () => {

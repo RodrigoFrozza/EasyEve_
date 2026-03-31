@@ -91,7 +91,7 @@ export default function AbyssalPage() {
     setIsRecording(false)
   }
 
-  const totalLoot = sessions.reduce((sum, s) => sum + s.loot, 0)
+  const totalLoot = sessions.reduce((sum: number, s: AbyssalSession) => sum + s.loot, 0)
   const totalRuns = sessions.filter(s => s.status === 'completed').length
   const survivalRate = totalRuns > 0 
     ? Math.round((sessions.filter(s => s.status === 'completed' && s.survived).length / totalRuns) * 100) 
