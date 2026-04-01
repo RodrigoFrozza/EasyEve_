@@ -8,6 +8,8 @@ export const authOptions: NextAuthOptions = {
       id: 'eveonline',
       name: 'EVE Online',
       type: 'oauth',
+      clientId: process.env.EVE_CLIENT_ID,
+      clientSecret: process.env.EVE_CLIENT_SECRET,
       authorization: {
         url: 'https://login.eveonline.com/v2/oauth/authorize',
         params: {
