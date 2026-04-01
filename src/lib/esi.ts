@@ -86,19 +86,44 @@ export async function getCharacterInfo(accessToken: string): Promise<EveCharacte
   return response.json()
 }
 
-export async function fetchCharacterData(characterId: number, accessToken: string) {
-  const [info, location, ship, wallet] = await Promise.all([
+export interface FetchCharacterDataResult {
+  name?: string
+  total_sp?: number
+  wallet?: number
+  location?: string
+  ship?: string
+  shipTypeId?: number
+}
+
+export async function fetchCharacterData(characterId: number, accessToken: string): Promise<FetchCharacterDataResult> {
+  const [info, location, ship, wallet, skills] = await Promise.all([
     getCharacterPublicInfo(characterId),
     getCharacterLocation(characterId, accessToken),
     getCharacterShip(characterId, accessToken),
     getCharacterWallet(characterId, accessToken),
+    getCharacterSkillsSummary(characterId, accessToken),
   ])
 
   return {
-    ...info,
-    ...location,
-    ...ship,
+    name: info.name,
+    total_sp: skills.total_sp,
     wallet,
+    location: location.location,
+    ship: ship.ship,
+    shipTypeId: ship.shipTypeId,
+  }
+}
+
+async function getCharacterSkillsSummary(characterId: number, accessToken: string): Promise<{ total_sp?: number }> {
+  try {
+    const response = await fetch(`${ESI_BASE_URL}/characters/${characterId}/skills/`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (!response.ok) return {}
+    const data = await response.json()
+    return { total_sp: data.total_sp }
+  } catch {
+    return {}
   }
 }
 
