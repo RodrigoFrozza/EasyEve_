@@ -56,7 +56,11 @@ export const authOptions: NextAuthOptions = {
             },
           })
           
-          const eveData = await response.json()
+          const text = await response.text()
+          console.log('Userinfo response status:', response.status)
+          console.log('Userinfo response:', text)
+          
+          const eveData = JSON.parse(text)
           
           const corpInfo = await getCorporationInfo(eveData.CharacterID)
           const allianceInfo = eveData.AllianceID 
