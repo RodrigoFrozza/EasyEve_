@@ -48,9 +48,9 @@ export const authOptions: NextAuthOptions = {
         },
       },
       userinfo: {
-        url: 'https://esi.evetech.net/latest/verify',
+        url: 'https://esi.evetech.net/latest/verify/',
         async request({ tokens }) {
-          const response = await fetch('https://esi.evetech.net/latest/verify', {
+          const response = await fetch('https://esi.evetech.net/latest/verify/', {
             headers: {
               Authorization: `Bearer ${tokens.access_token}`,
             },
