@@ -27,31 +27,30 @@ export async function POST(request: Request) {
     }
     
     const charData = await fetchCharacterData(characterId, accessToken)
-    const charDataAny = charData as { total_sp?: number; wallet?: number; location?: string; ship?: string; shipTypeId?: number; name?: string }
     
     const character = await prisma.character.upsert({
       where: { id: characterId },
       create: {
         id: characterId,
-        name: charDataAny.name || `Character ${characterId}`,
+        name: charData.name || `Character ${characterId}`,
         ownerHash: characterOwnerHash,
         accessToken: accessToken,
         userId: user.id,
-        totalSp: charDataAny.total_sp || 0,
-        walletBalance: charDataAny.wallet || 0,
-        location: charDataAny.location,
-        ship: charDataAny.ship,
-        shipTypeId: charDataAny.shipTypeId,
+        totalSp: charData.total_sp || 0,
+        walletBalance: charData.wallet || 0,
+        location: charData.location,
+        ship: charData.ship,
+        shipTypeId: charData.shipTypeId,
         lastFetchedAt: new Date()
       },
       update: {
         accessToken: accessToken,
         userId: user.id,
-        totalSp: charDataAny.total_sp || 0,
-        walletBalance: charDataAny.wallet || 0,
-        location: charDataAny.location,
-        ship: charDataAny.ship,
-        shipTypeId: charDataAny.shipTypeId,
+        totalSp: charData.total_sp || 0,
+        walletBalance: charData.wallet || 0,
+        location: charData.location,
+        ship: charData.ship,
+        shipTypeId: charData.shipTypeId,
         lastFetchedAt: new Date()
       }
     })
