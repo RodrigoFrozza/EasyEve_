@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build && cp -r .next/static .next/standalone/ || true",
-    "start": "HOSTNAME=0.0.0.0 PORT=80 node .next/standalone/server.js",
+    "build": "prisma generate && next build",
+    "start": "HOSTNAME=0.0.0.0 PORT=80 node_modules/.bin/next start",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
