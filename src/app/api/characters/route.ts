@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     }
     
     const body = await request.json()
-    const { characterId, accessToken } = body
+    const { characterId, accessToken, characterOwnerHash } = body
     
     if (!characterId || !accessToken) {
       return NextResponse.json({ error: 'Missing characterId or accessToken' }, { status: 400 })
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       create: {
         id: characterId,
         name: charData.name || `Character ${characterId}`,
-        ownerHash: charData.ownerHash || '',
+        ownerHash: characterOwnerHash || '',
         accessToken: accessToken,
         userId: user.id,
         totalSp: charData.total_sp || 0,
