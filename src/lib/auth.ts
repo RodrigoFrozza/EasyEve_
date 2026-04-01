@@ -36,7 +36,6 @@ export const authOptions: NextAuthOptions = {
           })
           
           const text = await response.text()
-          console.log('Token response status:', response.status)
           
           if (!response.ok) {
             throw new Error(`Token request failed: ${text}`)
@@ -46,79 +45,38 @@ export const authOptions: NextAuthOptions = {
           return { tokens }
         },
       },
-      userinfo: {
-        url: 'https://esi.evetech.net/latest/verify/',
-        async request({ tokens }) {
-          const response = await fetch('https://esi.evetech.net/latest/verify/', {
-            headers: {
-              Authorization: `Bearer ${tokens.access_token}`,
-            },
-          })
-          
-          const text = await response.text()
-          console.log('Userinfo status:', response.status)
-          
-          if (!response.ok) {
-            throw new Error(`Userinfo failed: ${text}`)
-          }
-          
-          const eveData = JSON.parse(text)
-          
-          return {
-            id: String(eveData.CharacterID),
-            name: eveData.CharacterName,
-            characterId: eveData.CharacterID,
-            characterOwnerHash: eveData.CharacterOwnerHash,
-            corporationId: eveData.CorporationID,
-            allianceId: eveData.AllianceID,
-          }
-        },
-      },
-      profile(profile) {
-        const p = profile as any
-        return {
-          id: String(p.id || p.characterId),
-          name: p.name,
-          characterId: p.characterId,
-          characterOwnerHash: p.characterOwnerHash,
-          corporationId: p.corporationId,
-          allianceId: p.allianceId,
-        }
-      },
     },
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
-      if (account?.provider === 'eveonline' && profile) {
+    async signIn({ user, account }) {
+      if (account?.provider === 'eveonline' && token.characterOwnerHash) {
         try {
-          const charProfile = profile as any
-          
           let dbUser = await prisma.user.findUnique({
-            where: { eveSubject: charProfile.characterOwnerHash },
+            where: { eveSubject: token.characterOwnerHash as string },
           })
 
           if (!dbUser) {
             dbUser = await prisma.user.create({
               data: {
-                eveSubject: charProfile.characterOwnerHash,
-                name: charProfile.name,
+                eveSubject: token.characterOwnerHash as string,
+                name: token.characterName as string || 'Unknown',
               },
             })
           }
 
           const existingChar = await prisma.character.findUnique({
-            where: { ownerHash: charProfile.characterOwnerHash },
+            where: { ownerHash: token.characterOwnerHash as string },
           })
 
           if (!existingChar) {
-            const charData = await fetchCharacterData(charProfile.characterId, account.access_token!)
+            const charData = await fetchCharacterData(token.characterId as number, account.access_token!)
             const charDataAny = charData as { total_sp?: number; wallet?: number; location?: string; ship?: string; shipTypeId?: number }
             
             await prisma.character.create({
               data: {
-                id: charProfile.characterId,
-                name: charProfile.name,
-                ownerHash: charProfile.characterOwnerHash,
+                id: token.characterId as number,
+                name: token.characterName as string || 'Unknown',
+                ownerHash: token.characterOwnerHash as string,
                 userId: dbUser.id,
                 totalSp: charDataAny.total_sp || 0,
                 walletBalance: charDataAny.wallet || 0,
@@ -142,12 +100,18 @@ export const authOptions: NextAuthOptions = {
       }
       return true
     },
-    async jwt({ token, account, profile }) {
-      if (account && profile) {
-        const charProfile = profile as any
-        token.characterId = charProfile.characterId
-        token.characterOwnerHash = charProfile.characterOwnerHash
-        token.accessToken = account.access_token
+    async jwt({ token, account }) {
+      if (account && account.access_token) {
+        try {
+          const payload = JSON.parse(Buffer.from(account.access_token.split('.')[1], 'base64').toString())
+          const subParts = payload.sub?.split(':') || []
+          token.characterId = parseInt(subParts[subParts.length - 1]) || 0
+          token.characterOwnerHash = payload.owner || ''
+          token.characterName = payload.name || ''
+          token.accessToken = account.access_token
+        } catch (e) {
+          console.error('JWT decode error:', e)
+        }
       }
       return token
     },
