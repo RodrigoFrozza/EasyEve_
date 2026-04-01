@@ -18,6 +18,7 @@ model User {
   rattingSessions RattingSession[]
   abyssalSessions AbyssalSession[]
   explorationSignatures ExplorationSignature[]
+  fleetSessions FleetSession[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 }
