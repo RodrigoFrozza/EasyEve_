@@ -7,8 +7,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatSP, formatISK, timeAgo } from '@/lib/utils'
-import { Plus, RefreshCw, Trash2, MapPin, Ship, Zap, Wallet } from 'lucide-react'
-import Link from 'next/link'
+import { MapPin, Ship, Zap, Wallet } from 'lucide-react'
+import { LinkCharacterButton, RefreshCharacterButton, RemoveCharacterButton } from '@/components/character-actions'
 
 interface CharacterData {
   id: number
@@ -63,10 +63,7 @@ export default async function CharactersPage() {
           <h1 className="text-3xl font-bold text-white">Characters</h1>
           <p className="text-gray-400">Manage your linked EVE Online characters</p>
         </div>
-        <Button className="bg-eve-accent text-black hover:bg-eve-accent/80">
-          <Plus className="mr-2 h-4 w-4" />
-          Link New Character
-        </Button>
+        <LinkCharacterButton />
       </div>
 
       <Tabs defaultValue="all" className="w-full">
@@ -102,10 +99,7 @@ export default async function CharactersPage() {
             <p className="text-gray-400 text-center mb-4">
               Link your EVE Online characters to start tracking your progress.
             </p>
-            <Button className="bg-eve-accent text-black hover:bg-eve-accent/80">
-              <Plus className="mr-2 h-4 w-4" />
-              Link First Character
-            </Button>
+            <LinkCharacterButton />
           </CardContent>
         </Card>
       )}
@@ -170,15 +164,9 @@ function CharacterCard({ character, isMain, detailed = false }: { character: Cha
         )}
 
         <div className="flex gap-2 pt-2">
-          <Button variant="outline" size="sm" className="flex-1 border-eve-border">
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
+          <RefreshCharacterButton characterId={character.id} />
           {!isMain && (
-            <Button variant="outline" size="sm" className="border-red-500/50 text-red-400 hover:bg-red-500/10">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Remove
-            </Button>
+            <RemoveCharacterButton characterId={character.id} />
           )}
         </div>
       </CardContent>
