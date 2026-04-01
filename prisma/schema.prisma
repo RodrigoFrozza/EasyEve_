@@ -17,6 +17,7 @@ model User {
   miningSessions MiningSession[]
   rattingSessions RattingSession[]
   abyssalSessions AbyssalSession[]
+  explorationSignatures ExplorationSignature[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 }
@@ -111,13 +112,52 @@ model AbyssalSession {
   loot          Float    @default(0)
   iskPerMinute  Float    @default(0)
   survived      Boolean  @default(true)
+   
+   characterId   Int?
+   
+   userId        String
+   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   
+   createdAt     DateTime @default(now())
+
+  @@index([userId])
+}
+
+model ExplorationSignature {
+  id          String   @id @default(cuid())
+  name        String
+  type        String
+  status      String   @default("new")
+  systemId    Int?
+  systemName  String?
+  notes       String?
   
-  characterId   Int?
+  characterId Int?
   
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  createdAt     DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model FleetSession {
+  id          String   @id @default(cuid())
+  name        String
+  fleetType   String
+  startTime   DateTime
+  endTime     DateTime?
+  iskPerHour  Float    @default(0)
+  participants Json     @default("[]")
+  
+  characterId Int?
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
 
   @@index([userId])
 }
