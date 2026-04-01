@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { signIn, getSession } from 'next-auth/react'
+import { Loader2 } from 'lucide-react'
 
-export default function LinkCharacterPage() {
+function LinkCharacterContent() {
   const searchParams = useSearchParams()
   const [status, setStatus] = useState('processing')
   const [error, setError] = useState('')
@@ -43,14 +43,14 @@ export default function LinkCharacterPage() {
       <div className="text-center">
         {status === 'processing' && (
           <>
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-eve-accent mx-auto mb-4"></div>
+            <Loader2 className="h-12 w-12 animate-spin text-eve-accent mx-auto mb-4" />
             <p className="text-white text-lg">Linking character...</p>
           </>
         )}
         
         {status === 'success' && (
           <>
-            <div className="text-eve-accent text-5xl mb-4">✓</div>
+            <div className="text-green-500 text-5xl mb-4">✓</div>
             <p className="text-white text-lg mb-4">Character linked successfully!</p>
             <p className="text-gray-400">Redirecting...</p>
           </>
@@ -70,5 +70,24 @@ export default function LinkCharacterPage() {
         )}
       </div>
     </div>
+  )
+}
+
+function LoadingState() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-eve-dark">
+      <div className="text-center">
+        <Loader2 className="h-12 w-12 animate-spin text-eve-accent mx-auto mb-4" />
+        <p className="text-white text-lg">Loading...</p>
+      </div>
+    </div>
+  )
+}
+
+export default function LinkCharacterPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <LinkCharacterContent />
+    </Suspense>
   )
 }
