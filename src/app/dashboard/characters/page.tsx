@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatSP, formatISK, timeAgo } from '@/lib/utils'
-import { MapPin, Ship, Zap, Wallet } from 'lucide-react'
+import { MapPin, Ship, Zap, Wallet, Plus } from 'lucide-react'
 import { LinkCharacterButton, RefreshCharacterButton, RemoveCharacterButton } from '@/components/character-actions'
 
 interface CharacterData {
