@@ -35,7 +35,15 @@ export const authOptions: NextAuthOptions = {
             }),
           })
           
-          const tokens = await response.json()
+          const text = await response.text()
+          console.log('Token response status:', response.status)
+          console.log('Token response:', text)
+          
+          if (!response.ok) {
+            throw new Error(`Token request failed: ${text}`)
+          }
+          
+          const tokens = JSON.parse(text)
           return { tokens }
         },
       },
