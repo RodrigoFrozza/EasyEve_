@@ -45,38 +45,63 @@ export const authOptions: NextAuthOptions = {
           return { tokens }
         },
       },
-    },
+      userinfo: {
+        async request({ tokens }) {
+          if (!tokens.access_token) {
+            throw new Error('No access token')
+          }
+          try {
+            const payload = JSON.parse(Buffer.from(tokens.access_token.split('.')[1], 'base64').toString())
+            const subParts = payload.sub?.split(':') || []
+            const characterId = parseInt(subParts[subParts.length - 1]) || 0
+            const ownerHash = payload.owner || ''
+            
+            return {
+              id: String(characterId),
+              characterId,
+              characterOwnerHash: ownerHash,
+              name: payload.name || '',
+              corporationId: 0,
+              allianceId: 0,
+            }
+          } catch (e) {
+            console.error('userinfo decode error:', e)
+            throw e
+          }
+        },
+      },
   ],
   callbacks: {
-    async signIn({ user, account }) {
-      if (account?.provider === 'eveonline' && token.characterOwnerHash) {
+    async signIn({ user, account, profile }) {
+      if (account?.provider === 'eveonline' && profile) {
+        const charProfile = profile as any
         try {
           let dbUser = await prisma.user.findUnique({
-            where: { eveSubject: token.characterOwnerHash as string },
+            where: { eveSubject: charProfile.characterOwnerHash },
           })
 
           if (!dbUser) {
             dbUser = await prisma.user.create({
               data: {
-                eveSubject: token.characterOwnerHash as string,
-                name: token.characterName as string || 'Unknown',
+                eveSubject: charProfile.characterOwnerHash,
+                name: charProfile.name || 'Unknown',
               },
             })
           }
 
           const existingChar = await prisma.character.findUnique({
-            where: { ownerHash: token.characterOwnerHash as string },
+            where: { ownerHash: charProfile.characterOwnerHash },
           })
 
           if (!existingChar) {
-            const charData = await fetchCharacterData(token.characterId as number, account.access_token!)
+            const charData = await fetchCharacterData(charProfile.characterId, account.access_token!)
             const charDataAny = charData as { total_sp?: number; wallet?: number; location?: string; ship?: string; shipTypeId?: number }
             
             await prisma.character.create({
               data: {
-                id: token.characterId as number,
-                name: token.characterName as string || 'Unknown',
-                ownerHash: token.characterOwnerHash as string,
+                id: charProfile.characterId,
+                name: charProfile.name || 'Unknown',
+                ownerHash: charProfile.characterOwnerHash,
                 userId: dbUser.id,
                 totalSp: charDataAny.total_sp || 0,
                 walletBalance: charDataAny.wallet || 0,
@@ -100,14 +125,21 @@ export const authOptions: NextAuthOptions = {
       }
       return true
     },
-    async jwt({ token, account }) {
+    async jwt({ token, account, profile }) {
       if (account && account.access_token) {
         try {
-          const payload = JSON.parse(Buffer.from(account.access_token.split('.')[1], 'base64').toString())
-          const subParts = payload.sub?.split(':') || []
-          token.characterId = parseInt(subParts[subParts.length - 1]) || 0
-          token.characterOwnerHash = payload.owner || ''
-          token.characterName = payload.name || ''
+          if (profile) {
+            const p = profile as any
+            token.characterId = p.characterId
+            token.characterOwnerHash = p.characterOwnerHash
+            token.characterName = p.name
+          } else {
+            const payload = JSON.parse(Buffer.from(account.access_token.split('.')[1], 'base64').toString())
+            const subParts = payload.sub?.split(':') || []
+            token.characterId = parseInt(subParts[subParts.length - 1]) || 0
+            token.characterOwnerHash = payload.owner || ''
+            token.characterName = payload.name || ''
+          }
           token.accessToken = account.access_token
         } catch (e) {
           console.error('JWT decode error:', e)
