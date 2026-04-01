@@ -70,6 +70,15 @@ export const authOptions: NextAuthOptions = {
           }
         },
       },
+      profile(profile) {
+        const p = profile as any
+        return {
+          id: String(p.id || p.characterId),
+          name: p.name,
+          characterId: p.characterId,
+          characterOwnerHash: p.characterOwnerHash,
+        }
+      },
     },
   ],
   callbacks: {
