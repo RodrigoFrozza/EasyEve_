@@ -1,6 +1,6 @@
 import { NextAuthOptions } from 'next-auth'
 import { prisma } from './prisma'
-import { getCharacterInfo, getAccessToken, getCharacterPortraitUrl, getCharacterAvatarUrl, fetchCharacterData, getCorporationInfo, getAllianceInfo } from './esi'
+import { getCharacterAvatarUrl, fetchCharacterData, getCorporationInfo, getAllianceInfo } from './esi'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -23,7 +23,7 @@ export const authOptions: NextAuthOptions = {
           const response = await fetch('https://login.eveonline.com/v2/oauth/token', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
+              'Content-Type': 'application/x-www-form-formencoded',
               'Authorization': `Basic ${Buffer.from(
                 `${process.env.EVE_CLIENT_ID}:${process.env.EVE_CLIENT_SECRET}`
               ).toString('base64')}`,
@@ -37,7 +37,6 @@ export const authOptions: NextAuthOptions = {
           
           const text = await response.text()
           console.log('Token response status:', response.status)
-          console.log('Token response:', text)
           
           if (!response.ok) {
             throw new Error(`Token request failed: ${text}`)
@@ -57,45 +56,33 @@ export const authOptions: NextAuthOptions = {
           })
           
           const text = await response.text()
-          console.log('Userinfo response status:', response.status)
-          console.log('Userinfo response:', text)
+          console.log('Userinfo status:', response.status)
+          
+          if (!response.ok) {
+            throw new Error(`Userinfo failed: ${text}`)
+          }
           
           const eveData = JSON.parse(text)
-          
-          const corpInfo = await getCorporationInfo(eveData.CharacterID)
-          const allianceInfo = eveData.AllianceID 
-            ? await getAllianceInfo(eveData.AllianceID) 
-            : null
-          
-          const portraitUrl = getCharacterAvatarUrl(eveData.CharacterID)
           
           return {
             id: String(eveData.CharacterID),
             name: eveData.CharacterName,
-            email: undefined,
-            image: portraitUrl,
             characterId: eveData.CharacterID,
             characterOwnerHash: eveData.CharacterOwnerHash,
             corporationId: eveData.CorporationID,
-            corporationName: corpInfo.name || `Corp ${eveData.CorporationID}`,
             allianceId: eveData.AllianceID,
-            allianceName: allianceInfo?.name || undefined,
-            tokenExpiry: eveData.ExpiresOn,
           }
         },
       },
       profile(profile) {
+        const p = profile as any
         return {
-          id: String(profile.characterId),
-          name: profile.name,
-          email: profile.email,
-          image: profile.image,
-          characterId: profile.characterId,
-          characterOwnerHash: profile.characterOwnerHash,
-          corporationId: profile.corporationId,
-          corporationName: profile.corporationName,
-          allianceId: profile.allianceId,
-          allianceName: profile.allianceName,
+          id: String(p.id || p.characterId),
+          name: p.name,
+          characterId: p.characterId,
+          characterOwnerHash: p.characterOwnerHash,
+          corporationId: p.corporationId,
+          allianceId: p.allianceId,
         }
       },
     },
@@ -161,7 +148,6 @@ export const authOptions: NextAuthOptions = {
         token.characterId = charProfile.characterId
         token.characterOwnerHash = charProfile.characterOwnerHash
         token.accessToken = account.access_token
-        token.userId = charProfile.userId
       }
       return token
     },
@@ -188,8 +174,7 @@ export const authOptions: NextAuthOptions = {
         
         if (user) {
           session.user.id = user.id
-          const PrismaChar = { id: 0, name: '', totalSp: 0, walletBalance: 0, location: null as string | null, ship: null as string | null }
-          session.user.characters = user.characters.map((c: typeof PrismaChar) => ({
+          session.user.characters = user.characters.map((c) => ({
             id: c.id,
             name: c.name,
             totalSp: c.totalSp,
