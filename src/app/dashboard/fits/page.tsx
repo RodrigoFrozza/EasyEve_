@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -43,7 +43,7 @@ const shipTypes = [
 
 export default function FitsPage() {
   const { data: session } = useSession()
-  const characters = session?.user?.characters || []
+  const characters = useMemo(() => session?.user?.characters || [], [session])
   
   const [fits, setFits] = useState<Fit[]>([])
   const [loading, setLoading] = useState(true)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -44,7 +44,7 @@ const oreTypes = [
 
 export default function MiningPage() {
   const { data: session } = useSession()
-  const characters = session?.user?.characters || []
+  const characters = useMemo(() => session?.user?.characters || [], [session])
   
   const [sessions, setSessions] = useState<MiningSession[]>([])
   const [loading, setLoading] = useState(true)
