@@ -1,6 +1,10 @@
 const EVE_SSO_BASE_URL = 'https://login.eveonline.com/v2/oauth'
 const ESI_BASE_URL = 'https://esi.evetech.net/latest'
 
+export { getTypeName, getSolarSystemName, getTypeInfo, getSolarSystemInfo, getGroupInfo, getCategoryInfo, getCorporationLogoUrl, getAllianceLogoUrl, getTypeRenderUrl, getTypeIconUrl, getCharacterPortraitUrl, getCharacterAvatarUrl } from './sde'
+
+export * from './sde'
+
 export interface EveCharacter {
   character_id: number
   character_name: string
@@ -221,28 +225,6 @@ export async function getCharacterSkills(characterId: number, accessToken: strin
   }
 }
 
-export async function getTypeName(typeId: number): Promise<string> {
-  try {
-    const response = await fetch(`https://esi.evetech.net/latest/universe/types/${typeId}/?datasource=tranquility`)
-    if (!response.ok) return `Type ${typeId}`
-    const data = await response.json()
-    return data.name || `Type ${typeId}`
-  } catch {
-    return `Type ${typeId}`
-  }
-}
-
-export async function getSolarSystemName(systemId: number): Promise<string> {
-  try {
-    const response = await fetch(`https://esi.evetech.net/latest/universe/systems/${systemId}/?datasource=tranquility`)
-    if (!response.ok) return `System ${systemId}`
-    const data = await response.json()
-    return data.name || `System ${systemId}`
-  } catch {
-    return `System ${systemId}`
-  }
-}
-
 export async function getCorporationInfo(corpId: number) {
   try {
     const response = await fetch(`${ESI_BASE_URL}/corporations/${corpId}/`)
@@ -267,12 +249,4 @@ export async function getAllianceInfo(allianceId: number) {
   } catch {
     return { name: `Alliance ${allianceId}` }
   }
-}
-
-export function getCharacterPortraitUrl(characterId: number, size: number = 128): string {
-  return `https://images.evetools.dev/corporation/${characterId}/${size}`
-}
-
-export function getCharacterAvatarUrl(characterId: number, size: number = 128): string {
-  return `https://images.evetools.dev/character/${characterId}/${size}`
 }

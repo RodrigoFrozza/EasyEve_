@@ -114,7 +114,7 @@ function CharacterCard({ character, isMain, detailed = false }: { character: Cha
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Avatar className="h-12 w-12">
-              <AvatarImage src={`https://images.evetools.dev/character/${character.id}/128`} />
+              <AvatarImage src={`https://images.evetech.net/characters/${character.id}/portrait?size=128`} />
               <AvatarFallback>{character.name[0]}</AvatarFallback>
             </Avatar>
             <div>

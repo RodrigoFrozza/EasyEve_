@@ -107,7 +107,7 @@ export function Sidebar() {
             {session?.user?.characters?.map((char) => (
               <DropdownMenuItem key={char.id} className="text-xs">
                 <Avatar className="mr-2 h-5 w-5">
-                  <AvatarImage src={`https://images.evetools.dev/character/${char.id}/32`} />
+                  <AvatarImage src={`https://images.evetech.net/characters/${char.id}/portrait?size=32`} />
                   <AvatarFallback>{char.name[0]}</AvatarFallback>
                 </Avatar>
                 {char.name}

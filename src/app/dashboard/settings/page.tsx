@@ -99,7 +99,7 @@ export default async function SettingsPage() {
                     <div key={char.id} className="flex items-center justify-between p-2 rounded-lg bg-eve-dark/50">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={`https://images.evetools.dev/character/${char.id}/32`} />
+                          <AvatarImage src={`https://images.evetech.net/characters/${char.id}/portrait?size=32`} />
                           <AvatarFallback>{char.name[0]}</AvatarFallback>
                         </Avatar>
                         <div>

@@ -125,7 +125,7 @@ export default async function DashboardPage() {
                   className="flex items-center gap-4 rounded-lg border border-eve-border bg-eve-dark/50 p-4"
                 >
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src={`https://images.evetools.dev/character/${char.id}/128`} />
+                    <AvatarImage src={`https://images.evetech.net/characters/${char.id}/portrait?size=128`} />
                     <AvatarFallback>{char.name[0]}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
