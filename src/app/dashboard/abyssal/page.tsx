@@ -23,29 +23,31 @@ interface AbyssalSession {
   createdAt: string | Date
 }
 
-const filamentTypes = [
-  { name: 'Exterior Damavik', tier: 1, baseLoot: 5000000 },
-  { name: 'Exterior Gila', tier: 1, baseLoot: 8000000 },
-  { name: 'Exterior Osprey', tier: 1, baseLoot: 10000000 },
-  { name: 'Fighting Damavik', tier: 2, baseLoot: 15000000 },
-  { name: 'Fighting Gila', tier: 2, baseLoot: 25000000 },
-  { name: 'Fighting Osprey', tier: 2, baseLoot: 30000000 },
-  { name: 'Deadly Damavik', tier: 3, baseLoot: 40000000 },
-  { name: 'Deadly Gila', tier: 3, baseLoot: 60000000 },
-  { name: 'Deadly Osprey', tier: 3, baseLoot: 80000000 },
-  { name: 'Entrance Damavik', tier: 4, baseLoot: 80000000 },
-  { name: 'Entrance Gila', tier: 4, baseLoot: 120000000 },
-  { name: 'Entrance Osprey', tier: 4, baseLoot: 150000000 },
-  { name: 'Hazardous Damavik', tier: 5, baseLoot: 150000000 },
-  { name: 'Hazardous Gila', tier: 5, baseLoot: 250000000 },
-  { name: 'Hazardous Osprey', tier: 5, baseLoot: 300000000 },
-]
+interface FilamentData {
+  id: number
+  name: string
+  tier: number
+  tierLabel: string
+  weather: string
+  effect: string
+  displayName: string
+}
+
+const TIER_BASE_LOOT: Record<number, number> = {
+  1: 5000000,
+  2: 15000000,
+  3: 40000000,
+  4: 80000000,
+  5: 150000000,
+  6: 250000000,
+}
 
 export default function AbyssalPage() {
   const { data: session } = useSession()
   const characters = useMemo(() => session?.user?.characters || [], [session])
   
   const [sessions, setSessions] = useState<AbyssalSession[]>([])
+  const [filaments, setFilaments] = useState<FilamentData[]>([])
   const [loading, setLoading] = useState(true)
   const [isRecording, setIsRecording] = useState(false)
   const [newSession, setNewSession] = useState({
@@ -67,18 +69,31 @@ export default function AbyssalPage() {
     }
   }, [])
 
+  const fetchFilaments = useCallback(async () => {
+    try {
+      const response = await fetch('/api/sde/filaments')
+      if (response.ok) {
+        const data = await response.json()
+        setFilaments(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch filaments:', error)
+    }
+  }, [])
+
   useEffect(() => {
     if (characters.length > 0) {
       fetchSessions()
+      fetchFilaments()
     } else {
       setLoading(false)
     }
-  }, [characters, fetchSessions])
+  }, [characters, fetchSessions, fetchFilaments])
 
   const startSession = async () => {
     if (!newSession.characterId || !newSession.filamentType) return
     
-    const filament = filamentTypes.find(f => f.name === newSession.filamentType)
+    const filament = filaments.find(f => f.name === newSession.filamentType)
     
     try {
       const response = await fetch('/api/abyssal', {
@@ -109,9 +124,10 @@ export default function AbyssalPage() {
     const sessionToStop = sessions.find(s => s.id === id)
     if (!sessionToStop) return
     
-    const filament = filamentTypes.find(f => f.name === sessionToStop.filamentType)
+    const filament = filaments.find(f => f.name === sessionToStop.filamentType)
     const survived = Math.random() > 0.2
-    const loot = survived ? Math.floor((filament?.baseLoot || 5000000) * (0.5 + Math.random())) : 0
+    const baseLoot = TIER_BASE_LOOT[sessionToStop.tier] || 5000000
+    const loot = survived ? Math.floor(baseLoot * (0.5 + Math.random())) : 0
     const duration = 20
     const iskPerMinute = loot / duration
     
@@ -288,11 +304,17 @@ export default function AbyssalPage() {
                   <SelectValue placeholder="Select filament..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {filamentTypes.map((filament) => (
-                    <SelectItem key={filament.name} value={filament.name}>
-                      T{filament.tier} {filament.name}
+                  {filaments.length > 0 ? (
+                    filaments.map((filament) => (
+                      <SelectItem key={filament.id} value={filament.name}>
+                        {filament.displayName}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="loading" disabled>
+                      Loading filaments...
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
             </div>

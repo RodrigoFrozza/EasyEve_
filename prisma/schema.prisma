@@ -164,3 +164,49 @@ model FleetSession {
 
   @@index([userId])
 }
+
+model SdeCache {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+  @@index([expiresAt])
+}
+
+model FilamentType {
+  id          Int      @id
+  name        String
+  weather     String
+  tier        Int
+  effect      String
+  published   Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+
+  @@map("filament_types")
+}
+
+model OreType {
+  id          Int      @id
+  name        String
+  groupName   String
+  volume      Float?
+  basePrice   Float?
+  published   Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+
+  @@map("ore_types")
+}
+
+model ExplorationSiteType {
+  id          Int      @id
+  name        String
+  category    String
+  published   Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+
+  @@map("exploration_site_types")
+}
