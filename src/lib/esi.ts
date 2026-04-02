@@ -1,9 +1,37 @@
-const EVE_SSO_BASE_URL = 'https://login.eveonline.com/v2/oauth'
-const ESI_BASE_URL = 'https://esi.evetech.net/latest'
+import {
+  getTypeName,
+  getSolarSystemName,
+  getTypeInfo,
+  getSolarSystemInfo,
+  getGroupInfo,
+  getCategoryInfo,
+  getCharacterPortraitUrl,
+  getCharacterAvatarUrl,
+  getCorporationLogoUrl,
+  getAllianceLogoUrl,
+  getTypeRenderUrl,
+  getTypeIconUrl,
+} from './sde'
 
-export { getTypeName, getSolarSystemName, getTypeInfo, getSolarSystemInfo, getGroupInfo, getCategoryInfo, getCorporationLogoUrl, getAllianceLogoUrl, getTypeRenderUrl, getTypeIconUrl, getCharacterPortraitUrl, getCharacterAvatarUrl } from './sde'
+export {
+  getTypeName,
+  getSolarSystemName,
+  getTypeInfo,
+  getSolarSystemInfo,
+  getGroupInfo,
+  getCategoryInfo,
+  getCharacterPortraitUrl,
+  getCharacterAvatarUrl,
+  getCorporationLogoUrl,
+  getAllianceLogoUrl,
+  getTypeRenderUrl,
+  getTypeIconUrl,
+}
 
 export * from './sde'
+
+const EVE_SSO_BASE_URL = 'https://login.eveonline.com/v2/oauth'
+const ESI_BASE_URL = 'https://esi.evetech.net/latest'
 
 export interface EveCharacter {
   character_id: number
