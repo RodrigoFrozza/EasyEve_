@@ -1,3 +1,4 @@
+# EasyEve Dockerfile - Next.js application
 FROM node:20-alpine
 
 RUN apk add --no-cache libc6-compat openssl curl
