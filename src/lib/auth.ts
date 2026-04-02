@@ -103,6 +103,10 @@ export const authOptions: NextAuthOptions = {
             where: { ownerHash: charProfile.characterOwnerHash },
           })
 
+          const tokenExpiresAt = account.expires_at 
+            ? new Date(account.expires_at * 1000)
+            : new Date(Date.now() + 20 * 60 * 1000)
+
           if (!existingChar) {
             const charData = await fetchCharacterData(charProfile.characterId, account.access_token!)
             
@@ -112,6 +116,9 @@ export const authOptions: NextAuthOptions = {
                 name: charProfile.name || 'Unknown',
                 ownerHash: charProfile.characterOwnerHash,
                 userId: dbUser.id,
+                accessToken: account.access_token || '',
+                refreshToken: (account as any).refresh_token || '',
+                tokenExpiresAt: tokenExpiresAt,
                 totalSp: charData.total_sp || 0,
                 walletBalance: charData.wallet || 0,
                 location: charData.location,
@@ -119,10 +126,15 @@ export const authOptions: NextAuthOptions = {
                 shipTypeId: charData.shipTypeId,
               },
             })
-          } else if (existingChar.userId !== dbUser.id) {
+          } else {
             await prisma.character.update({
               where: { id: existingChar.id },
-              data: { userId: dbUser.id },
+              data: {
+                accessToken: account.access_token || existingChar.accessToken,
+                refreshToken: (account as any).refresh_token || existingChar.refreshToken,
+                tokenExpiresAt: tokenExpiresAt,
+                userId: dbUser.id,
+              },
             })
           }
 

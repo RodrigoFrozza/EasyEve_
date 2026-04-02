@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,24 +8,21 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatISK } from '@/lib/utils'
-import { Plus, Search, Ship, Trash2, Edit, Copy, TrendingUp, Clock } from 'lucide-react'
+import { Plus, Search, Ship, Trash2, Edit, Copy, RefreshCw } from 'lucide-react'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { getTypeIconUrl } from '@/lib/sde'
 
 interface Fit {
   id: string
   name: string
   shipTypeId: number
   shipName: string
-  estimatedDps?: number
-  estimatedTank?: number
-  estimatedCost?: number
-  createdAt: Date
+  dps: number | null
+  tank: number | null
+  cost: number | null
+  modules: unknown[]
+  createdAt: string | Date
 }
-
-const sampleFits: Fit[] = [
-  { id: '1', name: 'Mining Hulk T2', shipTypeId: 17476, shipName: 'Hulk', estimatedDps: 0, estimatedTank: 0, estimatedCost: 500000000, createdAt: new Date() },
-  { id: '2', name: 'Ganking Catalyst', shipTypeId: 606, shipName: 'Catalyst', estimatedDps: 450, estimatedTank: 500, estimatedCost: 15000000, createdAt: new Date() },
-  { id: '3', name: 'Mission Vargur', shipTypeId: 29242, shipName: 'Vargur', estimatedDps: 800, estimatedTank: 2000, estimatedCost: 2000000000, createdAt: new Date() },
-]
 
 const shipTypes = [
   { id: 17476, name: 'Hulk' },
@@ -36,40 +33,109 @@ const shipTypes = [
   { id: 29344, name: 'Thrasher' },
   { id: 29242, name: 'Vargur' },
   { id: 47253, name: 'Praxis' },
+  { id: 22466, name: 'Rifter' },
+  { id: 587, name: 'Rupture' },
+  { id: 24688, name: 'Rokh' },
+  { id: 24692, name: 'Dominix' },
+  { id: 11940, name: 'Armageddon' },
+  { id: 11365, name: 'Iteron Mark V' },
 ]
 
 export default function FitsPage() {
   const { data: session } = useSession()
   const characters = session?.user?.characters || []
   
-  const [fits, setFits] = useState<Fit[]>(sampleFits)
+  const [fits, setFits] = useState<Fit[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [newFit, setNewFit] = useState({ name: '', shipName: '', estimatedCost: 0 })
+  const [newFit, setNewFit] = useState({ name: '', shipTypeId: 0, shipName: '', cost: 0 })
+
+  const fetchFits = useCallback(async () => {
+    try {
+      const response = await fetch('/api/fits')
+      if (response.ok) {
+        const data = await response.json()
+        setFits(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch fits:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (characters.length > 0) {
+      fetchFits()
+    } else {
+      setLoading(false)
+    }
+  }, [characters, fetchFits])
+
+  const createFit = async () => {
+    if (!newFit.name || !newFit.shipTypeId) return
+    
+    try {
+      const response = await fetch('/api/fits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newFit.name,
+          shipTypeId: newFit.shipTypeId,
+          shipName: newFit.shipName,
+          cost: newFit.cost,
+        }),
+      })
+      
+      if (response.ok) {
+        const fit = await response.json()
+        setFits([fit, ...fits])
+        setNewFit({ name: '', shipTypeId: 0, shipName: '', cost: 0 })
+        setShowCreateModal(false)
+      }
+    } catch (error) {
+      console.error('Failed to create fit:', error)
+    }
+  }
+
+  const deleteFit = async (id: string) => {
+    try {
+      const response = await fetch(`/api/fits/${id}`, {
+        method: 'DELETE',
+      })
+      
+      if (response.ok) {
+        setFits(fits.filter(f => f.id !== id))
+      }
+    } catch (error) {
+      console.error('Failed to delete fit:', error)
+    }
+  }
+
+  const handleShipChange = (shipName: string) => {
+    const ship = shipTypes.find(s => s.name === shipName)
+    setNewFit({ ...newFit, shipName, shipTypeId: ship?.id || 0 })
+  }
 
   const filteredFits = fits.filter(fit => 
     fit.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     fit.shipName.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const createFit = () => {
-    if (!newFit.name || !newFit.shipName) return
-    
-    const ship = shipTypes.find(s => s.name === newFit.shipName)
-    setFits([...fits, {
-      id: crypto.randomUUID(),
-      name: newFit.name,
-      shipTypeId: ship?.id || 0,
-      shipName: newFit.shipName,
-      estimatedCost: newFit.estimatedCost,
-      createdAt: new Date()
-    }])
-    setNewFit({ name: '', shipName: '', estimatedCost: 0 })
-    setShowCreateModal(false)
-  }
+  const miningShips = ['Hulk', 'Mackinaw', 'Rorqual', 'Porpoise']
+  const industrialShips = ['Praxis', 'Iteron Mark V']
 
-  const deleteFit = (id: string) => {
-    setFits(fits.filter(f => f.id !== id))
+  const miningFits = filteredFits.filter(f => miningShips.includes(f.shipName))
+  const combatFits = filteredFits.filter(f => !miningShips.includes(f.shipName) && !industrialShips.includes(f.shipName))
+  const industrialFits = filteredFits.filter(f => industrialShips.includes(f.shipName))
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="h-8 w-8 animate-spin text-eve-accent" />
+      </div>
+    )
   }
 
   return (
@@ -112,16 +178,25 @@ export default function FitsPage() {
         </TabsList>
 
         <TabsContent value="all" className="mt-6">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredFits.map((fit) => (
-              <FitCard key={fit.id} fit={fit} onDelete={() => deleteFit(fit.id)} />
-            ))}
-          </div>
+          {filteredFits.length === 0 ? (
+            <Card className="bg-eve-panel border-eve-border">
+              <CardContent className="py-12 text-center">
+                <Ship className="h-12 w-12 mx-auto mb-4 text-gray-500" />
+                <p className="text-gray-400">No fits yet. Create your first fit!</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredFits.map((fit) => (
+                <FitCard key={fit.id} fit={fit} onDelete={() => deleteFit(fit.id)} />
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="mining" className="mt-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredFits.filter(f => ['Hulk', 'Mackinaw', 'Rorqual', 'Porpoise'].includes(f.shipName)).map((fit) => (
+            {miningFits.map((fit) => (
               <FitCard key={fit.id} fit={fit} onDelete={() => deleteFit(fit.id)} />
             ))}
           </div>
@@ -129,7 +204,7 @@ export default function FitsPage() {
 
         <TabsContent value="combat" className="mt-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredFits.filter(f => !['Hulk', 'Mackinaw', 'Rorqual', 'Porpoise'].includes(f.shipName)).map((fit) => (
+            {combatFits.map((fit) => (
               <FitCard key={fit.id} fit={fit} onDelete={() => deleteFit(fit.id)} />
             ))}
           </div>
@@ -137,7 +212,7 @@ export default function FitsPage() {
 
         <TabsContent value="industrial" className="mt-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredFits.filter(f => f.shipName === 'Praxis').map((fit) => (
+            {industrialFits.map((fit) => (
               <FitCard key={fit.id} fit={fit} onDelete={() => deleteFit(fit.id)} />
             ))}
           </div>
@@ -164,7 +239,7 @@ export default function FitsPage() {
                 <label className="text-sm font-medium text-gray-400">Ship Type</label>
                 <select
                   value={newFit.shipName}
-                  onChange={(e) => setNewFit({ ...newFit, shipName: e.target.value })}
+                  onChange={(e) => handleShipChange(e.target.value)}
                   className="w-full h-10 px-3 rounded-md border border-input bg-eve-dark text-sm"
                 >
                   <option value="">Select ship...</option>
@@ -178,8 +253,8 @@ export default function FitsPage() {
                 <Input
                   type="number"
                   placeholder="0"
-                  value={newFit.estimatedCost || ''}
-                  onChange={(e) => setNewFit({ ...newFit, estimatedCost: parseInt(e.target.value) || 0 })}
+                  value={newFit.cost || ''}
+                  onChange={(e) => setNewFit({ ...newFit, cost: parseInt(e.target.value) || 0 })}
                   className="bg-eve-dark border-eve-border"
                 />
               </div>
@@ -212,9 +287,12 @@ function FitCard({ fit, onDelete }: { fit: Fit, onDelete: () => void }) {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-eve-accent/20">
-              <Ship className="h-5 w-5 text-eve-accent" />
-            </div>
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={getTypeIconUrl(fit.shipTypeId, 64)} />
+              <AvatarFallback>
+                <Ship className="h-5 w-5" />
+              </AvatarFallback>
+            </Avatar>
             <div>
               <CardTitle className="text-sm text-white">{fit.name}</CardTitle>
               <p className="text-xs text-gray-400">{fit.shipName}</p>
@@ -224,24 +302,22 @@ function FitCard({ fit, onDelete }: { fit: Fit, onDelete: () => void }) {
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid grid-cols-2 gap-2 text-sm">
-          {fit.estimatedDps && (
+          {fit.dps && (
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-red-400" />
               <span className="text-gray-400">DPS:</span>
-              <span className="text-white">{fit.estimatedDps}</span>
+              <span className="text-white">{fit.dps}</span>
             </div>
           )}
-          {fit.estimatedTank && (
+          {fit.tank && (
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-blue-400" />
               <span className="text-gray-400">Tank:</span>
-              <span className="text-white">{fit.estimatedTank}</span>
+              <span className="text-white">{fit.tank}</span>
             </div>
           )}
-          {fit.estimatedCost && (
+          {fit.cost && (
             <div className="col-span-2 flex items-center gap-2">
               <span className="text-gray-400">Cost:</span>
-              <span className="text-green-400">{formatISK(fit.estimatedCost)}</span>
+              <span className="text-green-400">{formatISK(fit.cost)}</span>
             </div>
           )}
         </div>
@@ -250,16 +326,8 @@ function FitCard({ fit, onDelete }: { fit: Fit, onDelete: () => void }) {
             <Edit className="mr-2 h-4 w-4" />
             Edit
           </Button>
-          <Button variant="outline" size="sm" className="border-eve-border">
-            <Copy className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={onDelete}
-            className="border-red-500/50 text-red-400 hover:bg-red-500/10"
-          >
-            <Trash2 className="h-4 w-4" />
+          <Button variant="outline" size="sm" className="border-red-500/50 text-red-400 hover:bg-red-500/10">
+            <Trash2 className="h-4 w-4" onClick={onDelete} />
           </Button>
         </div>
       </CardContent>

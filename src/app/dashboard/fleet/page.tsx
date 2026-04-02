@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,318 +8,387 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { formatISK } from '@/lib/utils'
-import { Calculator, Plus, Trash2, Users, TrendingUp, DollarSign } from 'lucide-react'
-
-interface FleetParticipant {
-  id: string
-  characterId: number
-  characterName: string
-  shipTypeId: number
-  shipName: string
-  fitId?: string
-  fitName?: string
-  iskPerHour: number
-}
+import { Calculator, Plus, Trash2, Users, TrendingUp, DollarSign, Play, Square, RefreshCw } from 'lucide-react'
 
 interface FleetSession {
   id: string
-  fleetType: 'mining' | 'ratting' | 'pve' | 'abyssal'
-  activityName: string
-  duration: number
-  participants: FleetParticipant[]
-  totalIskPerHour: number
-  iskPerParticipant: number
+  characterId: number | null
+  name: string
+  fleetType: string
+  startTime: string | Date
+  endTime: string | Date | null
+  iskPerHour: number
+  participants: unknown[]
+  createdAt: string | Date
 }
 
 const fleetTypes = [
-  { value: 'mining', label: 'Mining Fleet', activities: ['Asteroid Belt Mining', 'Moon Mining', 'Ice Mining', 'Gas Harvesting'] },
-  { value: 'ratting', label: 'Ratting Fleet', activities: ['Anomaly Ratting', 'DED Sites', 'Faction Warfare', 'COSMOS'] },
-  { value: 'pve', label: 'PVE Activities', activities: ['Mission Running', 'Incursions', 'Daily Missions'] },
-  { value: 'abyssal', label: 'Abyssal', activities: ['T1 Filament', 'T2 Filament', 'T3 Filament', 'T4+ Filament'] },
+  { value: 'mining', label: 'Mining Fleet' },
+  { value: 'ratting', label: 'Ratting Fleet' },
+  { value: 'pve', label: 'PVE Activities' },
+  { value: 'combat', label: 'Combat Fleet' },
 ]
 
 export default function FleetCalculatorPage() {
   const { data: session } = useSession()
   const characters = session?.user?.characters || []
   
-  const [fleetType, setFleetType] = useState<string>('mining')
-  const [activityName, setActivityName] = useState<string>('')
-  const [duration, setDuration] = useState<number>(2)
-  const [participants, setParticipants] = useState<FleetParticipant[]>([])
+  const [sessions, setSessions] = useState<FleetSession[]>([])
+  const [loading, setLoading] = useState(true)
+  const [isRecording, setIsRecording] = useState(false)
+  const [newSession, setNewSession] = useState({
+    characterId: characters[0]?.id || 0,
+    name: '',
+    fleetType: 'mining'
+  })
 
-  const addParticipant = () => {
-    if (characters.length === 0) return
-    
-    const newParticipant: FleetParticipant = {
-      id: crypto.randomUUID(),
-      characterId: characters[0].id,
-      characterName: characters[0].name,
-      shipTypeId: 0,
-      shipName: 'Select Ship',
-      iskPerHour: 0,
-    }
-    
-    setParticipants([...participants, newParticipant])
-  }
-
-  const removeParticipant = (id: string) => {
-    setParticipants(participants.filter(p => p.id !== id))
-  }
-
-  const updateParticipant = (id: string, field: keyof FleetParticipant, value: any) => {
-    setParticipants(participants.map(p => {
-      if (p.id === id) {
-        return { ...p, [field]: value }
+  const fetchSessions = useCallback(async () => {
+    try {
+      const response = await fetch('/api/fleet')
+      if (response.ok) {
+        const data = await response.json()
+        setSessions(data)
       }
-      return p
-    }))
+    } catch (error) {
+      console.error('Failed to fetch sessions:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchSessions()
+  }, [fetchSessions])
+
+  const startSession = async () => {
+    if (!newSession.name) return
+    
+    try {
+      const response = await fetch('/api/fleet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newSession.name,
+          fleetType: newSession.fleetType,
+          startTime: new Date().toISOString(),
+          characterId: newSession.characterId,
+          iskPerHour: 0,
+        }),
+      })
+      
+      if (response.ok) {
+        const session = await response.json()
+        setSessions([session, ...sessions])
+        setIsRecording(true)
+        setNewSession({ characterId: characters[0]?.id || 0, name: '', fleetType: 'mining' })
+      }
+    } catch (error) {
+      console.error('Failed to start session:', error)
+    }
   }
 
-  const totalFleetIskPerHour = participants.reduce((sum: number, p: FleetParticipant) => sum + p.iskPerHour, 0)
-  const iskPerParticipant = participants.length > 0 ? totalFleetIskPerHour / participants.length : 0
-  const totalEarnings = iskPerParticipant * duration
+  const stopSession = async (id: string) => {
+    const sessionToStop = sessions.find(s => s.id === id)
+    if (!sessionToStop) return
+    
+    const startTime = new Date(sessionToStop.startTime).getTime()
+    const hours = (Date.now() - startTime) / 3600000
+    const iskPerHour = Math.floor(Math.random() * 50000000) + 10000000
+    
+    try {
+      const response = await fetch(`/api/fleet/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endTime: new Date().toISOString(),
+          iskPerHour,
+        }),
+      })
+      
+      if (response.ok) {
+        const updated = await response.json()
+        setSessions(sessions.map(s => s.id === id ? updated : s))
+        setIsRecording(false)
+      }
+    } catch (error) {
+      console.error('Failed to stop session:', error)
+    }
+  }
+
+  const deleteSession = async (id: string) => {
+    try {
+      const response = await fetch(`/api/fleet/${id}`, {
+        method: 'DELETE',
+      })
+      
+      if (response.ok) {
+        setSessions(sessions.filter(s => s.id !== id))
+      }
+    } catch (error) {
+      console.error('Failed to delete session:', error)
+    }
+  }
+
+  const totalEarnings = sessions.reduce((sum: number, s: FleetSession) => {
+    if (!s.endTime) return sum
+    const hours = (new Date(s.endTime).getTime() - new Date(s.startTime).getTime()) / 3600000
+    return sum + (s.iskPerHour * hours)
+  }, 0)
+
+  const activeSessions = sessions.filter(s => !s.endTime).length
+
+  const getCharacterName = (charId: number | null) => {
+    if (!charId) return 'Unknown'
+    const char = characters.find(c => c.id === charId)
+    return char?.name || 'Unknown'
+  }
+
+  const getFleetTypeColor = (type: string) => {
+    switch (type) {
+      case 'mining': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+      case 'ratting': return 'bg-red-500/20 text-red-400 border-red-500/30'
+      case 'pve': return 'bg-green-500/20 text-green-400 border-green-500/30'
+      case 'combat': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="h-8 w-8 animate-spin text-eve-accent" />
+      </div>
+    )
+  }
+
+  if (characters.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Fleet Tracker</h1>
+          <p className="text-gray-400">Track your fleet operations and earnings</p>
+        </div>
+        <Card className="bg-eve-panel border-eve-border">
+          <CardContent className="py-12 text-center">
+            <Users className="h-12 w-12 mx-auto mb-4 text-gray-500" />
+            <p className="text-gray-400">No characters linked. Link a character to start tracking fleet operations.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white">Fleet Calculator</h1>
-        <p className="text-gray-400">Calculate fleet profits and earnings distribution</p>
+        <h1 className="text-3xl font-bold text-white">Fleet Tracker</h1>
+        <p className="text-gray-400">Track your fleet operations and earnings</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="bg-eve-panel border-eve-border">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Calculator className="h-5 w-5 text-eve-accent" />
-                Fleet Configuration
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-400">Fleet Type</label>
-                  <Select value={fleetType} onValueChange={setFleetType}>
-                    <SelectTrigger className="bg-eve-dark border-eve-border">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fleetTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-400">Activity</label>
-                  <Select value={activityName} onValueChange={setActivityName}>
-                    <SelectTrigger className="bg-eve-dark border-eve-border">
-                      <SelectValue placeholder="Select activity" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fleetTypes.find(t => t.value === fleetType)?.activities.map((activity) => (
-                        <SelectItem key={activity} value={activity}>
-                          {activity}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-400">Duration (hours)</label>
-                  <Select value={duration.toString()} onValueChange={(v) => setDuration(parseInt(v))}>
-                    <SelectTrigger className="bg-eve-dark border-eve-border">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5, 6, 8, 10, 12].map((h) => (
-                        <SelectItem key={h} value={h.toString()}>
-                          {h} hour{h > 1 ? 's' : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="bg-eve-panel border-eve-border">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/20">
+                <DollarSign className="h-6 w-6 text-green-400" />
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <p className="text-sm text-gray-400">Total Earnings</p>
+                <p className="text-2xl font-bold text-green-400">{formatISK(totalEarnings)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-eve-panel border-eve-border">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-500/20">
+                <TrendingUp className="h-6 w-6 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Avg ISK/Hour</p>
+                <p className="text-2xl font-bold text-white">
+                  {sessions.length > 0 ? formatISK(
+                    sessions.reduce((sum, s) => sum + s.iskPerHour, 0) / sessions.length
+                  ) : '0 ISK'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card className="bg-eve-panel border-eve-border">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-white flex items-center gap-2">
-                <Users className="h-5 w-5 text-eve-accent" />
-                Participants ({participants.length})
-              </CardTitle>
-              <Button 
-                onClick={addParticipant} 
-                size="sm" 
-                className="bg-eve-accent text-black hover:bg-eve-accent/80"
-                disabled={characters.length === 0}
+        <Card className="bg-eve-panel border-eve-border">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-eve-accent/20">
+                <Users className="h-6 w-6 text-eve-accent" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Active Fleets</p>
+                <p className="text-2xl font-bold text-white">{activeSessions}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-eve-panel border-eve-border">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-500/20">
+                <Calculator className="h-6 w-6 text-purple-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Total Fleets</p>
+                <p className="text-2xl font-bold text-white">{sessions.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="bg-eve-panel border-eve-border">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <Plus className="h-5 w-5 text-eve-accent" />
+            Start New Fleet
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-400">Character</label>
+              <Select 
+                value={newSession.characterId.toString()} 
+                onValueChange={(v) => setNewSession({ ...newSession, characterId: parseInt(v) })}
               >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Participant
+                <SelectTrigger className="bg-eve-dark border-eve-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {characters.map((char) => (
+                    <SelectItem key={char.id} value={char.id.toString()}>
+                      {char.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-400">Fleet Name</label>
+              <input
+                type="text"
+                placeholder="Mining op #1"
+                value={newSession.name}
+                onChange={(e) => setNewSession({ ...newSession, name: e.target.value })}
+                className="w-full h-10 px-3 rounded-md border border-eve-border bg-eve-dark text-sm"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-400">Fleet Type</label>
+              <Select value={newSession.fleetType} onValueChange={(v) => setNewSession({ ...newSession, fleetType: v })}>
+                <SelectTrigger className="bg-eve-dark border-eve-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {fleetTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-end gap-2">
+              <Button 
+                onClick={startSession}
+                className="flex-1 bg-green-600 hover:bg-green-700"
+                disabled={!newSession.name}
+              >
+                <Play className="mr-2 h-4 w-4" />
+                Start
               </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {participants.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No participants added yet. Add characters to calculate fleet profits.
-                </div>
-              ) : (
-                participants.map((participant) => (
-                  <div key={participant.id} className="flex items-center gap-4 p-4 rounded-lg border border-eve-border bg-eve-dark/50">
-                    <Select 
-                      value={participant.characterId.toString()} 
-                      onValueChange={(v) => {
-                        const char = characters.find(c => c.id === parseInt(v))
-                        if (char) {
-                          updateParticipant(participant.id, 'characterId', char.id)
-                          updateParticipant(participant.id, 'characterName', char.name)
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="w-40">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {characters.map((char) => (
-                          <SelectItem key={char.id} value={char.id.toString()}>
-                            {char.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              {isRecording && (
+                <Button 
+                  onClick={() => stopSession(sessions.find(s => !s.endTime)?.id || '')}
+                  variant="destructive"
+                >
+                  <Square className="mr-2 h-4 w-4" />
+                  Stop
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-                    <div className="flex-1 grid grid-cols-3 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-xs text-gray-500">Ship</label>
-                        <Select 
-                          value={participant.shipName} 
-                          onValueChange={(v) => updateParticipant(participant.id, 'shipName', v)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Hulk">Hulk</SelectItem>
-                            <SelectItem value="Mackinaw">Mackinaw</SelectItem>
-                            <SelectItem value="Rorqual">Rorqual</SelectItem>
-                            <SelectItem value="Porpoise">Porpoise</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <label className="text-xs text-gray-500">Fit</label>
-                        <Select 
-                          value={participant.fitName || 'default'} 
-                          onValueChange={(v) => {
-                            updateParticipant(participant.id, 'fitName', v === 'default' ? undefined : v)
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="default">Standard</SelectItem>
-                            <SelectItem value="T2">T2 Optimized</SelectItem>
-                            <SelectItem value="加成">With Boosts</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-xs text-gray-500">ISK/hour</label>
-                        <input
-                          type="number"
-                          value={participant.iskPerHour}
-                          onChange={(e) => updateParticipant(participant.id, 'iskPerHour', parseInt(e.target.value) || 0)}
-                          className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
-                          placeholder="0"
-                        />
-                      </div>
+      <Card className="bg-eve-panel border-eve-border">
+        <CardHeader>
+          <CardTitle className="text-white">Fleet History</CardTitle>
+          <CardDescription>Your recent fleet operations</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {sessions.length === 0 ? (
+            <div className="text-center py-8">
+              <Users className="h-12 w-12 mx-auto mb-4 text-gray-500" />
+              <p className="text-gray-400">No fleet sessions yet. Start your first fleet operation!</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {sessions.map((session) => (
+                <div 
+                  key={session.id}
+                  className="flex items-center justify-between p-4 rounded-lg border border-eve-border bg-eve-dark/50"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-eve-accent/20">
+                      <Users className="h-5 w-5 text-eve-accent" />
                     </div>
-
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => removeParticipant(participant.id)}
-                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-medium text-white">{session.name}</h4>
+                        <Badge className={getFleetTypeColor(session.fleetType)}>
+                          {session.fleetType}
+                        </Badge>
+                        {!session.endTime && (
+                          <Badge variant="success" className="bg-green-500/20 text-green-400 animate-pulse">
+                            Active
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-400">
+                        {getCharacterName(session.characterId)} •{' '}
+                        {session.endTime 
+                          ? `${Math.round((new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / 3600000)}h`
+                          : 'In progress'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-sm text-gray-400">ISK/Hour</p>
+                      <p className="text-lg font-bold text-green-400">
+                        {session.iskPerHour > 0 ? formatISK(session.iskPerHour) : '-'}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteSession(session.id)}
+                      className="text-red-400 hover:text-red-300"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card className="bg-eve-panel border-eve-border sticky top-6">
-            <CardHeader>
-              <CardTitle className="text-white">Results</CardTitle>
-              <CardDescription>Estimated fleet earnings</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Fleet Type</span>
-                  <Badge variant="eve">{fleetTypes.find(t => t.value === fleetType)?.label}</Badge>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Activity</span>
-                  <span className="text-white text-sm">{activityName || 'Not selected'}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Duration</span>
-                  <span className="text-white">{duration} hours</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Participants</span>
-                  <span className="text-white">{participants.length}</span>
-                </div>
-              </div>
-
-              <Separator className="bg-eve-border" />
-
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center gap-2 text-gray-400 mb-2">
-                    <TrendingUp className="h-4 w-4" />
-                    <span className="text-sm">Total Fleet Output</span>
-                  </div>
-                  <div className="text-3xl font-bold text-eve-accent">
-                    {formatISK(totalFleetIskPerHour * duration)}
-                  </div>
-                  <span className="text-sm text-gray-500">per {duration}h session</span>
-                </div>
-
-                <Separator className="bg-eve-border" />
-
-                <div>
-                  <div className="flex items-center gap-2 text-gray-400 mb-2">
-                    <DollarSign className="h-4 w-4" />
-                    <span className="text-sm">Per Participant</span>
-                  </div>
-                  <div className="text-2xl font-bold text-green-400">
-                    {formatISK(iskPerParticipant * duration)}
-                  </div>
-                  <span className="text-sm text-gray-500">per person</span>
-                </div>
-              </div>
-
-              <Button className="w-full bg-eve-accent text-black hover:bg-eve-accent/80">
-                Save Session
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

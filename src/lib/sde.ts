@@ -1,5 +1,6 @@
 const ESI_BASE_URL = 'https://esi.evetech.net/latest'
 const EVE_REF_URL = 'https://ref-data.everef.net'
+const USER_AGENT = 'EasyEve/1.0 (+https://easyeve.cloud; easyeve.project@gmail.com)'
 
 interface TypeInfo {
   id: number
@@ -214,5 +215,87 @@ export function getCacheStats() {
     systemInfoCacheSize: systemInfoCache.size,
     groupCacheSize: groupCache.size,
     categoryCacheSize: categoryCache.size,
+  }
+}
+
+export async function fetchWithAuth(endpoint: string, characterId: number): Promise<Response> {
+  const { getValidAccessToken } = await import('./token-manager')
+  const { accessToken } = await getValidAccessToken(characterId)
+  
+  if (!accessToken) {
+    throw new Error('No valid access token available')
+  }
+  
+  return fetch(`${ESI_BASE_URL}${endpoint}`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'X-User-Agent': USER_AGENT,
+    },
+  })
+}
+
+export async function getCharacterMiningLedger(characterId: number, character: number) {
+  try {
+    const response = await fetchWithAuth(`/characters/${character}/mining/`, characterId)
+    if (!response.ok) return []
+    return response.json()
+  } catch (error) {
+    console.error('Failed to fetch mining ledger:', error)
+    return []
+  }
+}
+
+export async function getCharacterFits(characterId: number, character: number) {
+  try {
+    const response = await fetchWithAuth(`/characters/${character}/fits/`, characterId)
+    if (!response.ok) return []
+    return response.json()
+  } catch (error) {
+    console.error('Failed to fetch fits:', error)
+    return []
+  }
+}
+
+export async function getCharacterAssets(characterId: number, character: number) {
+  try {
+    const response = await fetchWithAuth(`/characters/${character}/assets/`, characterId)
+    if (!response.ok) return []
+    return response.json()
+  } catch (error) {
+    console.error('Failed to fetch assets:', error)
+    return []
+  }
+}
+
+export async function getCharacterWalletTransactions(characterId: number, character: number) {
+  try {
+    const response = await fetchWithAuth(`/characters/${character}/wallet/transactions/`, characterId)
+    if (!response.ok) return []
+    return response.json()
+  } catch (error) {
+    console.error('Failed to fetch wallet transactions:', error)
+    return []
+  }
+}
+
+export async function getCharacterIndustryJobs(characterId: number, character: number) {
+  try {
+    const response = await fetchWithAuth(`/characters/${character}/industry/jobs/`, characterId)
+    if (!response.ok) return []
+    return response.json()
+  } catch (error) {
+    console.error('Failed to fetch industry jobs:', error)
+    return []
+  }
+}
+
+export async function getCharacterContracts(characterId: number, character: number) {
+  try {
+    const response = await fetchWithAuth(`/characters/${character}/contracts/`, characterId)
+    if (!response.ok) return []
+    return response.json()
+  } catch (error) {
+    console.error('Failed to fetch contracts:', error)
+    return []
   }
 }

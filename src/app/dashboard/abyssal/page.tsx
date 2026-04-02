@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,25 +8,20 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatISK } from '@/lib/utils'
-import { Plus, Play, Square, Zap, Skull, TrendingUp, Clock, DollarSign, Shield } from 'lucide-react'
+import { Plus, Play, Square, Zap, Skull, Clock, DollarSign, Shield, RefreshCw, Trash2 } from 'lucide-react'
 
 interface AbyssalSession {
   id: string
-  characterId: number
-  characterName: string
-  startTime: Date
-  endTime?: Date
-  filamentType: string
+  characterId: number | null
+  startTime: string | Date
+  endTime: string | Date | null
+  filamentType: string | null
   tier: number
   loot: number
+  iskPerMinute: number
   survived: boolean
-  status: 'active' | 'completed'
+  createdAt: string | Date
 }
-
-const sampleSessions: AbyssalSession[] = [
-  { id: '1', characterId: 1, characterName: 'Main Character', startTime: new Date(Date.now() - 1800000), filamentType: 'Exterior Damavik', tier: 2, loot: 35000000, survived: true, status: 'completed' },
-  { id: '2', characterId: 2, characterName: 'Alt Character', startTime: new Date(Date.now() - 900000), filamentType: 'Fighting Damavik', tier: 3, loot: 0, survived: false, status: 'active' },
-]
 
 const filamentTypes = [
   { name: 'Exterior Damavik', tier: 1, baseLoot: 5000000 },
@@ -50,58 +45,154 @@ export default function AbyssalPage() {
   const { data: session } = useSession()
   const characters = session?.user?.characters || []
   
-  const [sessions, setSessions] = useState<AbyssalSession[]>(sampleSessions)
+  const [sessions, setSessions] = useState<AbyssalSession[]>([])
+  const [loading, setLoading] = useState(true)
   const [isRecording, setIsRecording] = useState(false)
   const [newSession, setNewSession] = useState({
     characterId: characters[0]?.id || 0,
     filamentType: ''
   })
 
-  const startSession = () => {
+  const fetchSessions = useCallback(async () => {
+    try {
+      const response = await fetch('/api/abyssal')
+      if (response.ok) {
+        const data = await response.json()
+        setSessions(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch sessions:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (characters.length > 0) {
+      fetchSessions()
+    } else {
+      setLoading(false)
+    }
+  }, [characters, fetchSessions])
+
+  const startSession = async () => {
     if (!newSession.characterId || !newSession.filamentType) return
     
-    const char = characters.find(c => c.id === newSession.characterId)
     const filament = filamentTypes.find(f => f.name === newSession.filamentType)
     
-    setSessions([{
-      id: crypto.randomUUID(),
-      characterId: newSession.characterId,
-      characterName: char?.name || 'Unknown',
-      startTime: new Date(),
-      filamentType: newSession.filamentType,
-      tier: filament?.tier || 1,
-      loot: 0,
-      survived: true,
-      status: 'active'
-    }, ...sessions])
-    
-    setIsRecording(true)
-    setNewSession({ characterId: characters[0]?.id || 0, filamentType: '' })
+    try {
+      const response = await fetch('/api/abyssal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startTime: new Date().toISOString(),
+          filamentType: newSession.filamentType,
+          tier: filament?.tier || 1,
+          characterId: newSession.characterId,
+          loot: 0,
+          survived: true,
+        }),
+      })
+      
+      if (response.ok) {
+        const session = await response.json()
+        setSessions([session, ...sessions])
+        setIsRecording(true)
+        setNewSession({ characterId: characters[0]?.id || 0, filamentType: '' })
+      }
+    } catch (error) {
+      console.error('Failed to start session:', error)
+    }
   }
 
-  const stopSession = (id: string, survived: boolean) => {
-    setSessions(sessions.map(s => {
-      if (s.id === id) {
-        const filament = filamentTypes.find(f => f.name === s.filamentType)
-        const loot = survived ? Math.floor(Math.random() * filament!.baseLoot * 0.5 + filament!.baseLoot * 0.5) : 0
-        return { ...s, endTime: new Date(), loot, survived, status: 'completed' as const }
+  const stopSession = async (id: string) => {
+    const sessionToStop = sessions.find(s => s.id === id)
+    if (!sessionToStop) return
+    
+    const filament = filamentTypes.find(f => f.name === sessionToStop.filamentType)
+    const survived = Math.random() > 0.2
+    const loot = survived ? Math.floor((filament?.baseLoot || 5000000) * (0.5 + Math.random())) : 0
+    const duration = 20
+    const iskPerMinute = loot / duration
+    
+    try {
+      const response = await fetch(`/api/abyssal/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endTime: new Date().toISOString(),
+          loot,
+          iskPerMinute,
+          survived,
+        }),
+      })
+      
+      if (response.ok) {
+        const updated = await response.json()
+        setSessions(sessions.map(s => s.id === id ? updated : s))
+        setIsRecording(false)
       }
-      return s
-    }))
-    setIsRecording(false)
+    } catch (error) {
+      console.error('Failed to stop session:', error)
+    }
+  }
+
+  const deleteSession = async (id: string) => {
+    try {
+      const response = await fetch(`/api/abyssal/${id}`, {
+        method: 'DELETE',
+      })
+      
+      if (response.ok) {
+        setSessions(sessions.filter(s => s.id !== id))
+      }
+    } catch (error) {
+      console.error('Failed to delete session:', error)
+    }
   }
 
   const totalLoot = sessions.reduce((sum: number, s: AbyssalSession) => sum + s.loot, 0)
-  const totalRuns = sessions.filter(s => s.status === 'completed').length
-  const survivalRate = totalRuns > 0 
-    ? Math.round((sessions.filter(s => s.status === 'completed' && s.survived).length / totalRuns) * 100) 
+  const survivalRate = sessions.length > 0 
+    ? Math.round((sessions.filter(s => s.survived).length / sessions.length) * 100) 
     : 0
+  const activeSessions = sessions.filter(s => !s.endTime).length
+
+  const getCharacterName = (charId: number | null) => {
+    if (!charId) return 'Unknown'
+    const char = characters.find(c => c.id === charId)
+    return char?.name || 'Unknown'
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="h-8 w-8 animate-spin text-eve-accent" />
+      </div>
+    )
+  }
+
+  if (characters.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Abyssal Tracker</h1>
+          <p className="text-gray-400">Track your abyssal loot and survival rates</p>
+        </div>
+        <Card className="bg-eve-panel border-eve-border">
+          <CardContent className="py-12 text-center">
+            <Zap className="h-12 w-12 mx-auto mb-4 text-gray-500" />
+            <p className="text-gray-400">No characters linked. Link a character to start tracking abyssal data.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white">Abyssal Tracker</h1>
-        <p className="text-gray-400">Track your abyssal space runs and loot</p>
+        <p className="text-gray-400">Track your abyssal loot and survival rates</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -113,7 +204,7 @@ export default function AbyssalPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-400">Total Loot</p>
-                <p className="text-2xl font-bold text-purple-400">{formatISK(totalLoot)}</p>
+                <p className="text-2xl font-bold text-green-400">{formatISK(totalLoot)}</p>
               </div>
             </div>
           </CardContent>
@@ -122,26 +213,12 @@ export default function AbyssalPage() {
         <Card className="bg-eve-panel border-eve-border">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-eve-accent/20">
-                <TrendingUp className="h-6 w-6 text-eve-accent" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Total Runs</p>
-                <p className="text-2xl font-bold text-white">{totalRuns}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-eve-panel border-eve-border">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/20">
                 <Shield className="h-6 w-6 text-green-400" />
               </div>
               <div>
                 <p className="text-sm text-gray-400">Survival Rate</p>
-                <p className="text-2xl font-bold text-green-400">{survivalRate}%</p>
+                <p className="text-2xl font-bold text-white">{survivalRate}%</p>
               </div>
             </div>
           </CardContent>
@@ -150,14 +227,26 @@ export default function AbyssalPage() {
         <Card className="bg-eve-panel border-eve-border">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-500/20">
-                <Skull className="h-6 w-6 text-red-400" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-eve-accent/20">
+                <Zap className="h-6 w-6 text-eve-accent" />
               </div>
               <div>
-                <p className="text-sm text-gray-400">Deaths</p>
-                <p className="text-2xl font-bold text-red-400">
-                  {sessions.filter(s => s.status === 'completed' && !s.survived).length}
-                </p>
+                <p className="text-sm text-gray-400">Active Sessions</p>
+                <p className="text-2xl font-bold text-white">{activeSessions}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-eve-panel border-eve-border">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-500/20">
+                <Clock className="h-6 w-6 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Sessions Today</p>
+                <p className="text-2xl font-bold text-white">{sessions.length}</p>
               </div>
             </div>
           </CardContent>
@@ -201,7 +290,7 @@ export default function AbyssalPage() {
                 <SelectContent>
                   {filamentTypes.map((filament) => (
                     <SelectItem key={filament.name} value={filament.name}>
-                      {filament.name} (T{filament.tier})
+                      T{filament.tier} {filament.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -215,26 +304,16 @@ export default function AbyssalPage() {
                 disabled={!newSession.characterId || !newSession.filamentType}
               >
                 <Play className="mr-2 h-4 w-4" />
-                Start Run
+                Start
               </Button>
               {isRecording && (
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={() => stopSession(sessions.find(s => s.status === 'active')?.id || '', true)}
-                    variant="outline"
-                    className="border-green-500/50 text-green-400"
-                  >
-                    <Shield className="mr-2 h-4 w-4" />
-                    Survived
-                  </Button>
-                  <Button 
-                    onClick={() => stopSession(sessions.find(s => s.status === 'active')?.id || '', false)}
-                    variant="destructive"
-                  >
-                    <Skull className="mr-2 h-4 w-4" />
-                    Died
-                  </Button>
-                </div>
+                <Button 
+                  onClick={() => stopSession(sessions.find(s => !s.endTime)?.id || '')}
+                  variant="destructive"
+                >
+                  <Square className="mr-2 h-4 w-4" />
+                  Stop
+                </Button>
               )}
             </div>
           </div>
@@ -244,60 +323,63 @@ export default function AbyssalPage() {
       <Card className="bg-eve-panel border-eve-border">
         <CardHeader>
           <CardTitle className="text-white">Run History</CardTitle>
-          <CardDescription>Your recent abyssal runs</CardDescription>
+          <CardDescription>Your recent abyssal activities</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow className="border-eve-border">
-                <TableHead className="text-gray-400">Character</TableHead>
-                <TableHead className="text-gray-400">Filament</TableHead>
-                <TableHead className="text-gray-400">Tier</TableHead>
-                <TableHead className="text-gray-400">Loot</TableHead>
-                <TableHead className="text-gray-400">Duration</TableHead>
-                <TableHead className="text-gray-400">Result</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sessions.map((session) => (
-                <TableRow key={session.id} className="border-eve-border">
-                  <TableCell className="text-white">{session.characterName}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{session.filamentType}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={session.tier >= 4 ? 'warning' : session.tier >= 3 ? 'default' : 'secondary'}>
-                      T{session.tier}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className={session.survived ? 'text-purple-400' : 'text-red-400'}>
-                    {formatISK(session.loot)}
-                  </TableCell>
-                  <TableCell className="text-gray-400">
-                    {session.endTime 
-                      ? `${Math.round((session.endTime.getTime() - session.startTime.getTime()) / 60000)}min`
-                      : `${Math.round((Date.now() - session.startTime.getTime()) / 60000)}min (ongoing)`
-                    }
-                  </TableCell>
-                  <TableCell>
-                    {session.status === 'active' ? (
-                      <Badge variant="warning">In Progress</Badge>
-                    ) : session.survived ? (
-                      <Badge variant="success" className="flex items-center gap-1 w-fit">
-                        <Shield className="h-3 w-3" />
-                        Survived
-                      </Badge>
-                    ) : (
-                      <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-                        <Skull className="h-3 w-3" />
-                        Died
-                      </Badge>
-                    )}
-                  </TableCell>
+          {sessions.length === 0 ? (
+            <div className="text-center py-8">
+              <Zap className="h-12 w-12 mx-auto mb-4 text-gray-500" />
+              <p className="text-gray-400">No abyssal runs yet. Start your first run above!</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-eve-border">
+                  <TableHead className="text-gray-400">Character</TableHead>
+                  <TableHead className="text-gray-400">Filament</TableHead>
+                  <TableHead className="text-gray-400">Tier</TableHead>
+                  <TableHead className="text-gray-400">Loot</TableHead>
+                  <TableHead className="text-gray-400">ISK/min</TableHead>
+                  <TableHead className="text-gray-400">Status</TableHead>
+                  <TableHead className="text-gray-400"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {sessions.map((session) => (
+                  <TableRow key={session.id} className="border-eve-border">
+                    <TableCell className="text-white">{getCharacterName(session.characterId)}</TableCell>
+                    <TableCell className="text-gray-400">{session.filamentType || 'Unknown'}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">T{session.tier}</Badge>
+                    </TableCell>
+                    <TableCell className={session.survived ? 'text-green-400' : 'text-red-400'}>
+                      {formatISK(session.loot)}
+                    </TableCell>
+                    <TableCell className="text-gray-400">
+                      {session.iskPerMinute > 0 ? formatISK(session.iskPerMinute) : '-'}
+                    </TableCell>
+                    <TableCell>
+                      {session.survived ? (
+                        <Badge variant="success" className="bg-green-500/20 text-green-400">Survived</Badge>
+                      ) : (
+                        <Badge variant="destructive" className="bg-red-500/20 text-red-400">Died</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteSession(session.id)}
+                        className="text-red-400 hover:text-red-300"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

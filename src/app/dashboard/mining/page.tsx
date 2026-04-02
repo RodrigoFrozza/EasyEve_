@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,25 +9,20 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatISK, formatNumber } from '@/lib/utils'
-import { Plus, Play, Square, TrendingUp, Pickaxe, Clock, DollarSign } from 'lucide-react'
+import { Plus, Play, Square, TrendingUp, Pickaxe, Clock, DollarSign, RefreshCw } from 'lucide-react'
 
 interface MiningSession {
   id: string
-  characterId: number
-  characterName: string
-  startTime: Date
-  endTime?: Date
-  systemName: string
-  oreType: string
+  characterId: number | null
+  startTime: string | Date
+  endTime: string | Date | null
+  systemId: number | null
+  systemName: string | null
+  oreType: string | null
   quantity: number
   estimatedIsk: number
-  status: 'active' | 'completed'
+  createdAt: string | Date
 }
-
-const sampleSessions: MiningSession[] = [
-  { id: '1', characterId: 1, characterName: 'Main Character', startTime: new Date(Date.now() - 7200000), systemName: 'Jita', oreType: 'Veldspar', quantity: 50000, estimatedIsk: 25000000, status: 'completed' },
-  { id: '2', characterId: 2, characterName: 'Alt Character', startTime: new Date(Date.now() - 3600000), systemName: 'Jita', oreType: 'Scordite', quantity: 30000, estimatedIsk: 15000000, status: 'active' },
-]
 
 const oreTypes = [
   { name: 'Veldspar', basePrice: 500 },
@@ -51,7 +46,8 @@ export default function MiningPage() {
   const { data: session } = useSession()
   const characters = session?.user?.characters || []
   
-  const [sessions, setSessions] = useState<MiningSession[]>(sampleSessions)
+  const [sessions, setSessions] = useState<MiningSession[]>([])
+  const [loading, setLoading] = useState(true)
   const [isRecording, setIsRecording] = useState(false)
   const [newSession, setNewSession] = useState({
     characterId: characters[0]?.id || 0,
@@ -59,45 +55,140 @@ export default function MiningPage() {
     oreType: ''
   })
 
-  const startSession = () => {
+  const fetchSessions = useCallback(async () => {
+    try {
+      const response = await fetch('/api/mining')
+      if (response.ok) {
+        const data = await response.json()
+        setSessions(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch sessions:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (characters.length > 0) {
+      fetchSessions()
+    } else {
+      setLoading(false)
+    }
+  }, [characters, fetchSessions])
+
+  const startSession = async () => {
     if (!newSession.characterId || !newSession.systemName || !newSession.oreType) return
     
-    const char = characters.find(c => c.id === newSession.characterId)
-    const sessionId = crypto.randomUUID()
-    
-    setSessions([{
-      id: sessionId,
-      characterId: newSession.characterId,
-      characterName: char?.name || 'Unknown',
-      startTime: new Date(),
-      systemName: newSession.systemName,
-      oreType: newSession.oreType,
-      quantity: 0,
-      estimatedIsk: 0,
-      status: 'active'
-    }, ...sessions])
-    
-    setIsRecording(true)
-    setNewSession({ characterId: characters[0]?.id || 0, systemName: '', oreType: '' })
+    try {
+      const response = await fetch('/api/mining', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startTime: new Date().toISOString(),
+          systemName: newSession.systemName,
+          oreType: newSession.oreType,
+          characterId: newSession.characterId,
+          quantity: 0,
+          estimatedIsk: 0,
+        }),
+      })
+      
+      if (response.ok) {
+        const session = await response.json()
+        setSessions([session, ...sessions])
+        setIsRecording(true)
+        setNewSession({ characterId: characters[0]?.id || 0, systemName: '', oreType: '' })
+      }
+    } catch (error) {
+      console.error('Failed to start session:', error)
+    }
   }
 
-  const stopSession = (id: string) => {
-    setSessions(sessions.map(s => {
-      if (s.id === id) {
-        const duration = (new Date().getTime() - s.startTime.getTime()) / 3600000
-        const quantity = Math.floor(Math.random() * 50000) + 10000
-        const ore = oreTypes.find(o => o.name === s.oreType)
-        const estimatedIsk = quantity * (ore?.basePrice || 500)
-        return { ...s, endTime: new Date(), quantity, estimatedIsk, status: 'completed' as const }
+  const stopSession = async (id: string) => {
+    const sessionToStop = sessions.find(s => s.id === id)
+    if (!sessionToStop) return
+    
+    const quantity = Math.floor(Math.random() * 50000) + 10000
+    const ore = oreTypes.find(o => o.name === sessionToStop.oreType)
+    const estimatedIsk = quantity * (ore?.basePrice || 500)
+    
+    try {
+      const response = await fetch(`/api/mining/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endTime: new Date().toISOString(),
+          quantity,
+          estimatedIsk,
+        }),
+      })
+      
+      if (response.ok) {
+        const updated = await response.json()
+        setSessions(sessions.map(s => s.id === id ? updated : s))
+        setIsRecording(false)
       }
-      return s
-    }))
-    setIsRecording(false)
+    } catch (error) {
+      console.error('Failed to stop session:', error)
+    }
+  }
+
+  const deleteSession = async (id: string) => {
+    try {
+      const response = await fetch(`/api/mining/${id}`, {
+        method: 'DELETE',
+      })
+      
+      if (response.ok) {
+        setSessions(sessions.filter(s => s.id !== id))
+      }
+    } catch (error) {
+      console.error('Failed to delete session:', error)
+    }
   }
 
   const totalMined = sessions.reduce((sum: number, s: MiningSession) => sum + s.quantity, 0)
   const totalEarnings = sessions.reduce((sum: number, s: MiningSession) => sum + s.estimatedIsk, 0)
-  const activeSessions = sessions.filter(s => s.status === 'active').length
+  const activeSessions = sessions.filter(s => !s.endTime).length
+
+  const getCharacterName = (charId: number | null) => {
+    if (!charId) return 'Unknown'
+    const char = characters.find(c => c.id === charId)
+    return char?.name || 'Unknown'
+  }
+
+  const formatDuration = (start: string | Date, end: string | Date | null) => {
+    const startTime = new Date(start).getTime()
+    const endTime = end ? new Date(end).getTime() : Date.now()
+    const hours = Math.round((endTime - startTime) / 3600000 * 10) / 10
+    return `${hours}h`
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="h-8 w-8 animate-spin text-eve-accent" />
+      </div>
+    )
+  }
+
+  if (characters.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Mining Tracker</h1>
+          <p className="text-gray-400">Track your mining sessions and earnings</p>
+        </div>
+        <Card className="bg-eve-panel border-eve-border">
+          <CardContent className="py-12 text-center">
+            <Pickaxe className="h-12 w-12 mx-auto mb-4 text-gray-500" />
+            <p className="text-gray-400">No characters linked. Link a character to start tracking your mining.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -229,7 +320,7 @@ export default function MiningPage() {
               </Button>
               {isRecording && (
                 <Button 
-                  onClick={() => stopSession(sessions.find(s => s.status === 'active')?.id || '')}
+                  onClick={() => stopSession(sessions.find(s => !s.endTime)?.id || '')}
                   variant="destructive"
                 >
                   <Square className="mr-2 h-4 w-4" />
@@ -247,43 +338,58 @@ export default function MiningPage() {
           <CardDescription>Your recent mining activities</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow className="border-eve-border">
-                <TableHead className="text-gray-400">Character</TableHead>
-                <TableHead className="text-gray-400">System</TableHead>
-                <TableHead className="text-gray-400">Ore</TableHead>
-                <TableHead className="text-gray-400">Quantity</TableHead>
-                <TableHead className="text-gray-400">Est. Value</TableHead>
-                <TableHead className="text-gray-400">Duration</TableHead>
-                <TableHead className="text-gray-400">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sessions.map((session) => (
-                <TableRow key={session.id} className="border-eve-border">
-                  <TableCell className="text-white">{session.characterName}</TableCell>
-                  <TableCell className="text-gray-400">{session.systemName}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{session.oreType}</Badge>
-                  </TableCell>
-                  <TableCell className="text-white">{formatNumber(session.quantity)} m³</TableCell>
-                  <TableCell className="text-green-400">{formatISK(session.estimatedIsk)}</TableCell>
-                  <TableCell className="text-gray-400">
-                    {session.endTime 
-                      ? `${Math.round((session.endTime.getTime() - session.startTime.getTime()) / 3600000)}h`
-                      : `${Math.round((Date.now() - session.startTime.getTime()) / 3600000)}h (ongoing)`
-                    }
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={session.status === 'active' ? 'success' : 'secondary'}>
-                      {session.status === 'active' ? 'Active' : 'Completed'}
-                    </Badge>
-                  </TableCell>
+          {sessions.length === 0 ? (
+            <div className="text-center py-8">
+              <Pickaxe className="h-12 w-12 mx-auto mb-4 text-gray-500" />
+              <p className="text-gray-400">No mining sessions yet. Start your first session above!</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-eve-border">
+                  <TableHead className="text-gray-400">Character</TableHead>
+                  <TableHead className="text-gray-400">System</TableHead>
+                  <TableHead className="text-gray-400">Ore</TableHead>
+                  <TableHead className="text-gray-400">Quantity</TableHead>
+                  <TableHead className="text-gray-400">Est. Value</TableHead>
+                  <TableHead className="text-gray-400">Duration</TableHead>
+                  <TableHead className="text-gray-400">Status</TableHead>
+                  <TableHead className="text-gray-400"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {sessions.map((session) => (
+                  <TableRow key={session.id} className="border-eve-border">
+                    <TableCell className="text-white">{getCharacterName(session.characterId)}</TableCell>
+                    <TableCell className="text-gray-400">{session.systemName || 'Unknown'}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{session.oreType || 'Unknown'}</Badge>
+                    </TableCell>
+                    <TableCell className="text-white">{formatNumber(session.quantity)} m³</TableCell>
+                    <TableCell className="text-green-400">{formatISK(session.estimatedIsk)}</TableCell>
+                    <TableCell className="text-gray-400">
+                      {formatDuration(session.startTime, session.endTime)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={!session.endTime ? 'success' : 'secondary'}>
+                        {!session.endTime ? 'Active' : 'Completed'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteSession(session.id)}
+                        className="text-red-400 hover:text-red-300"
+                      >
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
