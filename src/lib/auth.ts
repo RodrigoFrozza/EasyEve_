@@ -100,14 +100,24 @@ export const authOptions: NextAuthOptions = {
           }
 
           const existingChar = await prisma.character.findUnique({
-            where: { ownerHash: charProfile.characterOwnerHash },
+            where: { id: charProfile.characterId },
           })
 
           const tokenExpiresAt = account.expires_at 
             ? new Date(account.expires_at * 1000)
             : new Date(Date.now() + 20 * 60 * 1000)
 
-          if (!existingChar) {
+          if (existingChar) {
+            await prisma.character.update({
+              where: { id: existingChar.id },
+              data: {
+                accessToken: account.access_token || existingChar.accessToken,
+                refreshToken: (account as any).refresh_token || existingChar.refreshToken,
+                tokenExpiresAt: tokenExpiresAt,
+                name: charProfile.name || existingChar.name,
+              },
+            })
+          } else {
             const charData = await fetchCharacterData(charProfile.characterId, account.access_token!)
             
             await prisma.character.create({
@@ -124,16 +134,6 @@ export const authOptions: NextAuthOptions = {
                 location: charData.location,
                 ship: charData.ship,
                 shipTypeId: charData.shipTypeId,
-              },
-            })
-          } else {
-            await prisma.character.update({
-              where: { id: existingChar.id },
-              data: {
-                accessToken: account.access_token || existingChar.accessToken,
-                refreshToken: (account as any).refresh_token || existingChar.refreshToken,
-                tokenExpiresAt: tokenExpiresAt,
-                userId: dbUser.id,
               },
             })
           }
