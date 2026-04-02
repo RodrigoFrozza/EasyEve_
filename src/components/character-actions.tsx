@@ -15,13 +15,15 @@ interface CharacterActionsProps {
 
 export function LinkCharacterButton({ accountCode }: { accountCode?: string | null }) {
   const [loading, setLoading] = useState(false)
+  const router = useRouter()
   
-  async function handleLink() {
+  function handleLink() {
     setLoading(true)
-    const callbackUrl = accountCode 
-      ? `/link-character?accountCode=${accountCode}`
-      : '/dashboard/characters'
-    await signIn('eveonline', { callbackUrl })
+    if (accountCode) {
+      router.push(`/link-character?accountCode=${accountCode}`)
+    } else {
+      router.push('/link-character')
+    }
   }
   
   return (
@@ -140,7 +142,7 @@ export function CopyInviteLink({ accountCode }: { accountCode: string }) {
   const [copied, setCopied] = useState(false)
   
   async function handleCopy() {
-    const inviteUrl = `${window.location.origin}/api/auth/signin/eveonline?accountCode=${accountCode}`
+    const inviteUrl = `${window.location.origin}/link-character?accountCode=${accountCode}`
     await navigator.clipboard.writeText(inviteUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
