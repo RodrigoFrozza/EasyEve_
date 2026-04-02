@@ -4,12 +4,12 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatISK, formatNumber } from '@/lib/utils'
-import { Plus, Play, Square, TrendingUp, Pickaxe, Clock, DollarSign, RefreshCw } from 'lucide-react'
+import { Plus, Play, Square, TrendingUp, Pickaxe, Clock, DollarSign, RefreshCw, Trash2 } from 'lucide-react'
 
 interface MiningSession {
   id: string
@@ -24,22 +24,22 @@ interface MiningSession {
   createdAt: string | Date
 }
 
-const oreTypes = [
-  { name: 'Veldspar', basePrice: 500 },
-  { name: 'Scordite', basePrice: 500 },
-  { name: 'Pyroxeres', basePrice: 1000 },
-  { name: 'Plagioclase', basePrice: 1500 },
-  { name: 'Omber', basePrice: 3000 },
-  { name: 'Kernite', basePrice: 5000 },
-  { name: 'Jaspet', basePrice: 8000 },
-  { name: 'Hemorphite', basePrice: 12000 },
-  { name: 'Hedbergite', basePrice: 15000 },
-  { name: 'Gneiss', basePrice: 25000 },
-  { name: 'Dark Ochre', basePrice: 40000 },
-  { name: 'Crokite', basePrice: 50000 },
-  { name: 'Bistot', basePrice: 80000 },
-  { name: 'Arkonor', basePrice: 100000 },
-  { name: 'Mercoxit', basePrice: 200000 },
+const ORE_TYPES = [
+  { id: 'veldspar', name: 'Veldspar' },
+  { id: 'scordite', name: 'Scordite' },
+  { id: 'pyroxeres', name: 'Pyroxeres' },
+  { id: 'plagioclase', name: 'Plagioclase' },
+  { id: 'omber', name: 'Omber' },
+  { id: 'kernite', name: 'Kernite' },
+  { id: 'jaspet', name: 'Jaspet' },
+  { id: 'hemorphite', name: 'Hemorphite' },
+  { id: 'hedbergite', name: 'Hedbergite' },
+  { id: 'gneiss', name: 'Gneiss' },
+  { id: 'dark_ochre', name: 'Dark Ochre' },
+  { id: 'crokite', name: 'Crokite' },
+  { id: 'bistot', name: 'Bistot' },
+  { id: 'arkonor', name: 'Arkonor' },
+  { id: 'mercoxit', name: 'Mercoxit' },
 ]
 
 export default function MiningPage() {
@@ -52,7 +52,8 @@ export default function MiningPage() {
   const [newSession, setNewSession] = useState({
     characterId: characters[0]?.id || 0,
     systemName: '',
-    oreType: ''
+    oreType: '',
+    quantity: 0
   })
 
   const fetchSessions = useCallback(async () => {
@@ -78,7 +79,7 @@ export default function MiningPage() {
   }, [characters, fetchSessions])
 
   const startSession = async () => {
-    if (!newSession.characterId || !newSession.systemName || !newSession.oreType) return
+    if (!newSession.characterId || !newSession.oreType) return
     
     try {
       const response = await fetch('/api/mining', {
@@ -86,11 +87,11 @@ export default function MiningPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           startTime: new Date().toISOString(),
-          systemName: newSession.systemName,
           oreType: newSession.oreType,
-          characterId: newSession.characterId,
-          quantity: 0,
+          systemName: newSession.systemName,
+          quantity: newSession.quantity,
           estimatedIsk: 0,
+          characterId: newSession.characterId,
         }),
       })
       
@@ -98,7 +99,7 @@ export default function MiningPage() {
         const session = await response.json()
         setSessions([session, ...sessions])
         setIsRecording(true)
-        setNewSession({ characterId: characters[0]?.id || 0, systemName: '', oreType: '' })
+        setNewSession({ characterId: characters[0]?.id || 0, systemName: '', oreType: '', quantity: 0 })
       }
     } catch (error) {
       console.error('Failed to start session:', error)
@@ -109,18 +110,14 @@ export default function MiningPage() {
     const sessionToStop = sessions.find(s => s.id === id)
     if (!sessionToStop) return
     
-    const quantity = Math.floor(Math.random() * 50000) + 10000
-    const ore = oreTypes.find(o => o.name === sessionToStop.oreType)
-    const estimatedIsk = quantity * (ore?.basePrice || 500)
-    
     try {
       const response = await fetch(`/api/mining/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           endTime: new Date().toISOString(),
-          quantity,
-          estimatedIsk,
+          quantity: sessionToStop.quantity,
+          estimatedIsk: sessionToStop.estimatedIsk,
         }),
       })
       
@@ -134,35 +131,14 @@ export default function MiningPage() {
     }
   }
 
-  const deleteSession = async (id: string) => {
-    try {
-      const response = await fetch(`/api/mining/${id}`, {
-        method: 'DELETE',
-      })
-      
-      if (response.ok) {
-        setSessions(sessions.filter(s => s.id !== id))
-      }
-    } catch (error) {
-      console.error('Failed to delete session:', error)
-    }
-  }
-
-  const totalMined = sessions.reduce((sum: number, s: MiningSession) => sum + s.quantity, 0)
-  const totalEarnings = sessions.reduce((sum: number, s: MiningSession) => sum + s.estimatedIsk, 0)
+  const totalQuantity = sessions.reduce((sum: number, s: MiningSession) => sum + s.quantity, 0)
+  const totalIsk = sessions.reduce((sum: number, s: MiningSession) => sum + s.estimatedIsk, 0)
   const activeSessions = sessions.filter(s => !s.endTime).length
 
   const getCharacterName = (charId: number | null) => {
     if (!charId) return 'Unknown'
     const char = characters.find(c => c.id === charId)
     return char?.name || 'Unknown'
-  }
-
-  const formatDuration = (start: string | Date, end: string | Date | null) => {
-    const startTime = new Date(start).getTime()
-    const endTime = end ? new Date(end).getTime() : Date.now()
-    const hours = Math.round((endTime - startTime) / 3600000 * 10) / 10
-    return `${hours}h`
   }
 
   if (loading) {
@@ -183,7 +159,7 @@ export default function MiningPage() {
         <Card className="bg-eve-panel border-eve-border">
           <CardContent className="py-12 text-center">
             <Pickaxe className="h-12 w-12 mx-auto mb-4 text-gray-500" />
-            <p className="text-gray-400">No characters linked. Link a character to start tracking your mining.</p>
+            <p className="text-gray-400">No characters linked. Link a character to start tracking mining data.</p>
           </CardContent>
         </Card>
       </div>
@@ -201,12 +177,12 @@ export default function MiningPage() {
         <Card className="bg-eve-panel border-eve-border">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-500/20">
-                <TrendingUp className="h-6 w-6 text-blue-400" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-500/20">
+                <DollarSign className="h-6 w-6 text-amber-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-400">Total Mined</p>
-                <p className="text-2xl font-bold text-white">{formatNumber(totalMined)} m³</p>
+                <p className="text-sm text-gray-400">Estimated Value</p>
+                <p className="text-2xl font-bold text-green-400">{formatISK(totalIsk)}</p>
               </div>
             </div>
           </CardContent>
@@ -215,26 +191,12 @@ export default function MiningPage() {
         <Card className="bg-eve-panel border-eve-border">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/20">
-                <DollarSign className="h-6 w-6 text-green-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Total Earnings</p>
-                <p className="text-2xl font-bold text-green-400">{formatISK(totalEarnings)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-eve-panel border-eve-border">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-eve-accent/20">
                 <Pickaxe className="h-6 w-6 text-eve-accent" />
               </div>
               <div>
-                <p className="text-sm text-gray-400">Active Sessions</p>
-                <p className="text-2xl font-bold text-white">{activeSessions}</p>
+                <p className="text-sm text-gray-400">Total Mined</p>
+                <p className="text-2xl font-bold text-white">{formatNumber(totalQuantity)} m³</p>
               </div>
             </div>
           </CardContent>
@@ -247,7 +209,21 @@ export default function MiningPage() {
                 <Clock className="h-6 w-6 text-purple-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-400">Sessions Today</p>
+                <p className="text-sm text-gray-400">Active Sessions</p>
+                <p className="text-2xl font-bold text-white">{activeSessions}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-eve-panel border-eve-border">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-500/20">
+                <TrendingUp className="h-6 w-6 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Sessions</p>
                 <p className="text-2xl font-bold text-white">{sessions.length}</p>
               </div>
             </div>
@@ -263,7 +239,7 @@ export default function MiningPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-5">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-400">Character</label>
               <Select 
@@ -282,7 +258,7 @@ export default function MiningPage() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-400">System</label>
               <Input
@@ -300,20 +276,31 @@ export default function MiningPage() {
                   <SelectValue placeholder="Select ore..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {oreTypes.map((ore) => (
-                    <SelectItem key={ore.name} value={ore.name}>
-                      {ore.name} ({formatISK(ore.basePrice)}/m³)
+                  {ORE_TYPES.map((ore) => (
+                    <SelectItem key={ore.id} value={ore.name}>
+                      {ore.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-400">Quantity (m³)</label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={newSession.quantity || ''}
+                onChange={(e) => setNewSession({ ...newSession, quantity: parseInt(e.target.value) || 0 })}
+                className="bg-eve-dark border-eve-border"
+              />
+            </div>
+
             <div className="flex items-end gap-2">
               <Button 
                 onClick={startSession}
-                className="flex-1 bg-green-600 hover:bg-green-700"
-                disabled={!newSession.characterId || !newSession.systemName || !newSession.oreType}
+                className="flex-1 bg-amber-600 hover:bg-amber-700"
+                disabled={!newSession.characterId || !newSession.oreType}
               >
                 <Play className="mr-2 h-4 w-4" />
                 Start
@@ -335,7 +322,7 @@ export default function MiningPage() {
       <Card className="bg-eve-panel border-eve-border">
         <CardHeader>
           <CardTitle className="text-white">Session History</CardTitle>
-          <CardDescription>Your recent mining activities</CardDescription>
+          <CardDescription>Your recent mining sessions</CardDescription>
         </CardHeader>
         <CardContent>
           {sessions.length === 0 ? (
@@ -352,8 +339,6 @@ export default function MiningPage() {
                   <TableHead className="text-gray-400">Ore</TableHead>
                   <TableHead className="text-gray-400">Quantity</TableHead>
                   <TableHead className="text-gray-400">Est. Value</TableHead>
-                  <TableHead className="text-gray-400">Duration</TableHead>
-                  <TableHead className="text-gray-400">Status</TableHead>
                   <TableHead className="text-gray-400"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -361,28 +346,18 @@ export default function MiningPage() {
                 {sessions.map((session) => (
                   <TableRow key={session.id} className="border-eve-border">
                     <TableCell className="text-white">{getCharacterName(session.characterId)}</TableCell>
-                    <TableCell className="text-gray-400">{session.systemName || 'Unknown'}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{session.oreType || 'Unknown'}</Badge>
-                    </TableCell>
-                    <TableCell className="text-white">{formatNumber(session.quantity)} m³</TableCell>
+                    <TableCell className="text-gray-400">{session.systemName || '-'}</TableCell>
+                    <TableCell className="text-gray-400">{session.oreType || 'Unknown'}</TableCell>
+                    <TableCell className="text-amber-400">{formatNumber(session.quantity)} m³</TableCell>
                     <TableCell className="text-green-400">{formatISK(session.estimatedIsk)}</TableCell>
-                    <TableCell className="text-gray-400">
-                      {formatDuration(session.startTime, session.endTime)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={!session.endTime ? 'success' : 'secondary'}>
-                        {!session.endTime ? 'Active' : 'Completed'}
-                      </Badge>
-                    </TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => deleteSession(session.id)}
+                        onClick={() => {}}
                         className="text-red-400 hover:text-red-300"
                       >
-                        Delete
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>

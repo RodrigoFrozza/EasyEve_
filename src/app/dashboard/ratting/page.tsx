@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatISK, formatNumber } from '@/lib/utils'
 import { Plus, Play, Square, TrendingUp, Crosshair, Clock, DollarSign, RefreshCw, Trash2 } from 'lucide-react'
@@ -21,17 +22,19 @@ interface RattingSession {
   createdAt: string | Date
 }
 
-const siteTypes = [
-  { name: 'Anomaly (T1)', bounty: 5000000 },
-  { name: 'Anomaly (T2)', bounty: 10000000 },
-  { name: 'Anomaly (T3)', bounty: 20000000 },
-  { name: 'Anomaly (T4)', bounty: 40000000 },
-  { name: 'DED Complex 4/10', bounty: 15000000 },
-  { name: 'DED Complex 6/10', bounty: 30000000 },
-  { name: 'DED Complex 8/10', bounty: 50000000 },
-  { name: 'DED Complex 10/10', bounty: 100000000 },
-  { name: 'Faction Warfare', bounty: 8000000 },
-  { name: 'Incursions', bounty: 100000000 },
+const SITE_TYPES = [
+  { id: 'anomaly_t1', name: 'Anomaly (T1)', category: 'Anomaly' },
+  { id: 'anomaly_t2', name: 'Anomaly (T2)', category: 'Anomaly' },
+  { id: 'anomaly_t3', name: 'Anomaly (T3)', category: 'Anomaly' },
+  { id: 'anomaly_t4', name: 'Anomaly (T4)', category: 'Anomaly' },
+  { id: 'ded_4_10', name: 'DED Complex 4/10', category: 'DED' },
+  { id: 'ded_6_10', name: 'DED Complex 6/10', category: 'DED' },
+  { id: 'ded_8_10', name: 'DED Complex 8/10', category: 'DED' },
+  { id: 'ded_10_10', name: 'DED Complex 10/10', category: 'DED' },
+  { id: 'faction_warfare', name: 'Faction Warfare', category: 'PVP' },
+  { id: 'incursion', name: 'Incursion', category: 'Group' },
+  { id: 'triglavian', name: 'Triglavian Sites', category: 'Anomaly' },
+  { id: 'drifter', name: 'Drifter Sites', category: 'Anomaly' },
 ]
 
 export default function RattingPage() {
@@ -43,7 +46,9 @@ export default function RattingPage() {
   const [isRecording, setIsRecording] = useState(false)
   const [newSession, setNewSession] = useState({
     characterId: characters[0]?.id || 0,
-    siteType: ''
+    siteType: '',
+    bounty: 0,
+    sitesCompleted: 1
   })
 
   const fetchSessions = useCallback(async () => {
@@ -78,9 +83,9 @@ export default function RattingPage() {
         body: JSON.stringify({
           startTime: new Date().toISOString(),
           siteType: newSession.siteType,
+          bounty: newSession.bounty,
+          sitesCompleted: newSession.sitesCompleted,
           characterId: newSession.characterId,
-          bounty: 0,
-          sitesCompleted: 0,
         }),
       })
       
@@ -88,7 +93,7 @@ export default function RattingPage() {
         const session = await response.json()
         setSessions([session, ...sessions])
         setIsRecording(true)
-        setNewSession({ characterId: characters[0]?.id || 0, siteType: '' })
+        setNewSession({ characterId: characters[0]?.id || 0, siteType: '', bounty: 0, sitesCompleted: 1 })
       }
     } catch (error) {
       console.error('Failed to start session:', error)
@@ -99,18 +104,14 @@ export default function RattingPage() {
     const sessionToStop = sessions.find(s => s.id === id)
     if (!sessionToStop) return
     
-    const sitesCompleted = Math.floor(Math.random() * 10) + 1
-    const site = siteTypes.find(s => s.name === sessionToStop.siteType)
-    const bounty = sitesCompleted * (site?.bounty || 5000000)
-    
     try {
       const response = await fetch(`/api/ratting/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           endTime: new Date().toISOString(),
-          bounty,
-          sitesCompleted,
+          bounty: sessionToStop.bounty,
+          sitesCompleted: sessionToStop.sitesCompleted,
         }),
       })
       
@@ -148,13 +149,6 @@ export default function RattingPage() {
     return char?.name || 'Unknown'
   }
 
-  const formatDuration = (start: string | Date, end: string | Date | null) => {
-    const startTime = new Date(start).getTime()
-    const endTime = end ? new Date(end).getTime() : Date.now()
-    const hours = Math.round((endTime - startTime) / 3600000 * 10) / 10
-    return `${hours}h`
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -168,12 +162,12 @@ export default function RattingPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-white">Ratting Tracker</h1>
-          <p className="text-gray-400">Track your ratting sessions and bounty earnings</p>
+          <p className="text-gray-400">Track your PVE ratting activities and bounties</p>
         </div>
         <Card className="bg-eve-panel border-eve-border">
           <CardContent className="py-12 text-center">
             <Crosshair className="h-12 w-12 mx-auto mb-4 text-gray-500" />
-            <p className="text-gray-400">No characters linked. Link a character to start tracking your ratting.</p>
+            <p className="text-gray-400">No characters linked. Link a character to start tracking ratting data.</p>
           </CardContent>
         </Card>
       </div>
@@ -184,7 +178,7 @@ export default function RattingPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white">Ratting Tracker</h1>
-        <p className="text-gray-400">Track your ratting sessions and bounty earnings</p>
+        <p className="text-gray-400">Track your PVE ratting activities and bounties</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -219,8 +213,8 @@ export default function RattingPage() {
         <Card className="bg-eve-panel border-eve-border">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-eve-accent/20">
-                <Crosshair className="h-6 w-6 text-eve-accent" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-500/20">
+                <Clock className="h-6 w-6 text-purple-400" />
               </div>
               <div>
                 <p className="text-sm text-gray-400">Active Sessions</p>
@@ -233,11 +227,11 @@ export default function RattingPage() {
         <Card className="bg-eve-panel border-eve-border">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-500/20">
-                <Clock className="h-6 w-6 text-purple-400" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-eve-accent/20">
+                <Crosshair className="h-6 w-6 text-eve-accent" />
               </div>
               <div>
-                <p className="text-sm text-gray-400">Sessions Today</p>
+                <p className="text-sm text-gray-400">Sessions</p>
                 <p className="text-2xl font-bold text-white">{sessions.length}</p>
               </div>
             </div>
@@ -253,7 +247,7 @@ export default function RattingPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-5">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-400">Character</label>
               <Select 
@@ -280,13 +274,36 @@ export default function RattingPage() {
                   <SelectValue placeholder="Select site..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {siteTypes.map((site) => (
-                    <SelectItem key={site.name} value={site.name}>
+                  {SITE_TYPES.map((site) => (
+                    <SelectItem key={site.id} value={site.name}>
                       {site.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-400">Bounty (ISK)</label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={newSession.bounty || ''}
+                onChange={(e) => setNewSession({ ...newSession, bounty: parseInt(e.target.value) || 0 })}
+                className="bg-eve-dark border-eve-border"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-400">Sites</label>
+              <Input
+                type="number"
+                min="1"
+                placeholder="1"
+                value={newSession.sitesCompleted}
+                onChange={(e) => setNewSession({ ...newSession, sitesCompleted: parseInt(e.target.value) || 1 })}
+                className="bg-eve-dark border-eve-border"
+              />
             </div>
 
             <div className="flex items-end gap-2">
@@ -315,7 +332,7 @@ export default function RattingPage() {
       <Card className="bg-eve-panel border-eve-border">
         <CardHeader>
           <CardTitle className="text-white">Session History</CardTitle>
-          <CardDescription>Your recent ratting activities</CardDescription>
+          <CardDescription>Your recent ratting sessions</CardDescription>
         </CardHeader>
         <CardContent>
           {sessions.length === 0 ? (
@@ -331,8 +348,7 @@ export default function RattingPage() {
                   <TableHead className="text-gray-400">Site Type</TableHead>
                   <TableHead className="text-gray-400">Sites</TableHead>
                   <TableHead className="text-gray-400">Bounty</TableHead>
-                  <TableHead className="text-gray-400">Duration</TableHead>
-                  <TableHead className="text-gray-400">Status</TableHead>
+                  <TableHead className="text-gray-400">Avg/Site</TableHead>
                   <TableHead className="text-gray-400"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -340,18 +356,11 @@ export default function RattingPage() {
                 {sessions.map((session) => (
                   <TableRow key={session.id} className="border-eve-border">
                     <TableCell className="text-white">{getCharacterName(session.characterId)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{session.siteType || 'Unknown'}</Badge>
-                    </TableCell>
-                    <TableCell className="text-white">{session.sitesCompleted}</TableCell>
+                    <TableCell className="text-gray-400">{session.siteType || 'Unknown'}</TableCell>
+                    <TableCell className="text-gray-400">{session.sitesCompleted}</TableCell>
                     <TableCell className="text-green-400">{formatISK(session.bounty)}</TableCell>
                     <TableCell className="text-gray-400">
-                      {formatDuration(session.startTime, session.endTime)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={!session.endTime ? 'success' : 'secondary'}>
-                        {!session.endTime ? 'Active' : 'Completed'}
-                      </Badge>
+                      {session.sitesCompleted > 0 ? formatISK(session.bounty / session.sitesCompleted) : '-'}
                     </TableCell>
                     <TableCell>
                       <Button

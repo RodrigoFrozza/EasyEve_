@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { formatISK } from '@/lib/utils'
-import { Plus, Search, Ship, Trash2, Edit, Copy, RefreshCw } from 'lucide-react'
+import { Plus, Search, Ship, Trash2, Edit, RefreshCw } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { getTypeIconUrl } from '@/lib/sde'
 
@@ -24,22 +25,21 @@ interface Fit {
   createdAt: string | Date
 }
 
-const shipTypes = [
-  { id: 17476, name: 'Hulk' },
-  { id: 17478, name: 'Mackinaw' },
-  { id: 17552, name: 'Rorqual' },
-  { id: 28850, name: 'Porpoise' },
-  { id: 606, name: 'Catalyst' },
-  { id: 29344, name: 'Thrasher' },
-  { id: 29242, name: 'Vargur' },
-  { id: 47253, name: 'Praxis' },
-  { id: 22466, name: 'Rifter' },
-  { id: 587, name: 'Rupture' },
-  { id: 24688, name: 'Rokh' },
-  { id: 24692, name: 'Dominix' },
-  { id: 11940, name: 'Armageddon' },
-  { id: 11365, name: 'Iteron Mark V' },
-]
+const CATEGORY_KEYWORDS = {
+  mining: ['hulk', 'mackinaw', 'rorqual', 'porpoise', 'skiff', 'retriever', 'procurer', 'covetor', 'hulk', 'venture', 'prospect', 'exhumer', ' barghest', 'whale'],
+  industrial: ['iteron', 'badger', 'tayra', 'nereus', 'hoarder', 'mammoth', 'wreathe', 'kryos', 'epithal', 'miasmos', 'praxis', 'occator', 'mastodon', 'impel', 'viator', 'bock一个好', 'sigil'],
+  combat: []
+}
+
+function categorizeShip(shipName: string): 'mining' | 'combat' | 'industrial' {
+  const lower = shipName.toLowerCase()
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some(k => lower.includes(k))) {
+      return category as 'mining' | 'industrial'
+    }
+  }
+  return 'combat'
+}
 
 export default function FitsPage() {
   const { data: session } = useSession()
@@ -49,7 +49,7 @@ export default function FitsPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [newFit, setNewFit] = useState({ name: '', shipTypeId: 0, shipName: '', cost: 0 })
+  const [newFit, setNewFit] = useState({ name: '', shipName: '', cost: 0 })
 
   const fetchFits = useCallback(async () => {
     try {
@@ -74,7 +74,7 @@ export default function FitsPage() {
   }, [characters, fetchFits])
 
   const createFit = async () => {
-    if (!newFit.name || !newFit.shipTypeId) return
+    if (!newFit.name || !newFit.shipName) return
     
     try {
       const response = await fetch('/api/fits', {
@@ -82,7 +82,7 @@ export default function FitsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: newFit.name,
-          shipTypeId: newFit.shipTypeId,
+          shipTypeId: 0,
           shipName: newFit.shipName,
           cost: newFit.cost,
         }),
@@ -91,7 +91,7 @@ export default function FitsPage() {
       if (response.ok) {
         const fit = await response.json()
         setFits([fit, ...fits])
-        setNewFit({ name: '', shipTypeId: 0, shipName: '', cost: 0 })
+        setNewFit({ name: '', shipName: '', cost: 0 })
         setShowCreateModal(false)
       }
     } catch (error) {
@@ -113,22 +113,14 @@ export default function FitsPage() {
     }
   }
 
-  const handleShipChange = (shipName: string) => {
-    const ship = shipTypes.find(s => s.name === shipName)
-    setNewFit({ ...newFit, shipName, shipTypeId: ship?.id || 0 })
-  }
-
   const filteredFits = fits.filter(fit => 
     fit.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     fit.shipName.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const miningShips = ['Hulk', 'Mackinaw', 'Rorqual', 'Porpoise']
-  const industrialShips = ['Praxis', 'Iteron Mark V']
-
-  const miningFits = filteredFits.filter(f => miningShips.includes(f.shipName))
-  const combatFits = filteredFits.filter(f => !miningShips.includes(f.shipName) && !industrialShips.includes(f.shipName))
-  const industrialFits = filteredFits.filter(f => industrialShips.includes(f.shipName))
+  const miningFits = filteredFits.filter(f => categorizeShip(f.shipName) === 'mining')
+  const industrialFits = filteredFits.filter(f => categorizeShip(f.shipName) === 'industrial')
+  const combatFits = filteredFits.filter(f => categorizeShip(f.shipName) === 'combat')
 
   if (loading) {
     return (
@@ -171,10 +163,10 @@ export default function FitsPage() {
 
       <Tabs defaultValue="all" className="w-full">
         <TabsList className="bg-eve-panel border border-eve-border">
-          <TabsTrigger value="all">All Fits</TabsTrigger>
-          <TabsTrigger value="mining">Mining</TabsTrigger>
-          <TabsTrigger value="combat">Combat</TabsTrigger>
-          <TabsTrigger value="industrial">Industrial</TabsTrigger>
+          <TabsTrigger value="all">All Fits ({filteredFits.length})</TabsTrigger>
+          <TabsTrigger value="mining">Mining ({miningFits.length})</TabsTrigger>
+          <TabsTrigger value="combat">Combat ({combatFits.length})</TabsTrigger>
+          <TabsTrigger value="industrial">Industrial ({industrialFits.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="mt-6">
@@ -219,64 +211,59 @@ export default function FitsPage() {
         </TabsContent>
       </Tabs>
 
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md bg-eve-panel border-eve-border">
-            <CardHeader>
-              <CardTitle className="text-white">Create New Fit</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-400">Fit Name</label>
-                <Input
-                  placeholder="My Awesome Fit"
-                  value={newFit.name}
-                  onChange={(e) => setNewFit({ ...newFit, name: e.target.value })}
-                  className="bg-eve-dark border-eve-border"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-400">Ship Type</label>
-                <select
-                  value={newFit.shipName}
-                  onChange={(e) => handleShipChange(e.target.value)}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-eve-dark text-sm"
-                >
-                  <option value="">Select ship...</option>
-                  {shipTypes.map((ship) => (
-                    <option key={ship.id} value={ship.name}>{ship.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-400">Estimated Cost (ISK)</label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={newFit.cost || ''}
-                  onChange={(e) => setNewFit({ ...newFit, cost: parseInt(e.target.value) || 0 })}
-                  className="bg-eve-dark border-eve-border"
-                />
-              </div>
-              <div className="flex gap-2 pt-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowCreateModal(false)}
-                  className="flex-1 border-eve-border"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={createFit}
-                  className="flex-1 bg-eve-accent text-black hover:bg-eve-accent/80"
-                >
-                  Create
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogContent className="bg-eve-panel border-eve-border">
+          <DialogHeader>
+            <DialogTitle className="text-white">Create New Fit</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-400">Fit Name</label>
+              <Input
+                placeholder="My Awesome Fit"
+                value={newFit.name}
+                onChange={(e) => setNewFit({ ...newFit, name: e.target.value })}
+                className="bg-eve-dark border-eve-border"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-400">Ship Name</label>
+              <Input
+                placeholder="Hulk, Dominix, Tempest..."
+                value={newFit.shipName}
+                onChange={(e) => setNewFit({ ...newFit, shipName: e.target.value })}
+                className="bg-eve-dark border-eve-border"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-400">Estimated Cost (ISK)</label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={newFit.cost || ''}
+                onChange={(e) => setNewFit({ ...newFit, cost: parseInt(e.target.value) || 0 })}
+                className="bg-eve-dark border-eve-border"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowCreateModal(false)}
+              className="border-eve-border"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={createFit}
+              className="bg-eve-accent text-black hover:bg-eve-accent/80"
+              disabled={!newFit.name || !newFit.shipName}
+            >
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -288,7 +275,7 @@ function FitCard({ fit, onDelete }: { fit: Fit, onDelete: () => void }) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={getTypeIconUrl(fit.shipTypeId, 64)} />
+              <AvatarImage src={fit.shipTypeId > 0 ? getTypeIconUrl(fit.shipTypeId, 64) : undefined} />
               <AvatarFallback>
                 <Ship className="h-5 w-5" />
               </AvatarFallback>
@@ -326,8 +313,13 @@ function FitCard({ fit, onDelete }: { fit: Fit, onDelete: () => void }) {
             <Edit className="mr-2 h-4 w-4" />
             Edit
           </Button>
-          <Button variant="outline" size="sm" className="border-red-500/50 text-red-400 hover:bg-red-500/10">
-            <Trash2 className="h-4 w-4" onClick={onDelete} />
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+            onClick={onDelete}
+          >
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </CardContent>
