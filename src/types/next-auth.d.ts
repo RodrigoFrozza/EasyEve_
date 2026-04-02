@@ -10,15 +10,24 @@ declare module 'next-auth' {
       characterId?: number
       characterOwnerHash?: string
       accessToken?: string
-      characters?: {
+      accountCode?: string | null
+      isMain?: boolean
+      characters: Array<{
         id: number
         name: string
         totalSp: number
         walletBalance: number
-        location?: string | null
-        ship?: string | null
-      }[]
+        location: string | null
+        ship: string | null
+        isMain: boolean
+      }>
     }
+  }
+
+  interface User {
+    id: string
+    characterId?: number
+    characterOwnerHash?: string
   }
 }
 
@@ -26,7 +35,7 @@ declare module 'next-auth/jwt' {
   interface JWT {
     characterId?: number
     characterOwnerHash?: string
+    characterName?: string
     accessToken?: string
-    userId?: string
   }
 }

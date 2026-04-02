@@ -1,6 +1,7 @@
 import { NextAuthOptions } from 'next-auth'
 import { prisma } from './prisma'
-import { getCharacterAvatarUrl, fetchCharacterData, getCorporationInfo, getAllianceInfo } from './esi'
+import { fetchCharacterData } from './esi'
+import { generateAccountCode } from './account-code'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -13,7 +14,7 @@ export const authOptions: NextAuthOptions = {
       authorization: {
         url: 'https://login.eveonline.com/v2/oauth/authorize',
         params: {
-          scope: 'publicData esi-calendar.respond_calendar_events.v1 esi-calendar.read_calendar_events.v1 esi-location.read_location.v1 esi-location.read_ship_type.v1 esi-mail.organize_mail.v1 esi-mail.read_mail.v1 esi-mail.send_mail.v1 esi-skills.read_skills.v1 esi-skills.read_skillqueue.v1 esi-wallet.read_character_wallet.v1 esi-wallet.read_corporation_wallet.v1 esi-search.search_structures.v1 esi-clones.read_clones.v1 esi-characters.read_contacts.v1 esi-universe.read_structures.v1 esi-killmails.read_killmails.v1 esi-corporations.read_corporation_membership.v1 esi-assets.read_assets.v1 esi-planets.manage_planets.v1 esi-fleets.read_fleet.v1 esi-fleets.write_fleet.v1 esi-ui.open_window.v1 esi-ui.write_waypoint.v1 esi-characters.write_contacts.v1 esi-fittings.read_fittings.v1 esi-fittings.write_fittings.v1 esi-markets.structure_markets.v1 esi-corporations.read_structures.v1 esi-characters.read_loyalty.v1 esi-characters.read_chat_channels.v1 esi-characters.read_medals.v1 esi-characters.read_standings.v1 esi-characters.read_agents_research.v1 esi-industry.read_character_jobs.v1 esi-markets.read_character_orders.v1 esi-characters.read_blueprints.v1 esi-characters.read_corporation_roles.v1 esi-location.read_online.v1 esi-contracts.read_character_contracts.v1 esi-clones.read_implants.v1 esi-characters.read_fatigue.v1 esi-killmails.read_corporation_killmails.v1 esi-corporations.track_members.v1 esi-wallet.read_corporation_wallets.v1 esi-characters.read_notifications.v1 esi-corporations.read_divisions.v1 esi-corporations.read_contacts.v1 esi-assets.read_corporation_assets.v1 esi-corporations.read_titles.v1 esi-corporations.read_blueprints.v1 esi-contracts.read_corporation_contracts.v1 esi-corporations.read_standings.v1 esi-corporations.read_starbases.v1 esi-industry.read_corporation_jobs.v1 esi-markets.read_corporation_orders.v1 esi-corporations.read_container_logs.v1 esi-industry.read_character_mining.v1 esi-industry.read_corporation_mining.v1 esi-planets.read_customs_offices.v1 esi-corporations.read_facilities.v1 esi-corporations.read_medals.v1 esi-characters.read_titles.v1 esi-alliances.read_contacts.v1 esi-characters.read_fw_stats.v1 esi-corporations.read_fw_stats.v1 esi-corporations.read_projects.v1 esi-corporations.read_freelance_jobs.v1 esi-characters.read_freelance_jobs.v1',
+          scope: 'publicData esi-calendar.respond_calendar_events.v1 esi-calendar.read_calendar_events.v1 esi-location.read_location.v1 esi-location.read_ship_type.v1 esi-mail.organize_mail.v1 esi-mail.read_mail.v1 esi-mail.send_mail.v1 esi-skills.read_skills.v1 esi-skills.read_skillqueue.v1 esi-wallet.read_character_wallet.v1 esi-wallet.read_corporation_wallet.v1 esi-search.search_structures.v1 esi-clones.read_clones.v1 esi-characters.read_contacts.v1 esi-universe.read_structures.v1 esi-killmails.read_killmails.v1 esi-corporations.read_corporation_membership.v1 esi-assets.read_assets.v1 esi-planets.manage_planets.v1 esi-fleets.read_fleet.v1 esi-fleets.write_fleet.v1 esi-ui.open_window.v1 esi-ui.write_waypoint.v1 esi-characters.write_contacts.v1 esi-fittings.read_fittings.v1 esi-fittings.write_fittings.v1 esi-markets.structure_markets.v1 esi-corporations.read_structures.v1 esi-characters.read_loyalty.v1 esi-characters.read_chat_channels.v1 esi-characters.read_medals.v1 esi-characters.read_standings.v1 esi-characters.read_agents_research.v1 esi-industry.read_character_jobs.v1 esi-markets.read_character_orders.v1 esi-characters.read_blueprints.v1 esi-characters.read_corporation_roles.v1 esi-location.read_online.v1 esi-contracts.read_character_contracts.v1 esi-clones.read_implants.v1 esi-characters.read_fatigue.v1 esi-killmails.read_corporation_killmails.v1 esi-corporations.track_members.v1 esi-wallet.read_corporation_wallets.v1 esi-characters.read_notifications.v1 esi-corporations.read_divisions.v1 esi-corporations.read_contacts.v1 esi-assets.read_corporation_assets.v1 esi-corporations.read_titles.v1 esi-corporations.read_blueprints.v1 esi-contracts.read_corporation_contracts.v1 esi-corporations.read_standings.v1 esi-corporations.read_starbases.v1 esi-industry.read_corporation_jobs.v1 esi-markets.read_corporation_orders.v1 esi-corporations.read_container_logs.v1 esi-industry.read_character_mining.v1 esi-industry.read_corporation_mining.v1 esi-planets.read_customs_offices.v1 esi-ui-autopilot.waypoint.v1',
           response_type: 'code',
         },
       },
@@ -86,57 +87,75 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider === 'eveonline' && profile) {
         const charProfile = profile as any
         try {
-          let dbUser = await prisma.user.findUnique({
-            where: { eveSubject: charProfile.characterOwnerHash },
-          })
-
-          if (!dbUser) {
-            dbUser = await prisma.user.create({
-              data: {
-                eveSubject: charProfile.characterOwnerHash,
-                name: charProfile.name || 'Unknown',
-              },
-            })
-          }
-
-          const existingChar = await prisma.character.findUnique({
-            where: { id: charProfile.characterId },
-          })
-
           const tokenExpiresAt = account.expires_at 
             ? new Date(account.expires_at * 1000)
             : new Date(Date.now() + 20 * 60 * 1000)
 
-          if (existingChar) {
+          const existingCharacter = await prisma.character.findUnique({
+            where: { id: charProfile.characterId },
+            include: { user: true }
+          })
+
+          if (existingCharacter) {
             await prisma.character.update({
-              where: { id: existingChar.id },
+              where: { id: existingCharacter.id },
               data: {
-                accessToken: account.access_token || existingChar.accessToken,
-                refreshToken: (account as any).refresh_token || existingChar.refreshToken,
+                accessToken: account.access_token || existingCharacter.accessToken,
+                refreshToken: (account as any).refresh_token || existingCharacter.refreshToken,
                 tokenExpiresAt: tokenExpiresAt,
-                name: charProfile.name || existingChar.name,
+                name: charProfile.name || existingCharacter.name,
               },
             })
-          } else {
-            const charData = await fetchCharacterData(charProfile.characterId, account.access_token!)
-            
-            await prisma.character.create({
+            return true
+          }
+
+          let dbUser = null
+          
+          if (account.state) {
+            try {
+              const state = JSON.parse(account.state as string)
+              if (state.accountCode) {
+                dbUser = await prisma.user.findUnique({
+                  where: { accountCode: state.accountCode },
+                })
+              }
+            } catch (e) {
+              console.error('Failed to parse account state:', e)
+            }
+          }
+
+          if (!dbUser) {
+            dbUser = await prisma.user.create({
               data: {
-                id: charProfile.characterId,
-                name: charProfile.name || 'Unknown',
-                ownerHash: charProfile.characterOwnerHash,
-                userId: dbUser.id,
-                accessToken: account.access_token || '',
-                refreshToken: (account as any).refresh_token || '',
-                tokenExpiresAt: tokenExpiresAt,
-                totalSp: charData.total_sp || 0,
-                walletBalance: charData.wallet || 0,
-                location: charData.location,
-                ship: charData.ship,
-                shipTypeId: charData.shipTypeId,
+                accountCode: generateAccountCode(),
+                name: charProfile.name || 'EVE User',
               },
             })
           }
+
+          const isFirstCharacter = await prisma.character.count({
+            where: { userId: dbUser.id }
+          }) === 0
+
+          const charData = await fetchCharacterData(charProfile.characterId, account.access_token!)
+          
+          await prisma.character.create({
+            data: {
+              id: charProfile.characterId,
+              name: charProfile.name || 'Unknown',
+              ownerHash: charProfile.characterOwnerHash,
+              userId: dbUser.id,
+              accessToken: account.access_token || '',
+              refreshToken: (account as any).refresh_token || '',
+              tokenExpiresAt: tokenExpiresAt,
+              totalSp: charData.total_sp || 0,
+              walletBalance: charData.wallet || 0,
+              location: charData.location,
+              ship: charData.ship,
+              shipTypeId: charData.shipTypeId,
+              isMain: isFirstCharacter,
+            },
+          })
 
           return true
         } catch (error) {
@@ -176,28 +195,29 @@ export const authOptions: NextAuthOptions = {
       }
       
       if (token.characterOwnerHash) {
-        const user = await prisma.user.findFirst({
-          where: {
-            characters: {
-              some: {
-                ownerHash: token.characterOwnerHash as string,
+        const character = await prisma.character.findUnique({
+          where: { ownerHash: token.characterOwnerHash as string },
+          include: {
+            user: {
+              include: {
+                characters: true,
               },
             },
           },
-          include: {
-            characters: true,
-          },
         })
         
-        if (user) {
-          session.user.id = user.id
-          session.user.characters = user.characters.map((c) => ({
+        if (character) {
+          session.user.id = character.user.id
+          session.user.accountCode = character.user.accountCode
+          session.user.isMain = character.isMain
+          session.user.characters = character.user.characters.map((c) => ({
             id: c.id,
             name: c.name,
             totalSp: c.totalSp,
             walletBalance: c.walletBalance,
             location: c.location,
             ship: c.ship,
+            isMain: c.isMain,
           }))
         }
       }

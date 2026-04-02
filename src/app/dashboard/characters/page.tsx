@@ -4,11 +4,10 @@ import { prisma } from '@/lib/prisma'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatSP, formatISK, timeAgo } from '@/lib/utils'
-import { MapPin, Ship, Zap, Wallet, Plus } from 'lucide-react'
-import { LinkCharacterButton, RefreshCharacterButton, RemoveCharacterButton } from '@/components/character-actions'
+import { MapPin, Ship, Zap, Wallet, Plus, Users } from 'lucide-react'
+import { LinkCharacterButton, RefreshCharacterButton, RemoveCharacterButton, SetMainButton, CopyInviteLink } from '@/components/character-actions'
 
 interface CharacterData {
   id: number
@@ -18,6 +17,7 @@ interface CharacterData {
   location: string | null
   ship: string | null
   lastFetchedAt: Date | null
+  isMain: boolean
 }
 
 interface PrismaCharacter {
@@ -28,6 +28,7 @@ interface PrismaCharacter {
   location: string | null
   ship: string | null
   lastFetchedAt: Date | null
+  isMain: boolean
 }
 
 export default async function CharactersPage() {
@@ -41,7 +42,7 @@ export default async function CharactersPage() {
     where: { id: session.user.id },
     include: {
       characters: {
-        orderBy: { totalSp: 'desc' }
+        orderBy: [{ isMain: 'desc' }, { totalSp: 'desc' }]
       }
     }
   })
@@ -54,7 +55,10 @@ export default async function CharactersPage() {
     location: c.location,
     ship: c.ship,
     lastFetchedAt: c.lastFetchedAt,
+    isMain: c.isMain,
   }))
+
+  const mainCharacter = characters.find(c => c.isMain) || characters[0]
 
   return (
     <div className="space-y-6">
@@ -63,7 +67,76 @@ export default async function CharactersPage() {
           <h1 className="text-3xl font-bold text-white">Characters</h1>
           <p className="text-gray-400">Manage your linked EVE Online characters</p>
         </div>
-        <LinkCharacterButton />
+        <LinkCharacterButton accountCode={user?.accountCode} />
+      </div>
+
+      {user?.accountCode && (
+        <Card className="bg-eve-panel border-eve-border">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Users className="h-5 w-5 text-eve-accent" />
+                <div>
+                  <p className="text-sm text-gray-400">Invite Link</p>
+                  <p className="text-white font-mono">{user.accountCode}</p>
+                </div>
+              </div>
+              <CopyInviteLink accountCode={user.accountCode} />
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Share this link with your alts to link them to your account
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="bg-eve-panel border-eve-border">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-eve-accent/20">
+                <Users className="h-6 w-6 text-eve-accent" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Total Characters</p>
+                <p className="text-2xl font-bold text-white">{characters.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {mainCharacter && (
+          <Card className="bg-eve-panel border-eve-border">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={`https://images.evetech.net/characters/${mainCharacter.id}/portrait?size=128`} />
+                  <AvatarFallback>{mainCharacter.name[0]}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm text-gray-400">Main Character</p>
+                  <p className="text-lg font-bold text-white">{mainCharacter.name}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className="bg-eve-panel border-eve-border">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/20">
+                <Wallet className="h-6 w-6 text-green-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Combined ISK</p>
+                <p className="text-2xl font-bold text-green-400">
+                  {formatISK(characters.reduce((sum, c) => sum + c.walletBalance, 0))}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Tabs defaultValue="all" className="w-full">
@@ -75,15 +148,15 @@ export default async function CharactersPage() {
         <TabsContent value="all" className="mt-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {characters.map((char) => (
-              <CharacterCard key={char.id} character={char} isMain={char.id === characters[0]?.id} />
+              <CharacterCard key={char.id} character={char} />
             ))}
           </div>
         </TabsContent>
         
         <TabsContent value="main" className="mt-6">
-          {characters[0] && (
+          {mainCharacter && (
             <div className="max-w-md">
-              <CharacterCard character={characters[0]} isMain={true} detailed />
+              <CharacterCard character={mainCharacter} detailed />
             </div>
           )}
         </TabsContent>
@@ -99,7 +172,7 @@ export default async function CharactersPage() {
             <p className="text-gray-400 text-center mb-4">
               Link your EVE Online characters to start tracking your progress.
             </p>
-            <LinkCharacterButton />
+            <LinkCharacterButton accountCode={user?.accountCode} />
           </CardContent>
         </Card>
       )}
@@ -107,9 +180,9 @@ export default async function CharactersPage() {
   )
 }
 
-function CharacterCard({ character, isMain, detailed = false }: { character: CharacterData, isMain: boolean, detailed?: boolean }) {
+function CharacterCard({ character, detailed = false }: { character: CharacterData, detailed?: boolean }) {
   return (
-    <Card className={`bg-eve-panel border-eve-border ${isMain ? 'ring-2 ring-eve-accent' : ''}`}>
+    <Card className={`bg-eve-panel border-eve-border ${character.isMain ? 'ring-2 ring-eve-accent' : ''}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -120,7 +193,7 @@ function CharacterCard({ character, isMain, detailed = false }: { character: Cha
             <div>
               <div className="flex items-center gap-2">
                 <CardTitle className="text-lg text-white">{character.name}</CardTitle>
-                {isMain && <Badge variant="eve">Main</Badge>}
+                {character.isMain && <Badge variant="eve">Main</Badge>}
               </div>
               <p className="text-sm text-gray-400">ID: {character.id}</p>
             </div>
@@ -164,8 +237,9 @@ function CharacterCard({ character, isMain, detailed = false }: { character: Cha
         )}
 
         <div className="flex gap-2 pt-2">
+          <SetMainButton characterId={character.id} isMain={character.isMain} />
           <RefreshCharacterButton characterId={character.id} />
-          {!isMain && (
+          {!character.isMain && (
             <RemoveCharacterButton characterId={character.id} />
           )}
         </div>

@@ -9,7 +9,7 @@ datasource db {
 
 model User {
   id            String       @id @default(cuid())
-  eveSubject    String       @unique
+  accountCode   String?      @unique
   email         String?
   name          String?
   characters    Character[]
@@ -36,6 +36,8 @@ model Character {
   location        String?
   ship            String?
   shipTypeId      Int?
+  
+  isMain          Boolean   @default(false)
   
   userId          String
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
