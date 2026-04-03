@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "start": "HOSTNAME=0.0.0.0 PORT=80 node_modules/.bin/next start",
+    "start": "npx next start -H 0.0.0.0 -p 80",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
