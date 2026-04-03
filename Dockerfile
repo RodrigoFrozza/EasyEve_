@@ -5,7 +5,9 @@ RUN apk add --no-cache libc6-compat openssl curl
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN rm -rf node_modules package-lock.json && npm install --force
+RUN rm -rf node_modules package-lock.json && npm install
+
+RUN ls -la node_modules/.bin/ | head -5 || echo "No .bin dir"
 
 COPY . .
 RUN npx prisma generate
@@ -16,4 +18,4 @@ ENV PORT=80
 
 EXPOSE 80
 
-CMD ["npm", "start"]
+CMD ["node", "node_modules/next/dist/bin/next", "start"]
