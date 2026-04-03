@@ -1,5 +1,5 @@
 # EasyEve Dockerfile - Next.js application
-FROM node:20-alpine
+FROM node:20-alpine AS builder
 
 RUN apk add --no-cache libc6-compat openssl curl
 WORKDIR /app
@@ -15,12 +15,16 @@ RUN mkdir -p .next/standalone/.next/static && \
     cp -r .next/static/.next .next/standalone/.next/ && \
     cp -r public .next/standalone/
 
+FROM node:20-alpine
+
+RUN apk add --no-cache libc6-compat openssl curl
+WORKDIR /app
+
+COPY --from=builder /app/.next/standalone .
+
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
-
-WORKDIR /app/.next/standalone
-COPY --from=0 /app/.next/standalone .
 
 EXPOSE 3000
 
