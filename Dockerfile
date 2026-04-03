@@ -11,10 +11,6 @@ COPY . .
 RUN npx prisma generate
 RUN npm run build
 
-RUN mkdir -p .next/standalone/.next/static && \
-    cp -r .next/static/.next .next/standalone/.next/ && \
-    cp -r public .next/standalone/
-
 FROM node:20-alpine
 
 RUN apk add --no-cache libc6-compat openssl curl
