@@ -10,7 +10,7 @@ RUN rm -rf node_modules package-lock.json && npm install
 COPY . .
 RUN npx prisma generate
 RUN npm run build
-RUN npm install
+RUN npm rebuild
 
 ENV NODE_ENV=production
 ENV PORT=80
