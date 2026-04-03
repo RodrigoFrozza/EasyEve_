@@ -7,15 +7,14 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN rm -rf node_modules package-lock.json && npm install
 
-RUN ls -la node_modules/.bin/ | head -5 || echo "No .bin dir"
-
 COPY . .
 RUN npx prisma generate
 RUN npm run build
+RUN npm install
 
 ENV NODE_ENV=production
 ENV PORT=80
 
 EXPOSE 80
 
-CMD ["node", "node_modules/next/dist/bin/next", "start"]
+CMD ["npm", "start"]
