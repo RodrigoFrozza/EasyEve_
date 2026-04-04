@@ -53,6 +53,7 @@ const EVE_SCOPES = [
   'esi-corporations.read_titles.v1',
   'esi-corporations.read_blueprints.v1',
   'esi-contracts.read_corporation_contracts.v1',
+  'esi-contracts.read_corporation_contracts.v1',
   'esi-corporations.read_standings.v1',
   'esi-corporations.read_starbases.v1',
   'esi-industry.read_corporation_jobs.v1',
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
   
   const url = new URL('https://login.eveonline.com/v2/oauth/authorize')
   url.searchParams.set('client_id', process.env.EVE_CLIENT_ID!)
-  url.searchParams.set('redirect_uri', `${process.env.NEXTAUTH_URL}/api/auth/callback/eveonline`)
+  url.searchParams.set('redirect_uri', `${process.env.NEXTAUTH_URL}/api/auth/callback/eveonline-link`)
   url.searchParams.set('response_type', 'code')
   url.searchParams.set('scope', EVE_SCOPES)
   
