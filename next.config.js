@@ -3,6 +3,9 @@ const nextConfig = {
   swcMinify: false,
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
+   turbo: {
+      treeShaking: true,
+    },
   },
   images: {
     remotePatterns: [
@@ -16,6 +19,7 @@ const nextConfig = {
       },
     ],
   },
+  productionBrowserSourceMaps: false,
 }
 
 module.exports = nextConfig
