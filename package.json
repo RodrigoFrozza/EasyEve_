@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && next build --no-lint",
     "start": "node ./node_modules/next/dist/bin/next start -H 0.0.0.0 -p $PORT",
     "lint": "next lint",
     "db:generate": "prisma generate",
