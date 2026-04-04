@@ -192,7 +192,6 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.characterId = token.characterId as number
         session.user.characterOwnerHash = token.characterOwnerHash as string
-        session.user.accessToken = token.accessToken as string
       }
       
       if (token.characterOwnerHash) {
@@ -200,8 +199,16 @@ export const authOptions: NextAuthOptions = {
           where: { ownerHash: token.characterOwnerHash as string },
           include: {
             user: {
-              include: {
-                characters: true,
+              select: {
+                id: true,
+                accountCode: true,
+                characters: {
+                  select: {
+                    id: true,
+                    name: true,
+                    isMain: true,
+                  },
+                },
               },
             },
           },
@@ -211,15 +218,7 @@ export const authOptions: NextAuthOptions = {
           session.user.id = character.user.id
           session.user.accountCode = character.user.accountCode
           session.user.isMain = character.isMain
-          session.user.characters = character.user.characters.map((c) => ({
-            id: c.id,
-            name: c.name,
-            totalSp: c.totalSp,
-            walletBalance: c.walletBalance,
-            location: c.location,
-            ship: c.ship,
-            isMain: c.isMain,
-          }))
+          session.user.characters = character.user.characters
         }
       }
       

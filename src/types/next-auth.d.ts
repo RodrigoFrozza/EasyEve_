@@ -9,16 +9,11 @@ declare module 'next-auth' {
       image?: string | null
       characterId?: number
       characterOwnerHash?: string
-      accessToken?: string
       accountCode?: string | null
       isMain?: boolean
-      characters: Array<{
+      characters?: Array<{
         id: number
         name: string
-        totalSp: number
-        walletBalance: number
-        location: string | null
-        ship: string | null
         isMain: boolean
       }>
     }
@@ -36,6 +31,5 @@ declare module 'next-auth/jwt' {
     characterId?: number
     characterOwnerHash?: string
     characterName?: string
-    accessToken?: string
   }
 }
