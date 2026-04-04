@@ -20,6 +20,8 @@ export const authOptions: NextAuthOptions = {
       token: {
         url: 'https://login.eveonline.com/v2/oauth/token',
         async request({ provider, params, checks }) {
+          console.log('[OAuth] Token request - redirect_uri:', `${process.env.NEXTAUTH_URL}/api/auth/callback/eveonline`)
+          console.log('[OAuth] Token request - params:', JSON.stringify(params))
           const response = await fetch('https://login.eveonline.com/v2/oauth/token', {
             method: 'POST',
             headers: {
@@ -235,25 +237,7 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   cookies: {
     sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: 'none',
-        path: '/',
-        secure: true,
-      },
-    },
-    callbackUrl: {
-      name: `next-auth.callback-url`,
-      options: {
-        httpOnly: true,
-        sameSite: 'none',
-        path: '/',
-        secure: true,
-      },
-    },
-    csrfToken: {
-      name: `next-auth.csrf-token`,
+      name: `__Host-next-auth.session-token`,
       options: {
         httpOnly: true,
         sameSite: 'none',
