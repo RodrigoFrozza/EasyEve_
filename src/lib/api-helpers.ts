@@ -1,16 +1,15 @@
-import { getServerSession } from 'next-auth'
 import { NextResponse } from 'next/server'
-import { authOptions } from '@/lib/auth'
+import { getSession } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 
-export async function getSession() {
-  return await getServerSession(authOptions)
+export async function getCurrentSession() {
+  return await getSession()
 }
 
 export async function requireAuth() {
   const session = await getSession()
   
-  if (!session?.user?.characterOwnerHash) {
+  if (!session?.user?.ownerHash) {
     return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   }
   
@@ -18,7 +17,7 @@ export async function requireAuth() {
     where: {
       characters: {
         some: {
-          ownerHash: session.user.characterOwnerHash
+          ownerHash: session.user.ownerHash
         }
       }
     },
@@ -37,7 +36,7 @@ export async function requireAuth() {
 export async function getCurrentUser() {
   const session = await getSession()
   
-  if (!session?.user?.characterOwnerHash) {
+  if (!session?.user?.ownerHash) {
     return null
   }
   
@@ -45,7 +44,7 @@ export async function getCurrentUser() {
     where: {
       characters: {
         some: {
-          ownerHash: session.user.characterOwnerHash
+          ownerHash: session.user.ownerHash
         }
       }
     },

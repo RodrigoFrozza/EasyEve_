@@ -1,5 +1,3 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -18,6 +16,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { getSession } from '@/lib/session'
 
 async function getCharacterDetails(charId: number) {
   const response = await fetch(`https://esi.evetech.net/latest/characters/${charId}/`, {
@@ -29,7 +28,7 @@ async function getCharacterDetails(charId: number) {
 }
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions)
+  const session = await getSession()
   
   if (!session?.user?.id) {
     return null

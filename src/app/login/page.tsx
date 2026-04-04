@@ -1,7 +1,6 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { signIn } from 'next-auth/react'
 import { Suspense } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,6 +10,10 @@ function LoginContent() {
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
   const error = searchParams.get('error')
+
+  const handleLogin = () => {
+    window.location.href = `/api/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-eve-dark p-4">
@@ -39,7 +42,7 @@ function LoginContent() {
           )}
 
           <Button
-            onClick={() => signIn('eveonline', { callbackUrl })}
+            onClick={handleLogin}
             className="w-full bg-eve-accent text-black hover:bg-eve-accent/80 h-12 text-base font-semibold"
             size="lg"
           >

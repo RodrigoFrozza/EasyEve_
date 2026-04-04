@@ -1,5 +1,3 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -8,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatSP, formatISK, timeAgo } from '@/lib/utils'
 import { MapPin, Ship, Zap, Wallet, Plus, Users } from 'lucide-react'
 import { LinkCharacterButton, RefreshCharacterButton, RemoveCharacterButton, SetMainButton, CopyInviteLink } from '@/components/character-actions'
+import { getSession } from '@/lib/session'
 
 interface CharacterData {
   id: number
@@ -32,7 +31,7 @@ interface PrismaCharacter {
 }
 
 export default async function CharactersPage() {
-  const session = await getServerSession(authOptions)
+  const session = await getSession()
   
   if (!session?.user?.id) {
     return null

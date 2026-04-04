@@ -1,0 +1,198 @@
+import { prisma } from './prisma'
+import { generateAccountCode } from './account-code'
+import { getCharacterInfo, fetchCharacterData } from './esi'
+
+const EVE_SSO_BASE_URL = 'https://login.eveonline.com/v2/oauth'
+
+export interface OAuthState {
+  accountCode?: string
+}
+
+export function parseState(state: string | null): OAuthState | null {
+  if (!state) return null
+  
+  try {
+    return JSON.parse(state)
+  } catch {
+    return null
+  }
+}
+
+export async function exchangeCodeForToken(code: string): Promise<{
+  access_token: string
+  refresh_token: string
+  expires_on: string
+}> {
+  const callbackUrl = `${process.env.NEXTAUTH_URL}/api/auth/callback/eveonline`
+  
+  const response = await fetch(`${EVE_SSO_BASE_URL}/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${Buffer.from(
+        `${process.env.EVE_CLIENT_ID}:${process.env.EVE_CLIENT_SECRET}`
+      ).toString('base64')}`,
+    },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: callbackUrl,
+    }),
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(`Token exchange failed: ${text}`)
+  }
+
+  return response.json()
+}
+
+export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
+  userId: string
+  characterId: number
+  ownerHash: string
+  redirectUrl: string
+}> {
+  const tokenData = await exchangeCodeForToken(code)
+  const charInfo = await getCharacterInfo(tokenData.access_token)
+  
+  const characterId = charInfo.character_id
+  const ownerHash = charInfo.character_owner_hash
+  const characterName = charInfo.character_name
+
+  const existingChar = await prisma.character.findUnique({
+    where: { id: characterId },
+    include: { user: true }
+  })
+
+  let userId: string
+
+  if (existingChar) {
+    await prisma.character.update({
+      where: { id: characterId },
+      data: {
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        tokenExpiresAt: new Date(tokenData.expires_on),
+        name: characterName,
+      },
+    })
+    userId = existingChar.userId
+  } else {
+    const accountCode = generateAccountCode()
+    const user = await prisma.user.create({
+      data: {
+        accountCode,
+        name: characterName,
+      },
+    })
+
+    const charData = await fetchCharacterData(characterId, tokenData.access_token)
+
+    await prisma.character.create({
+      data: {
+        id: characterId,
+        name: characterName,
+        ownerHash,
+        userId: user.id,
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        tokenExpiresAt: new Date(tokenData.expires_on),
+        totalSp: charData.total_sp || 0,
+        walletBalance: charData.wallet || 0,
+        location: charData.location,
+        ship: charData.ship,
+        shipTypeId: charData.shipTypeId,
+        isMain: true,
+      },
+    })
+    userId = user.id
+  }
+
+  return {
+    userId,
+    characterId,
+    ownerHash,
+    redirectUrl: '/dashboard',
+  }
+}
+
+export async function handleLinkFlow(
+  code: string,
+  accountCode: string,
+  baseUrl: string
+): Promise<{
+  userId: string
+  characterId: number
+  ownerHash: string
+  redirectUrl: string
+} | { error: string; redirectUrl: string }> {
+  const user = await prisma.user.findUnique({
+    where: { accountCode },
+  })
+
+  if (!user) {
+    return {
+      error: 'invalid_account',
+      redirectUrl: '/login?error=invalid_account',
+    }
+  }
+
+  const tokenData = await exchangeCodeForToken(code)
+  const charInfo = await getCharacterInfo(tokenData.access_token)
+
+  const characterId = charInfo.character_id
+  const ownerHash = charInfo.character_owner_hash
+  const characterName = charInfo.character_name
+
+  const existingChar = await prisma.character.findUnique({
+    where: { id: characterId },
+  })
+
+  if (existingChar && existingChar.userId !== user.id) {
+    return {
+      error: 'character_taken',
+      redirectUrl: '/dashboard?error=character_taken',
+    }
+  }
+
+  if (existingChar) {
+    await prisma.character.update({
+      where: { id: characterId },
+      data: {
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        tokenExpiresAt: new Date(tokenData.expires_on),
+        name: characterName,
+      },
+    })
+  } else {
+    const charData = await fetchCharacterData(characterId, tokenData.access_token)
+
+    await prisma.character.create({
+      data: {
+        id: characterId,
+        name: characterName,
+        ownerHash,
+        userId: user.id,
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        tokenExpiresAt: new Date(tokenData.expires_on),
+        totalSp: charData.total_sp || 0,
+        walletBalance: charData.wallet || 0,
+        location: charData.location,
+        ship: charData.ship,
+        shipTypeId: charData.shipTypeId,
+        isMain: false,
+      },
+    })
+  }
+
+  return {
+    userId: user.id,
+    characterId,
+    ownerHash,
+    redirectUrl: '/dashboard/characters',
+  }
+}

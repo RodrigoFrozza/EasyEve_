@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { signOut, useSession } from 'next-auth/react'
+import { useSession, signOut as clientSignOut } from '@/lib/session-client'
 import { cn } from '@/lib/utils'
 import {
   Home,
@@ -41,6 +41,12 @@ const navigation = [
 export function Sidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
+
+  const handleSignOut = () => {
+    clientSignOut()
+  }
+
+  const characterName = session?.user?.characters?.find(c => c.id === session?.user?.characterId)?.name || 'User'
 
   return (
     <div className="flex h-screen w-64 flex-col bg-eve-dark border-r border-eve-border">
@@ -87,12 +93,12 @@ export function Sidebar() {
           <DropdownMenuTrigger asChild>
             <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-eve-panel hover:text-white">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={session?.user?.image || ''} />
-                <AvatarFallback>U</AvatarFallback>
+                <AvatarImage src={session?.user?.characterId ? `https://images.evetech.net/characters/${session.user.characterId}/portrait?size=32` : ''} />
+                <AvatarFallback>{characterName[0]}</AvatarFallback>
               </Avatar>
               <div className="flex-1 text-left">
                 <p className="text-sm font-medium text-white">
-                  {session?.user?.name || 'User'}
+                  {characterName}
                 </p>
                 <p className="text-xs text-gray-500">
                   {session?.user?.characters?.length || 0} characters
@@ -115,7 +121,7 @@ export function Sidebar() {
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => signOut({ callbackUrl: '/login' })}
+              onClick={handleSignOut}
               className="text-red-400 cursor-pointer"
             >
               <LogOut className="mr-2 h-4 w-4" />

@@ -1,5 +1,4 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,9 +7,15 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Switch } from '@/components/ui/switch'
 import { Settings, User, Bell, Shield, Database, Palette, Link2 } from 'lucide-react'
+import { getSession } from '@/lib/session'
 
 export default async function SettingsPage() {
-  const session = await getServerSession(authOptions)
+  const session = await getSession()
+
+  const user = session?.user ? await prisma.user.findUnique({
+    where: { id: session.user.id },
+    include: { characters: true }
+  }) : null
 
   return (
     <div className="space-y-6">
@@ -32,13 +37,13 @@ export default async function SettingsPage() {
             <CardContent className="space-y-6">
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
-                  <AvatarImage src={session?.user?.image || ''} />
-                  <AvatarFallback>{session?.user?.name?.[0] || 'U'}</AvatarFallback>
+                  <AvatarImage src={session?.user?.characterId ? `https://images.evetech.net/characters/${session.user.characterId}/portrait?size=128` : ''} />
+                  <AvatarFallback>{(user?.characters[0]?.name || 'U')[0]}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-lg font-medium text-white">{session?.user?.name}</h3>
+                  <h3 className="text-lg font-medium text-white">{user?.characters[0]?.name || 'Capsuleer'}</h3>
                   <p className="text-sm text-gray-400">
-                    {session?.user?.characters?.length || 0} linked characters
+                    {user?.characters?.length || 0} linked characters
                   </p>
                 </div>
               </div>
@@ -87,7 +92,7 @@ export default async function SettingsPage() {
                   <p className="font-medium text-white">Active Characters</p>
                   <p className="text-sm text-gray-400">Characters linked to your account</p>
                 </div>
-                <Badge variant="secondary">{session?.user?.characters?.length || 0}</Badge>
+                <Badge variant="secondary">{user?.characters?.length || 0}</Badge>
               </div>
 
               <Separator className="bg-eve-border" />
@@ -95,7 +100,7 @@ export default async function SettingsPage() {
               <div>
                 <h4 className="font-medium text-white mb-2">Linked Characters</h4>
                 <div className="space-y-2">
-                  {session?.user?.characters?.map((char) => (
+                  {user?.characters?.map((char) => (
                     <div key={char.id} className="flex items-center justify-between p-2 rounded-lg bg-eve-dark/50">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">

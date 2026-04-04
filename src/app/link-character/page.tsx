@@ -12,8 +12,7 @@ function LinkCharacterContent() {
     const accountCode = searchParams.get('accountCode')
     
     if (accountCode) {
-      const callbackUrl = encodeURIComponent(`/link-character?accountCode=${accountCode}`)
-      window.location.href = `/api/auth/link?accountCode=${accountCode}&callbackUrl=${callbackUrl}`
+      window.location.href = `/api/auth/signin?link=${accountCode}`
     } else {
       router.push('/login')
     }
