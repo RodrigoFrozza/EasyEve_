@@ -105,17 +105,26 @@ export async function getAccessToken(code: string) {
 }
 
 export async function getCharacterInfo(accessToken: string): Promise<EveCharacter> {
+  console.log('[ESI] Verifying token with ESI...')
+  console.log('[ESI] Token prefix:', accessToken.substring(0, 10) + '...')
+  
   const response = await fetch(`${ESI_BASE_URL}/verify`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
   })
 
+  console.log('[ESI] Verify response status:', response.status)
+  
   if (!response.ok) {
+    const text = await response.text()
+    console.error('[ESI] Verify failed:', response.status, text)
     throw new Error('Failed to verify token')
   }
 
-  return response.json()
+  const data = await response.json()
+  console.log('[ESI] Character verified:', data.character_name)
+  return data
 }
 
 export interface FetchCharacterDataResult {

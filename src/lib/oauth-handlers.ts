@@ -25,13 +25,18 @@ export async function exchangeCodeForToken(code: string): Promise<{
 }> {
   const callbackUrl = `${process.env.NEXTAUTH_URL}/api/auth/callback/eveonline`
   
+  const credentials = Buffer.from(
+    `${process.env.EVE_CLIENT_ID}:${process.env.EVE_CLIENT_SECRET}`
+  ).toString('base64')
+  
+  console.log('[OAuth] Exchanging code for token...')
+  console.log('[OAuth] Callback URL:', callbackUrl)
+  
   const response = await fetch(`${EVE_SSO_BASE_URL}/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': `Basic ${Buffer.from(
-        `${process.env.EVE_CLIENT_ID}:${process.env.EVE_CLIENT_SECRET}`
-      ).toString('base64')}`,
+      'Authorization': `Basic ${credentials}`,
     },
     body: new URLSearchParams({
       grant_type: 'authorization_code',
@@ -42,10 +47,13 @@ export async function exchangeCodeForToken(code: string): Promise<{
 
   if (!response.ok) {
     const text = await response.text()
+    console.error('[OAuth] Token exchange failed:', response.status, text)
     throw new Error(`Token exchange failed: ${text}`)
   }
 
-  return response.json()
+  const data = await response.json()
+  console.log('[OAuth] Token received, access_token length:', data.access_token?.length)
+  return data
 }
 
 export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
