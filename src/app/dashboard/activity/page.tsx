@@ -832,9 +832,44 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
   const [elapsed, setElapsed] = useState('')
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [marketPrices, setMarketPrices] = useState<Record<string, number>>({})
   const typeInfo = ACTIVITY_TYPES.find(t => t.id === activity.type)
 
-  // Accurate Loot Parser Simulation
+  // Fetch Market Prices for Loot without clipboard ISK
+  useEffect(() => {
+    const fetchAppraisal = async () => {
+      const allNames: string[] = []
+      activity.data?.mtuContents?.forEach((mtu: any) => {
+        const lines = (mtu.loot || '').split('\n')
+        lines.forEach((l: string) => {
+          const parts = l.split('\t')
+          if (parts[0] && !l.toLowerCase().includes('isk')) {
+            allNames.push(parts[0].trim())
+          }
+        })
+      })
+
+      if (allNames.length === 0) return
+
+      try {
+        const res = await fetch('/api/market/appraisal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: Array.from(new Set(allNames)) })
+        })
+        if (res.ok) {
+          const { prices } = await res.json()
+          setMarketPrices(prev => ({ ...prev, ...prices }))
+        }
+      } catch (e) {
+        console.error('Market fetch failed:', e)
+      }
+    }
+
+    fetchAppraisal()
+  }, [activity.data?.mtuContents])
+
+  // Accurate Loot Parser (Prioritize Clipboard -> Fallback to Market API)
   const estimatedLootValue = useMemo(() => {
     if (!activity.data?.mtuContents) return 0;
     return activity.data.mtuContents.reduce((total: number, mtu: any) => {
@@ -842,49 +877,50 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
       
       let mtuTotal = 0;
       lines.forEach((line: string) => {
-        // EVE Clipboard is usually: Name\tQuantity\tGroup...
         const parts = line.split('\t');
         let qty = 1;
-        let lineValue = 0;
         
-        // 1. Check for Full Inventory Format (with price at the end)
+        // 1. Precise Clipboard Pricing (Only trust what the EVE client reports)
         const lastPart = parts[parts.length - 1].trim();
-        if (lastPart.endsWith('ISK')) {
-          // Format found: "3.155,63 ISK" or "1.027.276,24 ISK"
-          // We need to handle the locale (dot for thousands, comma for decimals)
-          const cleanPrice = lastPart
-            .replace(' ISK', '')
-            .replace(/\./g, '') // remove thousands separator
-            .replace(',', '.'); // turn decimal comma into dot
+        if (lastPart.toLowerCase().endsWith('isk')) {
+          const rawPrice = lastPart.replace(/[^0-9,.]/g, '');
+          let cleanPrice = '0';
           
-          lineValue = parseFloat(cleanPrice) || 0;
-          mtuTotal += lineValue; // Full format already includes qty in the price column usually, but let's verify
-          // Actually, in the detailed view, the last column is the TOTAL price for that line.
+          if (rawPrice.includes(',') && rawPrice.includes('.')) {
+            const lastDot = rawPrice.lastIndexOf('.');
+            const lastComma = rawPrice.lastIndexOf(',');
+            if (lastComma > lastDot) {
+              cleanPrice = rawPrice.replace(/\./g, '').replace(',', '.');
+            } else {
+              cleanPrice = rawPrice.replace(/,/g, '');
+            }
+          } else if (rawPrice.includes(',')) {
+            if (/,\d{2}$/.test(rawPrice)) {
+              cleanPrice = rawPrice.replace(',', '.');
+            } else {
+              cleanPrice = rawPrice.replace(/,/g, '');
+            }
+          } else {
+            cleanPrice = rawPrice;
+          }
+          
+          mtuTotal += parseFloat(cleanPrice) || 0;
           return;
         }
 
-        // 2. Fallback to Quantity-based Placeholder logic
+        // 2. Market API Fallback (Jita Sell Min)
+        const name = (parts[0] || '').trim().toLowerCase()
         if (parts.length >= 2) {
-          qty = parseInt(parts[1].replace(/,/g, '')) || 1;
-        } else {
-          const match = line.match(/(.+?)\s+(\d+[\d,.]*)$/);
-          if (match) qty = parseInt(match[2].replace(/[,.]/g, '')) || 1;
+          qty = parseInt(parts[1].replace(/[^0-9]/g, '')) || 1;
         }
 
-        let itemValue = 10000;
-        const name = (parts[0] || '').toLowerCase();
-        if (name.includes('tag')) itemValue = 450000;
-        if (name.includes('blueprint')) itemValue = 1000000;
-        if (name.includes('artillery') || name.includes('cannon')) itemValue = 150000;
-        if (name.includes('missile') || name.includes('ammo') || name.includes('torpedo') || name.includes('charge')) itemValue = 100;
-        if (name.includes('scrap')) itemValue = 5000;
-
-        mtuTotal += (itemValue * qty);
+        const marketPrice = marketPrices[name] || 0
+        mtuTotal += (marketPrice * qty);
       });
       
       return total + mtuTotal;
     }, 0);
-  }, [activity.data?.mtuContents]);
+  }, [activity.data?.mtuContents, marketPrices]);
 
   useEffect(() => {
     const timer = setInterval(() => {
