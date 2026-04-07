@@ -4,9 +4,10 @@ RUN apk add --no-cache libc6-compat openssl curl
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
+ENV CI=true
 RUN npm config set maxsockets 1 && \
-    npm ci --no-audit --no-fund --cache /tmp/npm-cache && \
-    rm -rf /tmp/npm-cache
+    npm install --no-audit --no-fund --prefer-offline && \
+    npm cache clean --force
 
 COPY . .
 
