@@ -207,11 +207,33 @@ export default function ActivityTrackerPage() {
   const activeActivities = activities.filter(a => a.status === 'active')
   const completedActivities = activities.filter(a => a.status === 'completed').slice(0, 10)
 
+  const currentTypeInfo = ACTIVITY_TYPES.find(t => t.id === typeParam)
+  
+  const totalQuantity = activities
+    .filter(a => a.type === 'mining')
+    .reduce((sum, a) => sum + (Number(a.data?.quantity) || 0), 0)
+    
+  const totalDuration = activities.reduce((sum, a) => {
+    const end = a.endTime ? new Date(a.endTime).getTime() : new Date().getTime()
+    return sum + (end - new Date(a.startTime).getTime())
+  }, 0)
+
+  const formatDuration = (ms: number) => {
+    const hours = Math.floor(ms / 3600000)
+    const mins = Math.floor((ms % 3600000) / 60000)
+    return `${hours}h ${mins}m`
+  }
+
   return (
     <div className="space-y-6 pb-20">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">Activity Tracker</h1>
+          <div className="flex items-center gap-2 mb-1">
+            {currentTypeInfo && <currentTypeInfo.icon className={cn("h-5 w-5", currentTypeInfo.color)} />}
+            <h1 className="text-3xl font-bold text-white">
+              {currentTypeInfo ? `${currentTypeInfo.label} Tracker` : 'Activity Tracker'}
+            </h1>
+          </div>
           <p className="text-gray-400">Track your fleet activities and income performance.</p>
         </div>
         
@@ -535,6 +557,80 @@ export default function ActivityTrackerPage() {
         </Dialog>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="bg-eve-panel border-eve-border">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-eve-accent/20">
+                <TrendingUp className="h-6 w-6 text-eve-accent" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Total Operations</p>
+                <p className="text-2xl font-bold text-white">{activities.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-eve-panel border-eve-border">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-500/20">
+                <Clock className="h-6 w-6 text-purple-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Total Duration</p>
+                <p className="text-2xl font-bold text-white">{formatDuration(totalDuration)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-eve-panel border-eve-border">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/20">
+                <Users className="h-6 w-6 text-green-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Active Fleets</p>
+                <p className="text-2xl font-bold text-white">{activeActivities.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {typeParam === 'mining' ? (
+          <Card className="bg-eve-panel border-eve-border">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-500/20">
+                  <Gem className="h-6 w-6 text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Total Mined</p>
+                  <p className="text-2xl font-bold text-white">{formatNumber(totalQuantity)} m³</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="bg-eve-panel border-eve-border">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-yellow-500/20">
+                  <DollarSign className="h-6 w-6 text-yellow-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Est. Value</p>
+                  <p className="text-2xl font-bold text-green-400">{formatISK(0)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
       {/* Active Activities Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {activeActivities.length === 0 ? (
@@ -754,7 +850,7 @@ function MTULootField({ value, onChange }: { value: MTULoot[], onChange: (mtus: 
         type="button"
         variant="outline"
         onClick={addMTU}
-        className="border-eve-border text-gray-400 hover:text-white hover:bg-eve-dark"
+        className="w-full border-dashed border-eve-border hover:border-eve-accent text-gray-400 hover:text-eve-accent"
       >
         <Plus className="h-4 w-4 mr-2" />
         Adicionar MTU
@@ -764,7 +860,7 @@ function MTULootField({ value, onChange }: { value: MTULoot[], onChange: (mtus: 
 }
 
 function MiningValuableOres() {
-  const [ores, setOres] = useState<{ name: string; valuePerUnit: number }[]>([])
+  const [ores, setOres] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -790,9 +886,11 @@ function MiningValuableOres() {
       <p className="text-xs text-gray-400 mb-2">Top 10 Minérios mais valiosos:</p>
       <div className="space-y-1">
         {ores.map((ore, index) => (
-          <div key={ore.name} className="flex justify-between text-xs">
+          <div key={ore.id || ore.name} className="flex justify-between text-xs">
             <span className="text-gray-300">{index + 1}. {ore.name}</span>
-            <span className="text-eve-accent font-mono">{ore.valuePerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'ISK' })}/un</span>
+            <span className="text-eve-accent font-mono">
+              {(ore.valuePerUnit || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'ISK' })}/un
+            </span>
           </div>
         ))}
       </div>

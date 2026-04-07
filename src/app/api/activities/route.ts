@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
     const where: any = { userId: user.id }
     if (type) {
-      where.type = type.toUpperCase()
+      where.type = type.toLowerCase()
     }
 
     const activities = await prisma.activity.findMany({

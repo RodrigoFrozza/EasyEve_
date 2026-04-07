@@ -71,9 +71,9 @@ async function main() {
               name: details.name,
               description: details.description,
               groupId: groupId,
-              volume: details.volume || 0,
-              basePrice: prices[typeId] || 0,
-              iconId: details.icon_id || 0,
+              volume: details.volume ?? null,
+              basePrice: prices[typeId] ?? null,
+              iconId: details.icon_id ?? null,
               published: details.published
             },
             create: {
@@ -81,9 +81,9 @@ async function main() {
               name: details.name,
               description: details.description,
               groupId: groupId,
-              volume: details.volume || 0,
-              basePrice: prices[typeId] || 0,
-              iconId: details.icon_id || 0,
+              volume: details.volume ?? null,
+              basePrice: prices[typeId] ?? null,
+              iconId: details.icon_id ?? null,
               published: details.published
             }
           })
