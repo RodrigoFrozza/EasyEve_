@@ -87,4 +87,37 @@ Each activity tracks a dynamic `participants` JSON field:
 
 ---
 
+## 🛰️ 7. Detailed Activity Workflows
+
+This section breaks down how specific game activities are handled within the tracker.
+
+### 7.1. Activity: Ratting (Combat Anomalies)
+The Ratting module is designed to track fleet earnings from NPC bounties and ESS payouts with minimal manual input.
+
+#### A. Configuration & Setup
+- **Contextual SDE Selection**: When a user selects an **NPC Faction** (e.g., Angel Cartel) and **Site Type** (Combat Anomaly), the system triggers a background fetch to `/api/sde/anomalies`.
+- **Filtering Logic**: The API queries the `EveType` table for site names containing keywords like *Hub, Haven, Sanctum, Horde* linked to that faction.
+- **Dynamic Fallback**: If the SDE query returns no results, the UI falls back to a pre-defined static list (`ANOMALIES_BY_FACTION`) to ensure the user is never blocked.
+
+#### B. Fleet Management
+- **Participants**: Supports multiple pilots in a single session.
+- **Fit Association**: Each participant can be assigned a specific `Fit` ID. This allows the system to later calculate the "Value at Risk" or total Fleet DPS/Tank based on those loadouts.
+- **MTU Management**: Users can manage MTUs directly from the active activity card. MTU contents (`mtuContents`) are stored as JSON within the activity record.
+
+#### C. Financial Logic (The "Profit Engine")
+The core value of the Ratting module is its **Automated Profit Tracking**:
+1.  **Sync Trigger**: The "Sync ESI" button initiates a POST to `/api/activities/sync`.
+2.  **Wallet Polling**: The server iterates through all activity participants, fetching their `wallet/journal` via ESI.
+3.  **Time-Boxing**: Only journal entries with a timestamp *after* the activity's `startTime` are considered.
+4.  **Transaction Filters**:
+    - `bounty_payout`: Standard NPC kills (typically net amount).
+    - `ess_payout`: Payouts from the Encounter Surveillance System.
+    - `corporation_tax_payout`: Automatically detected and added back to calculate **Gross Earnings**.
+5.  **Calculations**:
+    - **Gross ISK**: Sum of automated bounties + automated taxes + automated ESS.
+    - **Net ISK**: Total liquid income deposited into character wallets.
+    - **ISK/hr**: `(Total Net ISK / Elapsed Time in Hours)`.
+
+---
+
 *This document is the official technical reference for the RodrigoFrozza/EasyEve_ project.*

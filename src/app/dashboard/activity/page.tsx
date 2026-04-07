@@ -897,15 +897,19 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
           <div className="space-y-3 pt-2 border-t border-eve-border/30">
             <div className="flex justify-between items-end">
               <div>
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Total ISK Trace</p>
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Net ISK Profit</p>
                 <div className="text-lg font-bold text-green-400 font-mono">
                   {formatISK(
                     (activity.data?.automatedBounties || 0) + 
                     (activity.data?.automatedEss || 0) + 
-                    (activity.data?.initialBounties || 0) + 
                     (activity.data?.additionalBounties || 0)
                   )}
                 </div>
+                {activity.data?.automatedTaxes > 0 && (
+                  <p className="text-red-400/80 text-[9px] font-medium font-mono leading-tight">
+                   - {formatISK(activity.data.automatedTaxes)} Corp Tax
+                  </p>
+                )}
               </div>
               <div className="text-right">
                 <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Est. ISK/hr</p>
@@ -916,7 +920,6 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
                     const total = 
                       (activity.data?.automatedBounties || 0) + 
                       (activity.data?.automatedEss || 0) + 
-                      (activity.data?.initialBounties || 0) + 
                       (activity.data?.additionalBounties || 0);
                     return hours > 0.01 ? formatISK(total / hours) : formatISK(0);
                   })()}/hr

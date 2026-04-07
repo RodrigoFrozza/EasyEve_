@@ -33,6 +33,7 @@ export async function POST(
 
     let totalBounties = 0
     let totalEss = 0
+    let totalTaxes = 0
     const participantEarnings: Record<number, number> = {}
 
     // 2. Loop through participants and fetch their wallet journals
@@ -45,6 +46,7 @@ export async function POST(
         if (Array.isArray(journal)) {
           let charBounty = 0
           let charEss = 0
+          let charTaxes = 0
 
           journal.forEach((entry: any) => {
             const entryDate = new Date(entry.date)
@@ -54,6 +56,9 @@ export async function POST(
                 charBounty += entry.amount || 0
               } else if (entry.ref_type === 'ess_payout') {
                 charEss += entry.amount || 0
+              } else if (entry.ref_type === 'corporation_tax_payout') {
+                // Tax entries are usually negative values in the journal
+                charTaxes += Math.abs(entry.amount || 0)
               }
             }
           })
@@ -61,6 +66,7 @@ export async function POST(
           participantEarnings[charId] = charBounty + charEss
           totalBounties += charBounty
           totalEss += charEss
+          totalTaxes += charTaxes
         }
       } catch (err) {
         console.error(`Failed to sync earnings for character ${charId}:`, err)
@@ -72,6 +78,8 @@ export async function POST(
       ...(activity.data as any || {}),
       automatedBounties: totalBounties,
       automatedEss: totalEss,
+      automatedTaxes: totalTaxes,
+      grossBounties: totalBounties + totalTaxes, // Reconstruct gross before tax
       participantEarnings,
       lastSyncAt: new Date().toISOString()
     }
