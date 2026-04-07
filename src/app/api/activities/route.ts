@@ -2,16 +2,23 @@ import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await getCurrentUser()
+    const { searchParams } = new URL(request.url)
+    const type = searchParams.get('type')
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const where: any = { userId: user.id }
+    if (type) {
+      where.type = type.toUpperCase()
+    }
+
     const activities = await prisma.activity.findMany({
-      where: { userId: user.id },
+      where,
       orderBy: { startTime: 'desc' },
       include: {
         item: true // Include EveType details (ship, etc.)

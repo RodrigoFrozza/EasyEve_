@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useSearchParams } from 'next/navigation'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -39,14 +40,16 @@ import {
   MapPin,
   Trash2,
   Plus,
-  Minus
+  Minus,
+  TrendingUp,
+  DollarSign
 } from 'lucide-react'
 import { useActivityStore, type Activity, type ActivityParticipant } from '@/lib/stores/activity-store'
 import { useSession } from '@/lib/session-client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { cn } from '@/lib/utils'
+import { cn, formatISK, formatNumber } from '@/lib/utils'
 
-// Activity Options from the Plan
+// Activity Options
 const ACTIVITY_TYPES = [
   { id: 'mining', label: 'Mining', icon: Gem, color: 'text-blue-400', bg: 'bg-blue-500/10' },
   { id: 'ratting', label: 'Ratting', icon: Crosshair, color: 'text-red-400', bg: 'bg-red-500/10' },
@@ -72,21 +75,32 @@ const DED_LEVELS = ['1/10', '2/10', '3/10', '4/10', '5/10', '6/10', '7/10', '8/1
 
 export default function ActivityTrackerPage() {
   const { data: session } = useSession()
+  const searchParams = useSearchParams()
+  const typeParam = searchParams.get('type')?.toLowerCase()
+  
   const { activities, setActivities, addActivity, updateActivity, removeActivity, isCharacterBusy } = useActivityStore()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   
-  // Form State
+  // Form State - Default to type from URL if present
   const [newActivity, setNewActivity] = useState<Partial<Activity>>({
-    type: 'mining',
+    type: (typeParam as any) || 'mining',
     status: 'active',
     participants: [],
-    data: {} // Novo campo flexível
+    data: {} 
   })
+
+  // Sincronizar o formulário quando a URL mudar
+  useEffect(() => {
+    if (typeParam) {
+      setNewActivity(prev => ({ ...prev, type: typeParam as any }))
+    }
+  }, [typeParam])
 
   // Fetch activities on load
   useEffect(() => {
-    fetch('/api/activities')
+    const url = typeParam ? `/api/activities?type=${typeParam}` : '/api/activities'
+    fetch(url)
       .then(res => res.json())
       .then(data => {
         setActivities(data)
@@ -96,7 +110,7 @@ export default function ActivityTrackerPage() {
         console.error('Failed to fetch activities:', err)
         setIsLoading(false)
       })
-  }, [setActivities])
+  }, [setActivities, typeParam])
 
   const handleStartActivity = async () => {
     if (!newActivity.type || !newActivity.participants?.length) return
@@ -258,6 +272,31 @@ export default function ActivityTrackerPage() {
                         <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Type" /></SelectTrigger>
                         <SelectContent><SelectContentList items={MINING_TYPES} /></SelectContent>
                       </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Primary Ore (Optional)</Label>
+                      <Select onValueChange={(v) => updateData({ oreType: v })}>
+                        <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Ore" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Veldspar">Veldspar</SelectItem>
+                          <SelectItem value="Scordite">Scordite</SelectItem>
+                          <SelectItem value="Pyroxeres">Pyroxeres</SelectItem>
+                          <SelectItem value="Plagioclase">Plagioclase</SelectItem>
+                          <SelectItem value="Omber">Omber</SelectItem>
+                          <SelectItem value="Kernite">Kernite</SelectItem>
+                          <SelectItem value="Gneiss">Gneiss</SelectItem>
+                          <SelectItem value="Mercoxit">Mercoxit</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Initial Quantity (m³)</Label>
+                      <Input 
+                        type="number"
+                        placeholder="0"
+                        onChange={(e) => updateData({ quantity: Number(e.target.value) })}
+                        className="bg-eve-dark border-eve-border"
+                      />
                     </div>
                     <div className="space-y-2 col-span-2">
                       <Label>Melhores Minérios para Minerar</Label>
