@@ -47,7 +47,10 @@ import {
   DollarSign,
   Star,
   Info,
-  Edit2
+  Edit2,
+  Loader2,
+  CheckCircle,
+  XCircle
 } from 'lucide-react'
 import { useActivityStore, type Activity, type ActivityParticipant } from '@/lib/stores/activity-store'
 import { useSession } from '@/lib/session-client'
@@ -827,6 +830,8 @@ export default function ActivityTrackerPage() {
 
 function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => void }) {
   const [elapsed, setElapsed] = useState('')
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const typeInfo = ACTIVITY_TYPES.find(t => t.id === activity.type)
 
   // Accurate Loot Parser Simulation
@@ -1134,17 +1139,39 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
               <Button 
                 size="sm" 
                 variant="outline" 
-                className="bg-eve-accent/20 border-eve-accent/30 text-[10px] h-8 hover:bg-eve-accent hover:text-black"
+                disabled={isSyncing}
+                className={cn(
+                  "text-[10px] h-8 transition-all duration-300",
+                  syncStatus === 'success' ? "bg-green-500/20 border-green-500/50 text-green-400" :
+                  syncStatus === 'error' ? "bg-red-500/20 border-red-500/50 text-red-400" :
+                  "bg-eve-accent/20 border-eve-accent/30 text-white hover:bg-eve-accent hover:text-black"
+                )}
                 onClick={async () => {
-                  const res = await fetch(`/api/activities/sync?id=${activity.id}`, { method: 'POST' });
-                  if (res.ok) {
-                    const updated = await res.json();
-                    const store = useActivityStore.getState();
-                    store.updateActivity(activity.id, updated);
+                  setIsSyncing(true)
+                  setSyncStatus('idle')
+                  try {
+                    const res = await fetch(`/api/activities/sync?id=${activity.id}`, { method: 'POST' });
+                    if (res.ok) {
+                      const updated = await res.json();
+                      const store = useActivityStore.getState();
+                      store.updateActivity(activity.id, updated);
+                      setSyncStatus('success')
+                    } else {
+                      setSyncStatus('error')
+                    }
+                  } catch (e) {
+                    setSyncStatus('error')
+                  } finally {
+                    setIsSyncing(false)
+                    setTimeout(() => setSyncStatus('idle'), 3000)
                   }
                 }}
               >
-                <Zap className="h-3 w-3 mr-1" /> Sync
+                {isSyncing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> :
+                 syncStatus === 'success' ? <CheckCircle className="h-3 w-3 mr-1" /> :
+                 syncStatus === 'error' ? <XCircle className="h-3 w-3 mr-1" /> :
+                 <Zap className="h-3 w-3 mr-1 text-eve-accent" />}
+                {isSyncing ? 'Syncing...' : syncStatus === 'success' ? 'Updated' : syncStatus === 'error' ? 'Failed' : 'Sync ESI'}
               </Button>
               
               <Dialog>

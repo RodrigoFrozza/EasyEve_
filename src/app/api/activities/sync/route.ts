@@ -38,6 +38,9 @@ export async function POST(
     const startTime = new Date(startTimeManual.getTime() - (10 * 60 * 1000))
     const endTime = activity.endTime ? new Date(activity.endTime) : new Date()
 
+    console.log(`[SYNC] --- START SYNC for Activity ID: ${activityId} ---`)
+    console.log(`[SYNC] Window (UTC): ${startTime.toISOString()} to ${endTime.toISOString()}`)
+
     let totalBounties = 0
     let totalEss = 0
     let totalTaxes = 0
@@ -53,6 +56,7 @@ export async function POST(
         const journal = await getCharacterWalletJournal(charId)
         
         if (Array.isArray(journal)) {
+          console.log(`[SYNC] ${charName}: Fetched ${journal.length} entries from ESI.`)
           let charBounty = 0
           let charEss = 0
           let charTaxes = 0
@@ -61,17 +65,21 @@ export async function POST(
             const entryDate = new Date(entry.date)
             // Filter by date range and reference types
             if (entryDate >= startTime && entryDate <= endTime) {
-              const amount = entry.amount || 0
-              if (entry.ref_type === 'bounty_payout') {
+              const amount = Math.abs(entry.amount || 0)
+              
+              // EVE Journal Reference Types (mapping to app logic)
+              if (entry.ref_type === 'bounty_payout' || entry.ref_type === 'bounty_prizes') {
+                console.log(`[SYNC]   [MATCH] Bounty: ${amount} ISK for ${charName} at ${entry.date}`)
                 charBounty += amount
                 logs.push({ date: entry.date, amount, type: 'bounty', charName })
-              } else if (entry.ref_type === 'ess_payout') {
+              } else if (entry.ref_type === 'ess_payout' || entry.ref_type === 'ess_escrow_transfer') {
+                console.log(`[SYNC]   [MATCH] ESS: ${amount} ISK for ${charName} at ${entry.date}`)
                 charEss += amount
                 logs.push({ date: entry.date, amount, type: 'ess', charName })
-              } else if (entry.ref_type === 'corporation_tax_payout') {
-                const taxAmount = Math.abs(amount)
-                charTaxes += taxAmount
-                logs.push({ date: entry.date, amount: taxAmount, type: 'tax', charName })
+              } else if (entry.ref_type === 'corporation_tax_payout' || entry.ref_type === 'corporation_tax_payouts') {
+                console.log(`[SYNC]   [MATCH] Tax: ${amount} ISK for ${charName} at ${entry.date}`)
+                charTaxes += amount
+                logs.push({ date: entry.date, amount, type: 'tax', charName })
               }
             }
           })
@@ -82,9 +90,11 @@ export async function POST(
           totalTaxes += charTaxes
         }
       } catch (err) {
-        console.error(`Failed to sync earnings for character ${charId}:`, err)
+        console.error(`[SYNC] ERROR: Failed to sync earnings for character ${charName} (${charId}):`, err)
       }
     }
+
+    console.log(`[SYNC] --- END SYNC Summary: Bounty: ${totalBounties} | ESS: ${totalEss} | Tax: ${totalTaxes} | Count: ${logs.length} ---`)
 
     // Sort logs by date descending
     logs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
