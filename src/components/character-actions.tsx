@@ -2,8 +2,16 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Plus, RefreshCw, Trash2, Copy, Check, Star } from 'lucide-react'
+import { Plus, RefreshCw, Trash2, Copy, Check, Star, Shield, List } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 
 interface CharacterActionsProps {
   characterId?: number
@@ -159,3 +167,59 @@ export function CopyInviteLink({ accountCode }: { accountCode: string }) {
     </Button>
   )
 }
+
+export function ReloginButton({ accountCode }: { accountCode: string }) {
+  const router = useRouter()
+  
+  function handleRelogin() {
+    router.push(`/api/auth/signin?link=${accountCode}`)
+  }
+  
+  return (
+    <Button 
+      variant="outline" 
+      size="sm" 
+      className="border-eve-accent/50 text-eve-accent hover:bg-eve-accent/10"
+      onClick={handleRelogin}
+    >
+      <Shield className="mr-2 h-4 w-4" />
+      Re-Authorize
+    </Button>
+  )
+}
+
+export function CharacterScopesDialog({ scopes }: { scopes: string[] }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="border-eve-border">
+          <List className="mr-2 h-4 w-4" />
+          Scopes
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px] bg-eve-panel border-eve-border text-white">
+        <DialogHeader>
+          <DialogTitle>Active Scopes</DialogTitle>
+          <DialogDescription className="text-gray-400">
+            These are the EVE API permissions currently granted to this character. If a feature is not working, you may need to re-authorize.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-2 py-4 max-h-[60vh] overflow-y-auto pr-2">
+          {scopes.length === 0 ? (
+            <p className="text-sm text-gray-500">No active scopes found. Please re-authorize.</p>
+          ) : (
+            scopes.map((scope, index) => (
+              <div key={index} className="flex items-center space-x-2 bg-eve-dark/50 p-2 rounded border border-eve-border/50 text-sm font-mono break-all">
+                <Check className="h-4 w-4 text-green-400 shrink-0" />
+                <span>{scope}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+

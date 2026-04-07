@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatSP, formatISK, timeAgo } from '@/lib/utils'
 import { MapPin, Ship, Zap, Wallet, Plus, Users } from 'lucide-react'
-import { LinkCharacterButton, RefreshCharacterButton, RemoveCharacterButton, SetMainButton, CopyInviteLink } from '@/components/character-actions'
+import { LinkCharacterButton, RefreshCharacterButton, RemoveCharacterButton, SetMainButton, CopyInviteLink, CharacterScopesDialog, ReloginButton } from '@/components/character-actions'
 import { getSession } from '@/lib/session'
 
 interface CharacterData {
@@ -17,6 +17,7 @@ interface CharacterData {
   ship: string | null
   lastFetchedAt: Date | null
   isMain: boolean
+  scopes: string[]
 }
 
 interface PrismaCharacter {
@@ -28,6 +29,19 @@ interface PrismaCharacter {
   ship: string | null
   lastFetchedAt: Date | null
   isMain: boolean
+  accessToken: string | null
+}
+
+function parseScopesFromJwt(token: string | null): string[] {
+  if (!token) return []
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
+    if (Array.isArray(payload.scp)) return payload.scp
+    if (typeof payload.scp === 'string') return [payload.scp]
+    return []
+  } catch (error) {
+    return []
+  }
 }
 
 export default async function CharactersPage() {
@@ -55,6 +69,7 @@ export default async function CharactersPage() {
     ship: c.ship,
     lastFetchedAt: c.lastFetchedAt,
     isMain: c.isMain,
+    scopes: parseScopesFromJwt(c.accessToken),
   }))
 
   const mainCharacter = characters.find(c => c.isMain) || characters[0]
@@ -147,7 +162,7 @@ export default async function CharactersPage() {
         <TabsContent value="all" className="mt-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {characters.map((char) => (
-              <CharacterCard key={char.id} character={char} />
+              <CharacterCard key={char.id} character={char} accountCode={user?.accountCode || ''} />
             ))}
           </div>
         </TabsContent>
@@ -155,7 +170,7 @@ export default async function CharactersPage() {
         <TabsContent value="main" className="mt-6">
           {mainCharacter && (
             <div className="max-w-md">
-              <CharacterCard character={mainCharacter} detailed />
+              <CharacterCard character={mainCharacter} accountCode={user?.accountCode || ''} detailed />
             </div>
           )}
         </TabsContent>
@@ -179,7 +194,7 @@ export default async function CharactersPage() {
   )
 }
 
-function CharacterCard({ character, detailed = false }: { character: CharacterData, detailed?: boolean }) {
+function CharacterCard({ character, accountCode, detailed = false }: { character: CharacterData, accountCode: string, detailed?: boolean }) {
   return (
     <Card className={`bg-eve-panel border-eve-border ${character.isMain ? 'ring-2 ring-eve-accent' : ''}`}>
       <CardHeader className="pb-2">
@@ -235,9 +250,11 @@ function CharacterCard({ character, detailed = false }: { character: CharacterDa
           </div>
         )}
 
-        <div className="flex gap-2 pt-2">
+        <div className="flex flex-wrap gap-2 pt-2">
           <SetMainButton characterId={character.id} isMain={character.isMain} />
           <RefreshCharacterButton characterId={character.id} />
+          <CharacterScopesDialog scopes={character.scopes} />
+          <ReloginButton accountCode={accountCode} />
           {!character.isMain && (
             <RemoveCharacterButton characterId={character.id} />
           )}
