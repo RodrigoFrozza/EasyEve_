@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { parseState, handleLoginFlow, handleLinkFlow } from '@/lib/oauth-handlers'
-import { createJWT, createSessionCookie } from '@/lib/auth-jwt'
+import { createJWT, createSessionCookie, verifyJWT } from '@/lib/auth-jwt'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   const baseUrl = process.env.NEXTAUTH_URL || 'https://easyeve.cloud'
@@ -28,12 +29,36 @@ export async function GET(request: NextRequest) {
   }
 
   const state = parseState(stateParam)
+  console.log('[OAuth Callback] Raw state param:', stateParam)
+  console.log('[OAuth Callback] Parsed state:', JSON.stringify(state))
+
+  // If no accountCode in state, check if the user has an existing session
+  // so we can auto-link the new character to their account
+  let accountCode = state?.accountCode
+  if (!accountCode) {
+    const sessionToken = request.cookies.get('session')?.value
+    if (sessionToken) {
+      const payload = await verifyJWT(sessionToken)
+      if (payload?.userId) {
+        const existingUser = await prisma.user.findUnique({
+          where: { id: payload.userId },
+          select: { accountCode: true },
+        })
+        if (existingUser?.accountCode) {
+          accountCode = existingUser.accountCode
+          console.log('[OAuth Callback] Auto-detected session, using accountCode:', accountCode)
+        }
+      }
+    }
+  }
+
+  console.log('[OAuth Callback] Flow:', accountCode ? 'LINK' : 'LOGIN')
 
   try {
     let result: { userId: string; characterId: number; ownerHash: string; redirectUrl: string }
 
-    if (state?.accountCode) {
-      const linkResult = await handleLinkFlow(code, state.accountCode, baseUrl)
+    if (accountCode) {
+      const linkResult = await handleLinkFlow(code, accountCode, baseUrl)
       
       if ('error' in linkResult) {
         return NextResponse.redirect(new URL(linkResult.redirectUrl, baseUrl))

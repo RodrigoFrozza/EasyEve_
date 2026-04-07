@@ -156,12 +156,25 @@ export async function handleLinkFlow(
 
   const existingChar = await prisma.character.findUnique({
     where: { id: characterId },
+    include: { user: { include: { _count: { select: { characters: true } } } } },
   })
 
   if (existingChar && existingChar.userId !== user.id) {
-    return {
-      error: 'character_taken',
-      redirectUrl: '/dashboard?error=character_taken',
+    // If the character is under a "ghost" user (only 1 character, created by wrong login flow),
+    // migrate it to the correct user and clean up the orphan user
+    const otherUser = existingChar.user
+    if (otherUser._count.characters === 1) {
+      console.log(`[OAuth Link] Migrating character ${characterId} from orphan user ${otherUser.id} to user ${user.id}`)
+      await prisma.character.update({
+        where: { id: characterId },
+        data: { userId: user.id, isMain: false },
+      })
+      await prisma.user.delete({ where: { id: otherUser.id } })
+    } else {
+      return {
+        error: 'character_taken',
+        redirectUrl: '/dashboard?error=character_taken',
+      }
     }
   }
 
