@@ -12,8 +12,6 @@ import {
   Settings,
   LogOut,
   ChevronDown,
-  Gem,
-  Crosshair,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -29,8 +27,6 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Characters', href: '/dashboard/characters', icon: Users },
   { name: 'Activity Tracker', href: '/dashboard/activity', icon: Target },
-  { name: 'Mining', href: '/dashboard/activity?type=MINING', icon: Gem },
-  { name: 'Ratting', href: '/dashboard/activity?type=RATTING', icon: Crosshair },
   { name: 'Fits', href: '/dashboard/fits', icon: Ship },
 ]
 

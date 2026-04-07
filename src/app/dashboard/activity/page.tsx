@@ -24,8 +24,11 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
+  Box,
+  Plus,
+  DollarSign,
   Play, 
-  StopCircle, 
+  StopCircle,
   Users, 
   Clock, 
   Target, 
@@ -64,7 +67,15 @@ const REGIONS = ['Minmatar', 'Gallente', 'Caldari', 'Amarr', 'Jove', 'Wormhole']
 const SPACE_TYPES = ['Highsec', 'Lowsec', 'Nullsec', 'Wormhole']
 const MINING_TYPES = ['Ore (Minério)', 'Ice (Gelo)', 'Gas']
 const NPC_FACTIONS = ['Angel Cartel', 'Blood Raider', 'Guristas', 'Sansha', 'Serpentis', 'Rogue Drones']
-const SITE_TYPES_RATTING = ['Belt Ratting', 'Combat Anomaly', 'Cosmic Signature', 'DED Complex']
+const SITE_TYPES_RATTING = ['Combat Anomaly', 'Cosmic Signature', 'DED Complex', 'Belt Ratting']
+const ANOMALIES_BY_FACTION: Record<string, string[]> = {
+  'Angel Cartel': ['Angel Hub', 'Angel Haven (Rock)', 'Angel Haven (Gas)', 'Angel Sanctum', 'Angel Forsaken Hub', 'Angel Forlorn Hub', 'Angel Rally Point'],
+  'Blood Raider': ['Blood Raider Hub', 'Blood Raider Haven', 'Blood Raider Sanctum', 'Blood Raider Forsaken Hub', 'Blood Raider Forlorn Hub'],
+  'Guristas': ['Guristas Hub', 'Guristas Haven', 'Guristas Sanctum', 'Guristas Forsaken Hub', 'Guristas Forlorn Hub'],
+  'Sansha': ['Sansha Hub', 'Sansha Haven', 'Sansha Sanctum', 'Sansha Forsaken Hub', 'Sansha Forlorn Hub'],
+  'Serpentis': ['Serpentis Hub', 'Serpentis Haven', 'Serpentis Sanctum', 'Serpentis Forsaken Hub', 'Serpentis Forlorn Hub'],
+  'Rogue Drones': ['Drone Patrol', 'Drone Horde', 'Drone Squad', 'Hive']
+}
 const ABYSSAL_TIERS = ['T0 (Tranquil)', 'T1 (Calm)', 'T2 (Agitated)', 'T3 (Fierce)', 'T4 (Raging)', 'T5 (Chaotic)', 'T6 (Cataclysmic)']
 const ABYSSAL_WEATHER = ['Electrical', 'Dark', 'Exotic', 'Firestorm', 'Gamma']
 const SHIP_SIZES = ['Frigate', 'Destroyer', 'Cruiser']
@@ -81,6 +92,17 @@ export default function ActivityTrackerPage() {
   const { activities, setActivities, addActivity, updateActivity, removeActivity, isCharacterBusy } = useActivityStore()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [userFits, setUserFits] = useState<any[]>([])
+
+  // Fetch fits on load
+  useEffect(() => {
+    fetch('/api/fits')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setUserFits(data)
+      })
+      .catch(err => console.error('Failed to fetch fits:', err))
+  }, [])
   
   // Form State - Default to type from URL if present
   const [newActivity, setNewActivity] = useState<Partial<Activity>>({
@@ -188,6 +210,21 @@ export default function ActivityTrackerPage() {
     }
   }
 
+  const [anomalies, setAnomalies] = useState<any[]>([])
+
+  // Fetch anomalies when faction changes
+  useEffect(() => {
+    if (newActivity.type === 'ratting' && newActivity.data?.npcFaction) {
+      const faction = newActivity.data.npcFaction.split(' ')[0] // e.g. "Angel" from "Angel Cartel"
+      fetch(`/api/sde/anomalies?faction=${faction}`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) setAnomalies(data)
+        })
+        .catch(err => console.error('Failed to fetch anomalies:', err))
+    }
+  }, [newActivity.data?.npcFaction, newActivity.type])
+
   const toggleParticipant = (characterId: number, characterName: string) => {
     const current = newActivity.participants || []
     const exists = current.find(p => p.characterId === characterId)
@@ -203,6 +240,16 @@ export default function ActivityTrackerPage() {
         participants: [...current, { characterId, characterName }]
       })
     }
+  }
+
+  const setParticipantFit = (characterId: number, fitId: string) => {
+    const current = newActivity.participants || []
+    setNewActivity({
+      ...newActivity,
+      participants: current.map(p => 
+        p.characterId === characterId ? { ...p, fit: fitId } : p
+      )
+    })
   }
 
   // Helper para atualizar campos dentro do data
@@ -338,6 +385,35 @@ export default function ActivityTrackerPage() {
 
                 {newActivity.type === 'ratting' && (
                   <>
+                    <div className="space-y-2 col-span-2">
+                      <Label>Standard Space Type</Label>
+                      <Select onValueChange={(v) => updateData({ spaceType: v })}>
+                        <SelectTrigger className="bg-eve-dark border-eve-border">
+                          <SelectValue placeholder="Select Space Type" />
+                        </SelectTrigger>
+                        <SelectContent><SelectContentList items={SPACE_TYPES} /></SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label>Ship Hull</Label>
+                      <Select onValueChange={(v) => updateData({ shipHull: v })}>
+                        <SelectTrigger className="bg-eve-dark border-eve-border">
+                          <SelectValue placeholder="Select Ship Used" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Gila">Gila</SelectItem>
+                          <SelectItem value="Ishtar">Ishtar</SelectItem>
+                          <SelectItem value="Praxis">Praxis</SelectItem>
+                          <SelectItem value="Rattlesnake">Rattlesnake</SelectItem>
+                          <SelectItem value="Vargur">Vargur</SelectItem>
+                          <SelectItem value="Paladin">Paladin</SelectItem>
+                          <SelectItem value="Kronos">Kronos</SelectItem>
+                          <SelectItem value="Golem">Golem</SelectItem>
+                          <SelectItem value="Carrier">Carrier</SelectItem>
+                          <SelectItem value="Supercarrier">Supercarrier</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div className="space-y-2">
                       <Label>NPC Faction</Label>
                       <Select onValueChange={(v) => updateData({ npcFaction: v })}>
@@ -352,19 +428,39 @@ export default function ActivityTrackerPage() {
                         <SelectContent><SelectContentList items={SITE_TYPES_RATTING} /></SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2 col-span-2">
-                      <Label>Site Name (Optional)</Label>
+                    
+                    {newActivity.data?.siteType === 'Combat Anomaly' && (
+                      <div className="space-y-2 col-span-2">
+                        <Label>Anomalies (SDE List: {newActivity.data?.npcFaction || 'Select Faction first'})</Label>
+                        <Select onValueChange={(v) => updateData({ siteName: v })}>
+                          <SelectTrigger className="bg-eve-dark border-eve-border">
+                            <SelectValue placeholder="Select Specific Anomaly" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {anomalies.map((a: any) => (
+                              <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label>Initial Bounties (ISK)</Label>
                       <Input 
-                        placeholder="e.g. Haven, Forsaken Hub" 
-                        onBlur={(e) => updateData({ siteName: e.target.value })}
+                        type="number"
+                        placeholder="0"
+                        onChange={(e) => updateData({ initialBounties: Number(e.target.value) })}
                         className="bg-eve-dark border-eve-border"
                       />
                     </div>
-                    <div className="space-y-2 col-span-2">
-                      <Label>MTUs Loot</Label>
-                      <MTULootField 
-                        value={newActivity.data?.mtuContents || []} 
-                        onChange={(mtus) => updateData({ mtuContents: mtus })} 
+                    <div className="space-y-2">
+                      <Label>ESS Payouts (ISK)</Label>
+                      <Input 
+                        type="number"
+                        placeholder="0"
+                        onChange={(e) => updateData({ essPayout: Number(e.target.value) })}
+                        className="bg-eve-dark border-eve-border"
                       />
                     </div>
                   </>
@@ -513,33 +609,56 @@ export default function ActivityTrackerPage() {
                   <Users className="h-4 w-4" />
                   Select Participants
                 </Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-3">
                   {session?.user?.characters?.map((char) => {
                     const busy = isCharacterBusy(char.id)
-                    const selected = newActivity.participants?.some(p => p.characterId === char.id)
+                    const participant = newActivity.participants?.find(p => p.characterId === char.id)
+                    const selected = !!participant
                     
                     return (
-                      <button
-                        key={char.id}
-                        disabled={busy}
-                        onClick={() => toggleParticipant(char.id, char.name)}
-                        className={cn(
-                          "flex items-center gap-3 p-2 rounded-md border transition-all text-left",
-                          selected 
-                            ? "border-eve-accent bg-eve-accent/10" 
-                            : "border-eve-border bg-eve-dark/50 hover:bg-eve-dark",
-                          busy && "opacity-50 cursor-not-allowed border-red-500/30"
+                      <div key={char.id} className="space-y-2">
+                        <button
+                          disabled={busy}
+                          onClick={() => toggleParticipant(char.id, char.name)}
+                          className={cn(
+                            "w-full flex items-center gap-3 p-2 rounded-md border transition-all text-left",
+                            selected 
+                              ? "border-eve-accent bg-eve-accent/10" 
+                              : "border-eve-border bg-eve-dark/50 hover:bg-eve-dark",
+                            busy && "opacity-50 cursor-not-allowed border-red-500/30"
+                          )}
+                        >
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={`https://images.evetech.net/characters/${char.id}/portrait?size=64`} />
+                            <AvatarFallback>{char.name[0]}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{char.name}</p>
+                            {busy && <span className="text-[10px] text-red-500 font-bold uppercase">Busy</span>}
+                          </div>
+                        </button>
+                        
+                        {selected && (
+                          <div className="pl-11 pr-2 pb-1">
+                            <Select 
+                              value={participant.fit || ''} 
+                              onValueChange={(v) => setParticipantFit(char.id, v)}
+                            >
+                              <SelectTrigger className="h-8 text-xs bg-eve-dark border-eve-border">
+                                <SelectValue placeholder="Select Fit / Loadout" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {userFits.map(fit => (
+                                  <SelectItem key={fit.id} value={fit.id}>{fit.name} ({fit.shipName})</SelectItem>
+                                ))}
+                                {userFits.length === 0 && (
+                                  <div className="p-2 text-[10px] text-gray-500 italic">No fits found. Create one in the Ship Fits tool.</div>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         )}
-                      >
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={`https://images.evetech.net/characters/${char.id}/portrait?size=64`} />
-                          <AvatarFallback>{char.name[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{char.name}</p>
-                          {busy && <span className="text-[10px] text-red-500 font-bold uppercase">Busy</span>}
-                        </div>
-                      </button>
+                      </div>
                     )
                   })}
                 </div>
@@ -631,8 +750,15 @@ export default function ActivityTrackerPage() {
                   <DollarSign className="h-6 w-6 text-yellow-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-400">Est. Value</p>
-                  <p className="text-2xl font-bold text-green-400">{formatISK(0)}</p>
+                  <p className="text-sm text-gray-400">Est. Value (Active)</p>
+                  <p className="text-2xl font-bold text-green-400">
+                    {formatISK(activeActivities.reduce((sum, a) => {
+                      if (a.type === 'ratting') {
+                        return sum + (a.data?.initialBounties || 0) + (a.data?.essPayout || 0) + (a.data?.additionalBounties || 0);
+                      }
+                      return sum;
+                    }, 0))}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -782,7 +908,7 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
             <p className="text-gray-500 text-xs uppercase font-bold tracking-wider">Detail</p>
             <div className="flex items-center gap-2 text-white">
               <Zap className="h-3 w-3 text-gray-400" />
-              {activity.data?.tier || activity.data?.siteType || activity.data?.miningType || 'N/A'}
+              {activity.data?.shipHull || activity.data?.tier || activity.data?.siteType || activity.data?.miningType || 'N/A'}
             </div>
           </div>
         </div>
@@ -798,9 +924,120 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
                 </Avatar>
               </div>
             ))}
-          </div>
         </div>
+        {activity.type === 'ratting' && (
+          <div className="space-y-3 pt-2 border-t border-eve-border/30">
+            <div className="flex justify-between items-end">
+              <div>
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Total ISK Trace</p>
+                <div className="text-lg font-bold text-green-400 font-mono">
+                  {formatISK(
+                    (activity.data?.automatedBounties || 0) + 
+                    (activity.data?.automatedEss || 0) + 
+                    (activity.data?.initialBounties || 0) + 
+                    (activity.data?.additionalBounties || 0)
+                  )}
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Est. ISK/hr</p>
+                <div className="text-sm font-medium text-eve-accent font-mono">
+                  {(() => {
+                    const diff = new Date().getTime() - new Date(activity.startTime).getTime();
+                    const hours = diff / 3600000;
+                    const total = 
+                      (activity.data?.automatedBounties || 0) + 
+                      (activity.data?.automatedEss || 0) + 
+                      (activity.data?.initialBounties || 0) + 
+                      (activity.data?.additionalBounties || 0);
+                    return hours > 0.01 ? formatISK(total / hours) : formatISK(0);
+                  })()}/hr
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="bg-eve-accent/20 border-eve-accent/30 text-[10px] h-8 hover:bg-eve-accent hover:text-black"
+                onClick={async () => {
+                  const res = await fetch(`/api/activities/sync?id=${activity.id}`, { method: 'POST' });
+                  if (res.ok) {
+                    const updated = await res.json();
+                    const store = useActivityStore.getState();
+                    store.updateActivity(activity.id, updated);
+                  }
+                }}
+              >
+                <Zap className="h-3 w-3 mr-1" /> Sync ESI
+              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="bg-eve-dark/30 border-eve-border text-[10px] h-8 hover:bg-white hover:text-black">
+                    <Plus className="h-3 w-3 mr-1" /> Manual Tick
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-eve-panel border-eve-border sm:max-w-[300px]">
+                  <DialogHeader>
+                    <DialogTitle className="text-sm">Add Income Update</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                      <Label className="text-xs">Incoming ISK</Label>
+                      <Input 
+                        id="update-amount"
+                        type="number" 
+                        placeholder="0"
+                        className="bg-eve-dark border-eve-border h-8 text-sm"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const val = Number((e.currentTarget as HTMLInputElement).value);
+                            const store = useActivityStore.getState();
+                            const currentData = activity.data || {};
+                            store.updateActivity(activity.id, {
+                              data: {
+                                ...currentData,
+                                additionalBounties: (currentData.additionalBounties || 0) + val
+                              }
+                            });
+                            (e.currentTarget as HTMLInputElement).value = '';
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+            
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline" className="w-full bg-eve-dark/30 border-eve-border text-[10px] h-8 hover:bg-white hover:text-black">
+                  <Box className="h-3 w-3 mr-1" /> Managed MTUs
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-eve-panel border-eve-border sm:max-w-[450px]">
+                <DialogHeader>
+                  <DialogTitle className="text-sm">Manage MTUs & Loot</DialogTitle>
+                </DialogHeader>
+                <div className="py-2">
+                   <MTULootField 
+                      value={activity.data?.mtuContents || []} 
+                      onChange={(mtus) => {
+                        const store = useActivityStore.getState();
+                        store.updateActivity(activity.id, {
+                          data: { ...activity.data, mtuContents: mtus }
+                        });
+                      }} 
+                    />
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
       </CardContent>
+ntent>
     </Card>
   )
 }
