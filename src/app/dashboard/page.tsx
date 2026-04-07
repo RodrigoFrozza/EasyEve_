@@ -20,7 +20,7 @@ import {
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { getSession } from '@/lib/session'
-import { getCharacterNotifications, getCharacterWalletJournal } from '@/lib/sde'
+import { getCharacterWalletJournal } from '@/lib/sde'
 
 async function getCharacterDetails(charId: number) {
   const response = await fetch(`https://esi.evetech.net/latest/characters/${charId}/`, {
@@ -53,35 +53,24 @@ export default async function DashboardPage() {
   const totalSP = characters.reduce((sum: number, c: { totalSp: number }) => sum + c.totalSp, 0)
   const totalWallet = characters.reduce((sum: number, c: { walletBalance: number }) => sum + c.walletBalance, 0)
 
-  // Fetch activity (notifications & journal)
+  // Fetch Wallet journal
   const activityPromises = characters.map(async (char) => {
-    const [notifs, journal] = await Promise.all([
-      getCharacterNotifications(char.id, char.id),
-      getCharacterWalletJournal(char.id, char.id)
-    ])
+    const journal = await getCharacterWalletJournal(char.id, char.id)
     
-    const mappedNotifs = Array.isArray(notifs) ? notifs.map(n => ({
-      id: `notif-${n.notification_id}`,
-      type: 'notification',
-      subType: n.type,
-      timestamp: n.timestamp,
-      characterName: char.name,
-      characterId: char.id
-    })) : []
-
     const mappedJournal = Array.isArray(journal) ? journal
-      .filter((entry: any) => entry.ref_type === 'bounty_prizes' || entry.ref_type === 'bounty_prize')
       .map((entry: any) => ({
         id: `journal-${entry.id}`,
-        type: 'bounty',
+        type: 'wallet',
         subType: entry.ref_type,
         timestamp: entry.date,
         amount: entry.amount,
+        balance: entry.balance,
+        description: entry.description,
         characterName: char.name,
         characterId: char.id
       })) : []
       
-    return [...mappedNotifs, ...mappedJournal]
+    return mappedJournal
   })
 
   const activityResults = await Promise.allSettled(activityPromises)
@@ -107,31 +96,16 @@ export default async function DashboardPage() {
     return date.toLocaleDateString();
   }
 
-  const getActivityIcon = (item: any) => {
-    if (item.type === 'bounty') return <Wallet className="h-4 w-4 text-green-400" />
-    
-    const typeArgs = item.subType || ''
-    if (typeArgs.includes('ContactAdd')) return <Users className="h-4 w-4 text-blue-400" />
-    if (typeArgs.includes('Structure') || typeArgs.includes('Loss')) return <ArrowDownRight className="h-4 w-4 text-red-400" />
-    if (typeArgs.includes('Skill')) return <Clock className="h-4 w-4 text-purple-400" />
-    if (typeArgs.includes('Corp') || typeArgs.includes('CharAppAccept')) return <Users className="h-4 w-4 text-green-400" />
-    return <Info className="h-4 w-4 text-gray-400" />
-  }
 
-  const getActivityColor = (item: any) => {
-    if (item.type === 'bounty') return 'bg-green-500/20'
-
-    const typeArgs = item.subType || ''
-    if (typeArgs.includes('ContactAdd')) return 'bg-blue-500/20'
-    if (typeArgs.includes('Structure') || typeArgs.includes('Loss')) return 'bg-red-500/20'
-    if (typeArgs.includes('Skill')) return 'bg-purple-500/20'
-    if (typeArgs.includes('Corp') || typeArgs.includes('CharAppAccept')) return 'bg-green-500/20'
-    return 'bg-gray-500/20'
-  }
 
   const getActivityTitle = (item: any) => {
-    if (item.type === 'bounty') return `Bounty Claimed (+${formatISK(item.amount)})`
-    return (item.subType || '').replace(/([A-Z])/g, ' $1').trim()
+    const sign = item.amount > 0 ? '+' : ''
+    const amountStr = item.amount ? formatISK(item.amount) : '0'
+    const cleanType = (item.subType || '').replace(/_/g, ' ')
+    // capitalize
+    const typeLabel = cleanType.charAt(0).toUpperCase() + cleanType.slice(1)
+    
+    return `${typeLabel} (${sign}${amountStr})`
   }
 
   const stats = [
@@ -307,20 +281,21 @@ export default async function DashboardPage() {
 
       <Card className="bg-eve-panel border-eve-border">
         <CardHeader>
-          <CardTitle className="text-white">Recent Activity</CardTitle>
+          <CardTitle className="text-white">Wallet Transactions</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {recentActivity.length === 0 ? (
-              <p className="text-gray-500 text-sm">No recent activity.</p>
+              <p className="text-gray-500 text-sm">No recent transactions.</p>
             ) : (
               recentActivity.map((activity: any) => (
                 <div key={activity.id} className="flex flex-col sm:flex-row sm:items-center gap-3 text-sm p-2 hover:bg-eve-dark/50 rounded-md transition-colors">
-                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${getActivityColor(activity)}`}>
-                    {getActivityIcon(activity)}
-                  </div>
+                  <Avatar className="h-10 w-10 shrink-0 border border-eve-border">
+                    <AvatarImage src={`https://images.evetech.net/characters/${activity.characterId}/portrait?size=64`} />
+                    <AvatarFallback>{activity.characterName[0]}</AvatarFallback>
+                  </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className={`truncate font-medium ${activity.type === 'bounty' ? 'text-green-400' : 'text-white'}`}>
+                    <p className={`truncate font-medium ${activity.amount > 0 ? 'text-green-400' : activity.amount < 0 ? 'text-red-400' : 'text-gray-400'}`}>
                       {getActivityTitle(activity)}
                     </p>
                     <p className="text-xs text-eve-accent font-medium mt-0.5">
