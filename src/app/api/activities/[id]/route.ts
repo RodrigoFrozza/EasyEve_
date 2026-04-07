@@ -31,6 +31,41 @@ export async function GET(
   }
 }
 
+export async function PATCH(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await getCurrentUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const body = await request.json()
+    const { status, endTime, data, space, participants } = body
+
+    const existingActivity = await prisma.activity.findFirst({
+      where: { id: params.id, userId: user.id }
+    })
+
+    if (!existingActivity) return NextResponse.json({ error: 'Activity not found' }, { status: 404 })
+
+    const activity = await prisma.activity.update({
+      where: { id: params.id },
+      data: {
+        ...(status && { status }),
+        ...(endTime && { endTime: new Date(endTime) }),
+        ...(space && { space }),
+        ...(data && { data }),
+        ...(participants && { participants })
+      }
+    })
+
+    return NextResponse.json(activity)
+  } catch (error) {
+    console.error('Error in PATCH activity:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
