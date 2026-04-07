@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,7 +19,8 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogTrigger,
-  DialogFooter
+  DialogFooter,
+  DialogDescription
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -43,7 +44,9 @@ import {
   Plus,
   Minus,
   TrendingUp,
-  DollarSign
+  DollarSign,
+  Star,
+  Info
 } from 'lucide-react'
 import { useActivityStore, type Activity, type ActivityParticipant } from '@/lib/stores/activity-store'
 import { useSession } from '@/lib/session-client'
