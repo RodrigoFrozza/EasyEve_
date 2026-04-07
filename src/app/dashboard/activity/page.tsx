@@ -213,15 +213,31 @@ export default function ActivityTrackerPage() {
   // Fetch anomalies when faction changes
   useEffect(() => {
     if (newActivity.type === 'ratting' && newActivity.data?.npcFaction) {
-      const faction = newActivity.data.npcFaction.split(' ')[0] // e.g. "Angel" from "Angel Cartel"
-      fetch(`/api/sde/anomalies?faction=${faction}`)
+      // Use more robust faction name matching
+      const faction = newActivity.data.npcFaction.split(' ')[0]
+      const siteType = newActivity.data?.siteType || 'Combat Anomaly'
+      
+      console.log(`[UI] Fetching anomalies for ${faction} type ${siteType}`)
+      fetch(`/api/sde/anomalies?faction=${encodeURIComponent(faction)}${siteType ? `&type=${encodeURIComponent(siteType)}` : ''}`)
         .then(res => res.json())
         .then(data => {
-          if (Array.isArray(data)) setAnomalies(data)
+          if (Array.isArray(data) && data.length > 0) {
+            setAnomalies(data)
+          } else if (ANOMALIES_BY_FACTION[newActivity.data?.npcFaction]) {
+            // Fallback to static list if SDE is empty or fails
+            const staticList = ANOMALIES_BY_FACTION[newActivity.data?.npcFaction].map((n, i) => ({ id: `static-${i}`, name: n }))
+            setAnomalies(staticList)
+          }
         })
-        .catch(err => console.error('Failed to fetch anomalies:', err))
+        .catch(err => {
+          console.error('Failed to fetch anomalies:', err)
+          if (ANOMALIES_BY_FACTION[newActivity.data?.npcFaction]) {
+            const staticList = ANOMALIES_BY_FACTION[newActivity.data?.npcFaction].map((n, i) => ({ id: `static-${i}`, name: n }))
+            setAnomalies(staticList)
+          }
+        })
     }
-  }, [newActivity.data?.npcFaction, newActivity.type])
+  }, [newActivity.data?.npcFaction, newActivity.data?.siteType, newActivity.type])
 
   const toggleParticipant = (characterId: number, characterName: string) => {
     const current = newActivity.participants || []
@@ -383,35 +399,6 @@ export default function ActivityTrackerPage() {
 
                 {newActivity.type === 'ratting' && (
                   <>
-                    <div className="space-y-2 col-span-2">
-                      <Label>Standard Space Type</Label>
-                      <Select onValueChange={(v) => updateData({ spaceType: v })}>
-                        <SelectTrigger className="bg-eve-dark border-eve-border">
-                          <SelectValue placeholder="Select Space Type" />
-                        </SelectTrigger>
-                        <SelectContent><SelectContentList items={SPACE_TYPES} /></SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2 col-span-2">
-                      <Label>Ship Hull</Label>
-                      <Select onValueChange={(v) => updateData({ shipHull: v })}>
-                        <SelectTrigger className="bg-eve-dark border-eve-border">
-                          <SelectValue placeholder="Select Ship Used" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Gila">Gila</SelectItem>
-                          <SelectItem value="Ishtar">Ishtar</SelectItem>
-                          <SelectItem value="Praxis">Praxis</SelectItem>
-                          <SelectItem value="Rattlesnake">Rattlesnake</SelectItem>
-                          <SelectItem value="Vargur">Vargur</SelectItem>
-                          <SelectItem value="Paladin">Paladin</SelectItem>
-                          <SelectItem value="Kronos">Kronos</SelectItem>
-                          <SelectItem value="Golem">Golem</SelectItem>
-                          <SelectItem value="Carrier">Carrier</SelectItem>
-                          <SelectItem value="Supercarrier">Supercarrier</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <div className="space-y-2">
                       <Label>NPC Faction</Label>
                       <Select onValueChange={(v) => updateData({ npcFaction: v })}>
@@ -429,10 +416,10 @@ export default function ActivityTrackerPage() {
                     
                     {newActivity.data?.siteType === 'Combat Anomaly' && (
                       <div className="space-y-2 col-span-2">
-                        <Label>Anomalies (SDE List: {newActivity.data?.npcFaction || 'Select Faction first'})</Label>
+                        <Label>Anomalies ({newActivity.data?.npcFaction || 'Select Faction first'})</Label>
                         <Select onValueChange={(v) => updateData({ siteName: v })}>
                           <SelectTrigger className="bg-eve-dark border-eve-border">
-                            <SelectValue placeholder="Select Specific Anomaly" />
+                            <SelectValue placeholder="Select Anomaly" />
                           </SelectTrigger>
                           <SelectContent>
                             {anomalies.map((a: any) => (
@@ -442,25 +429,6 @@ export default function ActivityTrackerPage() {
                         </Select>
                       </div>
                     )}
-
-                    <div className="space-y-2">
-                      <Label>Initial Bounties (ISK)</Label>
-                      <Input 
-                        type="number"
-                        placeholder="0"
-                        onChange={(e) => updateData({ initialBounties: Number(e.target.value) })}
-                        className="bg-eve-dark border-eve-border"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>ESS Payouts (ISK)</Label>
-                      <Input 
-                        type="number"
-                        placeholder="0"
-                        onChange={(e) => updateData({ essPayout: Number(e.target.value) })}
-                        className="bg-eve-dark border-eve-border"
-                      />
-                    </div>
                   </>
                 )}
 
