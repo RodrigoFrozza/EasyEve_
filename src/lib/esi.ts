@@ -378,6 +378,7 @@ export interface TypeDetails {
   published: boolean
   market_group_id?: number
   mass?: number
+  icon_id?: number
 }
 
 export async function getTypeDetails(typeId: number): Promise<TypeDetails | null> {
