@@ -25,8 +25,18 @@ export async function GET() {
     }))
 
     return NextResponse.json(formatted)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to fetch valuable ores:', error)
-    return NextResponse.json({ error: 'Failed to fetch ores' }, { status: 500 })
+    if (error && typeof error === 'object') {
+      console.error('Prisma Error Details:', {
+        message: error.message,
+        code: error.code,
+        meta: error.meta
+      })
+    }
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error.message || 'Unknown error'
+    }, { status: 500 })
   }
 }

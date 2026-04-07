@@ -42,6 +42,16 @@ export async function GET(request: Request) {
     return NextResponse.json(types)
   } catch (error: any) {
     console.error('Error fetching anomalies from SDE:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error && typeof error === 'object') {
+      console.error('Prisma Error Details:', {
+        message: error.message,
+        code: error.code,
+        meta: error.meta
+      })
+    }
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error.message || 'Unknown error'
+    }, { status: 500 })
   }
 }
