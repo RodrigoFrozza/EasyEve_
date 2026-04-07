@@ -30,98 +30,12 @@ const EFFECT_MAP: Record<string, string> = {
 }
 
 export async function fetchFilamentTypesFromESI(): Promise<FilamentType[]> {
-  try {
-    const groupResponse = await fetch(
-      `${ESI_BASE_URL}/universe/groups/1979/?datasource=tranquility&language=en`,
-      { headers: { 'X-User-Agent': USER_AGENT } }
-    )
-    
-    if (!groupResponse.ok) {
-      throw new Error(`Failed to fetch filament group: ${groupResponse.status}`)
-    }
-    
-    const groupData = await groupResponse.json()
-    const typeIds: number[] = groupData.types || []
-    
-    const filaments: FilamentType[] = []
-    
-    for (const typeId of typeIds) {
-      try {
-        const typeResponse = await fetch(
-          `${ESI_BASE_URL}/universe/types/${typeId}/?datasource=tranquility&language=en`,
-          { headers: { 'X-User-Agent': USER_AGENT } }
-        )
-        
-        if (!typeResponse.ok) continue
-        
-        const typeData = await typeResponse.json()
-        
-        if (!typeData.published || !typeData.name?.includes('Filament')) continue
-        
-        const fullName = typeData.name
-        
-        let weather = 'unknown'
-        let tier = 1
-        let effect = 'unknown'
-        
-        for (const [weatherKey, config] of Object.entries(WEATHER_MAP)) {
-          if (fullName.includes(weatherKey)) {
-            weather = config.weather
-            tier = config.tier
-            break
-          }
-        }
-        
-        for (const [effectKey, effectValue] of Object.entries(EFFECT_MAP)) {
-          if (fullName.includes(effectKey)) {
-            effect = effectValue
-            break
-          }
-        }
-        
-        filaments.push({
-          id: typeId,
-          name: fullName,
-          weather,
-          tier,
-          effect,
-          published: typeData.published || false,
-        })
-      } catch (error) {
-        console.error(`Failed to fetch type ${typeId}:`, error)
-      }
-    }
-    
-    return filaments
-  } catch (error) {
-    console.error('Failed to fetch filament types from ESI:', error)
-    return []
-  }
+  // We no longer need this as sync-sde.ts handles it into EveType
+  return getFilamentTypes()
 }
 
 export async function syncFilamentTypes(): Promise<void> {
-  const filaments = await fetchFilamentTypesFromESI()
-  
-  for (const filament of filaments) {
-    await prisma.filamentType.upsert({
-      where: { id: filament.id },
-      create: {
-        id: filament.id,
-        name: filament.name,
-        weather: filament.weather,
-        tier: filament.tier,
-        effect: filament.effect,
-        published: filament.published,
-      },
-      update: {
-        name: filament.name,
-        weather: filament.weather,
-        tier: filament.tier,
-        effect: filament.effect,
-        published: filament.published,
-      },
-    })
-  }
+  // Redundant - handled by scripts/sync-sde.ts
 }
 
 export async function getFilamentTypes(): Promise<FilamentType[]> {
@@ -129,49 +43,68 @@ export async function getFilamentTypes(): Promise<FilamentType[]> {
     where: { key: 'filament_types' },
   })
   
-    if (cached && (!cached.expiresAt || cached.expiresAt > new Date())) {
+  if (cached && (!cached.expiresAt || cached.expiresAt > new Date())) {
     return (cached.value as unknown) as FilamentType[]
   }
   
-  const dbFilaments = await prisma.filamentType.findMany({
-    where: { published: true },
-    orderBy: { tier: 'asc' },
+  const dbFilaments = await prisma.eveType.findMany({
+    where: { 
+      groupId: 1979, // Abyssal Filaments
+      published: true 
+    },
+    orderBy: { name: 'asc' },
   })
   
-  if (dbFilaments.length > 0) {
+  const mappedFilaments: FilamentType[] = dbFilaments.map(type => {
+    const fullName = type.name
+    let weather = 'unknown'
+    let tier = 1
+    let effect = 'unknown'
+    
+    for (const [weatherKey, config] of Object.entries(WEATHER_MAP)) {
+      if (fullName.includes(weatherKey)) {
+        weather = config.weather
+        tier = config.tier
+        break
+      }
+    }
+    
+    for (const [effectKey, effectValue] of Object.entries(EFFECT_MAP)) {
+      if (fullName.includes(effectKey)) {
+        effect = effectValue
+        break
+      }
+    }
+    
+    return {
+      id: type.id,
+      name: fullName,
+      weather,
+      tier,
+      effect,
+      published: type.published,
+    }
+  })
+
+  // Sort by tier after mapping
+  mappedFilaments.sort((a, b) => a.tier - b.tier)
+  
+  if (mappedFilaments.length > 0) {
     await prisma.sdeCache.upsert({
       where: { key: 'filament_types' },
       create: {
         key: 'filament_types',
-        value: dbFilaments as unknown as object,
+        value: mappedFilaments as unknown as any,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
       update: {
-        value: dbFilaments as unknown as object,
+        value: mappedFilaments as unknown as any,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     })
-    
-    return dbFilaments
   }
   
-  const esiFilaments = await fetchFilamentTypesFromESI()
-  await syncFilamentTypes()
-  
-  await prisma.sdeCache.upsert({
-    where: { key: 'filament_types' },
-    create: {
-      key: 'filament_types',
-      value: esiFilaments as unknown as object,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    },
-    update: {
-      value: esiFilaments as unknown as object,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    },
-  })
-  
-  return esiFilaments
+  return mappedFilaments
 }
 
 export function getTierLabel(tier: number): string {

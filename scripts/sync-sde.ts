@@ -18,7 +18,8 @@ const SYNC_CONFIG = [
   { id: 7,  name: 'Modules' },
   { id: 8,  name: 'Charges/Ammo' },
   { id: 18, name: 'Drones' },
-  { id: 4,  name: 'Materials/Moon' }
+  { id: 4,  name: 'Materials/Moon' },
+  { id: 63, name: 'Special Items/Filaments' }
 ]
 
 async function main() {
