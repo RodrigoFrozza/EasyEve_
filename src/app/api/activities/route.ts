@@ -26,9 +26,21 @@ export async function GET(request: Request) {
     })
 
     return NextResponse.json(activities)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching activities:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    // Detailed logging for debugging
+    if (error && typeof error === 'object') {
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        meta: error.meta,
+        stack: error.stack
+      })
+    }
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      details: error.message || 'Unknown error' 
+    }, { status: 500 })
   }
 }
 
@@ -98,8 +110,19 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json(activity)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating activity:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    if (error && typeof error === 'object') {
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        meta: error.meta,
+        stack: error.stack
+      })
+    }
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      details: error.message || 'Unknown error' 
+    }, { status: 500 })
   }
 }

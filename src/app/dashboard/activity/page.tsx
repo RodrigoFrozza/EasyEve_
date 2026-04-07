@@ -101,13 +101,22 @@ export default function ActivityTrackerPage() {
   useEffect(() => {
     const url = typeParam ? `/api/activities?type=${typeParam}` : '/api/activities'
     fetch(url)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
+        return res.json()
+      })
       .then(data => {
-        setActivities(data)
+        if (Array.isArray(data)) {
+          setActivities(data)
+        } else {
+          console.error('Activities data is not an array:', data)
+          setActivities([])
+        }
         setIsLoading(false)
       })
       .catch(err => {
         console.error('Failed to fetch activities:', err)
+        setActivities([]) // Reset to empty array on error
         setIsLoading(false)
       })
   }, [setActivities, typeParam])
