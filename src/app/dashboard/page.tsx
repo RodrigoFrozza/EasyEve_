@@ -20,7 +20,7 @@ import {
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { getSession } from '@/lib/session'
-import { getCharacterNotifications } from '@/lib/sde'
+import { getCharacterNotifications, getCharacterWalletJournal } from '@/lib/sde'
 
 async function getCharacterDetails(charId: number) {
   const response = await fetch(`https://esi.evetech.net/latest/characters/${charId}/`, {
@@ -53,24 +53,44 @@ export default async function DashboardPage() {
   const totalSP = characters.reduce((sum: number, c: { totalSp: number }) => sum + c.totalSp, 0)
   const totalWallet = characters.reduce((sum: number, c: { walletBalance: number }) => sum + c.walletBalance, 0)
 
-  // Fetch notifications
-  const notificationsPromises = characters.map(async (char) => {
-    const notifs = await getCharacterNotifications(char.id, char.id)
-    if (!Array.isArray(notifs)) return []
-    return notifs.map(n => ({
-      ...n,
+  // Fetch activity (notifications & journal)
+  const activityPromises = characters.map(async (char) => {
+    const [notifs, journal] = await Promise.all([
+      getCharacterNotifications(char.id, char.id),
+      getCharacterWalletJournal(char.id, char.id)
+    ])
+    
+    const mappedNotifs = Array.isArray(notifs) ? notifs.map(n => ({
+      id: `notif-${n.notification_id}`,
+      type: 'notification',
+      subType: n.type,
+      timestamp: n.timestamp,
       characterName: char.name,
       characterId: char.id
-    }))
+    })) : []
+
+    const mappedJournal = Array.isArray(journal) ? journal
+      .filter((entry: any) => entry.ref_type === 'bounty_prizes' || entry.ref_type === 'bounty_prize')
+      .map((entry: any) => ({
+        id: `journal-${entry.id}`,
+        type: 'bounty',
+        subType: entry.ref_type,
+        timestamp: entry.date,
+        amount: entry.amount,
+        characterName: char.name,
+        characterId: char.id
+      })) : []
+      
+    return [...mappedNotifs, ...mappedJournal]
   })
 
-  const notificationsResults = await Promise.allSettled(notificationsPromises)
-  const allNotifications = notificationsResults
+  const activityResults = await Promise.allSettled(activityPromises)
+  const allActivity = activityResults
     .filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled')
     .flatMap(r => r.value)
     
-  allNotifications.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-  const recentNotifications = allNotifications.slice(0, 30)
+  allActivity.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  const recentActivity = allActivity.slice(0, 30)
 
   const timeAgo = (dateString: string) => {
     const now = new Date();
@@ -87,22 +107,31 @@ export default async function DashboardPage() {
     return date.toLocaleDateString();
   }
 
-  const getNotificationIcon = (type: string) => {
-    // Basic mapping of some common EVE notification types
-    if (type.includes('ContactAdd')) return <Users className="h-4 w-4 text-blue-400" />
-    if (type.includes('Structure')) return <ArrowDownRight className="h-4 w-4 text-red-400" />
-    if (type.includes('Skill')) return <Clock className="h-4 w-4 text-purple-400" />
-    if (type.includes('Corp')) return <Users className="h-4 w-4 text-green-400" />
-    if (type.includes('CharAppAccept')) return <ArrowUpRight className="h-4 w-4 text-green-400" />
+  const getActivityIcon = (item: any) => {
+    if (item.type === 'bounty') return <Wallet className="h-4 w-4 text-green-400" />
+    
+    const typeArgs = item.subType || ''
+    if (typeArgs.includes('ContactAdd')) return <Users className="h-4 w-4 text-blue-400" />
+    if (typeArgs.includes('Structure') || typeArgs.includes('Loss')) return <ArrowDownRight className="h-4 w-4 text-red-400" />
+    if (typeArgs.includes('Skill')) return <Clock className="h-4 w-4 text-purple-400" />
+    if (typeArgs.includes('Corp') || typeArgs.includes('CharAppAccept')) return <Users className="h-4 w-4 text-green-400" />
     return <Info className="h-4 w-4 text-gray-400" />
   }
 
-  const getNotificationColor = (type: string) => {
-    if (type.includes('ContactAdd')) return 'bg-blue-500/20'
-    if (type.includes('Structure') || type.includes('Loss')) return 'bg-red-500/20'
-    if (type.includes('Skill')) return 'bg-purple-500/20'
-    if (type.includes('Corp') || type.includes('CharAppAccept')) return 'bg-green-500/20'
+  const getActivityColor = (item: any) => {
+    if (item.type === 'bounty') return 'bg-green-500/20'
+
+    const typeArgs = item.subType || ''
+    if (typeArgs.includes('ContactAdd')) return 'bg-blue-500/20'
+    if (typeArgs.includes('Structure') || typeArgs.includes('Loss')) return 'bg-red-500/20'
+    if (typeArgs.includes('Skill')) return 'bg-purple-500/20'
+    if (typeArgs.includes('Corp') || typeArgs.includes('CharAppAccept')) return 'bg-green-500/20'
     return 'bg-gray-500/20'
+  }
+
+  const getActivityTitle = (item: any) => {
+    if (item.type === 'bounty') return `Bounty Claimed (+${formatISK(item.amount)})`
+    return (item.subType || '').replace(/([A-Z])/g, ' $1').trim()
   }
 
   const stats = [
@@ -282,24 +311,24 @@ export default async function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {recentNotifications.length === 0 ? (
-              <p className="text-gray-500 text-sm">No recent notifications.</p>
+            {recentActivity.length === 0 ? (
+              <p className="text-gray-500 text-sm">No recent activity.</p>
             ) : (
-              recentNotifications.map((notif: any) => (
-                <div key={notif.notification_id} className="flex flex-col sm:flex-row sm:items-center gap-3 text-sm p-2 hover:bg-eve-dark/50 rounded-md transition-colors">
-                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${getNotificationColor(notif.type)}`}>
-                    {getNotificationIcon(notif.type)}
+              recentActivity.map((activity: any) => (
+                <div key={activity.id} className="flex flex-col sm:flex-row sm:items-center gap-3 text-sm p-2 hover:bg-eve-dark/50 rounded-md transition-colors">
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${getActivityColor(activity)}`}>
+                    {getActivityIcon(activity)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-white truncate font-medium">
-                      {notif.type.replace(/([A-Z])/g, ' $1').trim()}
+                    <p className={`truncate font-medium ${activity.type === 'bounty' ? 'text-green-400' : 'text-white'}`}>
+                      {getActivityTitle(activity)}
                     </p>
                     <p className="text-xs text-eve-accent font-medium mt-0.5">
-                      {notif.characterName}
+                      {activity.characterName}
                     </p>
                   </div>
                   <div className="text-right shrink-0 mt-1 sm:mt-0">
-                    <span className="text-gray-500 text-xs">{timeAgo(notif.timestamp)}</span>
+                    <span className="text-gray-500 text-xs">{timeAgo(activity.timestamp)}</span>
                   </div>
                 </div>
               ))

@@ -338,3 +338,17 @@ export async function getCharacterNotifications(characterId: number, character: 
     return []
   }
 }
+
+export async function getCharacterWalletJournal(characterId: number, character: number) {
+  try {
+    const response = await fetchWithAuth(`/characters/${character}/wallet/journal/`, characterId)
+    if (!response.ok) {
+      console.warn(`[ESI] Non-OK response for wallet journal (Char ${character}): ${response.status}`)
+      return []
+    }
+    return response.json()
+  } catch (error) {
+    console.error(`Failed to fetch wallet journal for char ${character}:`, error)
+    return []
+  }
+}
