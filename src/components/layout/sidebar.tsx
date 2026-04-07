@@ -7,12 +7,8 @@ import { cn } from '@/lib/utils'
 import {
   Home,
   Users,
-  Zap,
-  Pickaxe,
-  Swords,
-  Compass,
+  Target,
   Ship,
-  Calculator,
   Settings,
   LogOut,
   ChevronDown,
@@ -30,11 +26,7 @@ import {
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Characters', href: '/dashboard/characters', icon: Users },
-  { name: 'Fleet Calculator', href: '/dashboard/fleet', icon: Calculator },
-  { name: 'Mining', href: '/dashboard/mining', icon: Pickaxe },
-  { name: 'Ratting', href: '/dashboard/ratting', icon: Swords },
-  { name: 'Abyssal', href: '/dashboard/abyssal', icon: Zap },
-  { name: 'Exploration', href: '/dashboard/exploration', icon: Compass },
+  { name: 'Activity Tracker', href: '/dashboard/activity', icon: Target },
   { name: 'Fits', href: '/dashboard/fits', icon: Ship },
 ]
 

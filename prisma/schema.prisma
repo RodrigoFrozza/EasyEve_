@@ -14,11 +14,7 @@ model User {
   name          String?
   characters    Character[]
   fits          Fit[]
-  miningSessions MiningSession[]
-  rattingSessions RattingSession[]
-  abyssalSessions AbyssalSession[]
-  explorationSignatures ExplorationSignature[]
-  fleetSessions FleetSession[]
+  activities    Activity[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 }
@@ -68,101 +64,61 @@ model Fit {
   @@index([userId])
 }
 
-model MiningSession {
-  id            String   @id @default(cuid())
-  startTime     DateTime
-  endTime       DateTime?
-  systemId      Int?
-  systemName    String?
-  oreType       String?
-  quantity      Float    @default(0)
-  estimatedIsk  Float    @default(0)
-  
-  characterId   Int?
-  
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  createdAt     DateTime @default(now())
 
+
+model Activity {
+  id           String   @id @default(cuid())
+  userId       String
+  
+  type         String   // mining, ratting, abyssal, exploration, crab, escalations, pvp
+  name         String?
+  
+  // Common fields
+  region       String?  // Minmatar, Gallente, etc
+  space        String?  // highsec, lowsec, nullsec, wormhole
+  
+  // Mining specific
+  miningType   String?  // ore, ice, gas
+  
+  // Ratting specific
+  npcFaction   String?  // Angel Cartel, Blood Raider, etc
+  siteName     String?  // Forsaken Hub, Haven, etc
+  siteType     String?  // Belt, Anomaly, Signature, DED
+  
+  // Abyssal specific
+  tier         String?  // T0-T6
+  weather      String?  // Electrical, Dark, Exotic, Firestorm, Gamma
+  shipSize     String?  // frigate, destroyer, cruiser
+  
+  // Exploration specific
+  explorationSiteType String? // Relic, Data, Ghost, Gas, Sleeper
+  difficulty   String?  // I, II, III, IV, V
+  
+  // Escalations specific
+  dedLevel     String?  // 1/10 to 10/10
+  escalationFaction String? // Angel, Blood Raider, etc
+  
+  // Crab specific
+  crabPhase    String?  // Deployment, Linking, Scanning, Rewards
+  
+  // PVP specific
+  pvpType      String?  // Ganking, Small Gang, Fleet, Solo
+  
+  fit          String?  // Optional - free text
+  
+  status       String   @default("active") // active, completed
+  startedAt    DateTime @default(now())
+  endedAt      DateTime?
+  
+  participants Json     @default("[]") // [{"characterId": 123, "fit": "optional"}]
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
   @@index([userId])
-}
-
-model RattingSession {
-  id            String   @id @default(cuid())
-  startTime     DateTime
-  endTime       DateTime?
-  siteType      String?
-  bounty        Float    @default(0)
-  sitesCompleted Int    @default(0)
-  
-  characterId   Int?
-  
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  createdAt     DateTime @default(now())
-
-  @@index([userId])
-}
-
-model AbyssalSession {
-  id            String   @id @default(cuid())
-  startTime     DateTime
-  endTime       DateTime?
-  filamentType  String?
-  tier          Int      @default(1)
-  loot          Float    @default(0)
-  iskPerMinute  Float    @default(0)
-  survived      Boolean  @default(true)
-   
-   characterId   Int?
-   
-   userId        String
-   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-   
-   createdAt     DateTime @default(now())
-
-  @@index([userId])
-}
-
-model ExplorationSignature {
-  id          String   @id @default(cuid())
-  name        String
-  type        String
-  status      String   @default("new")
-  systemId    Int?
-  systemName  String?
-  notes       String?
-  
-  characterId Int?
-  
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([userId])
-}
-
-model FleetSession {
-  id          String   @id @default(cuid())
-  name        String
-  fleetType   String
-  startTime   DateTime
-  endTime     DateTime?
-  iskPerHour  Float    @default(0)
-  participants Json     @default("[]")
-  
-  characterId Int?
-  
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  createdAt   DateTime @default(now())
-
-  @@index([userId])
+  @@index([status])
 }
 
 model SdeCache {
