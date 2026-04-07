@@ -825,6 +825,58 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
   const [elapsed, setElapsed] = useState('')
   const typeInfo = ACTIVITY_TYPES.find(t => t.id === activity.type)
 
+  // Accurate Loot Parser Simulation
+  const estimatedLootValue = useMemo(() => {
+    if (!activity.data?.mtuContents) return 0;
+    return activity.data.mtuContents.reduce((total: number, mtu: any) => {
+      const lines = (mtu.loot || '').split('\n').filter((l: string) => l.trim().length > 0);
+      
+      let mtuTotal = 0;
+      lines.forEach((line: string) => {
+        // EVE Clipboard is usually: Name\tQuantity\tGroup...
+        const parts = line.split('\t');
+        let qty = 1;
+        let lineValue = 0;
+        
+        // 1. Check for Full Inventory Format (with price at the end)
+        const lastPart = parts[parts.length - 1].trim();
+        if (lastPart.endsWith('ISK')) {
+          // Format found: "3.155,63 ISK" or "1.027.276,24 ISK"
+          // We need to handle the locale (dot for thousands, comma for decimals)
+          const cleanPrice = lastPart
+            .replace(' ISK', '')
+            .replace(/\./g, '') // remove thousands separator
+            .replace(',', '.'); // turn decimal comma into dot
+          
+          lineValue = parseFloat(cleanPrice) || 0;
+          mtuTotal += lineValue; // Full format already includes qty in the price column usually, but let's verify
+          // Actually, in the detailed view, the last column is the TOTAL price for that line.
+          return;
+        }
+
+        // 2. Fallback to Quantity-based Placeholder logic
+        if (parts.length >= 2) {
+          qty = parseInt(parts[1].replace(/,/g, '')) || 1;
+        } else {
+          const match = line.match(/(.+?)\s+(\d+[\d,.]*)$/);
+          if (match) qty = parseInt(match[2].replace(/[,.]/g, '')) || 1;
+        }
+
+        let itemValue = 50000;
+        const name = parts[0].toLowerCase();
+        if (name.includes('tag')) itemValue = 1500000;
+        if (name.includes('bluePrint')) itemValue = 5000000;
+        if (name.includes('artillery') || name.includes('cannon')) itemValue = 800000;
+        if (name.includes('missile') || name.includes('ammo') || name.includes('torpedo')) itemValue = 2000;
+        if (name.includes('scrap')) itemValue = 15000;
+
+        mtuTotal += (itemValue * qty);
+      });
+      
+      return total + mtuTotal;
+    }, 0);
+  }, [activity.data?.mtuContents]);
+
   useEffect(() => {
     const timer = setInterval(() => {
       const diff = new Date().getTime() - new Date(activity.startTime).getTime()
@@ -835,6 +887,35 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
     }, 1000)
     return () => clearInterval(timer)
   }, [activity.startTime])
+
+  // Automatic ESI Pooling every 10 minutes (ESI wallet journal cache is ~20m)
+  useEffect(() => {
+    if (activity.type !== 'ratting') return;
+
+    const autoSync = async () => {
+      console.log(`[Auto-Sync] Syncing activity ${activity.id}...`);
+      try {
+        const res = await fetch(`/api/activities/sync?id=${activity.id}`, { method: 'POST' });
+        if (res.ok) {
+          const updated = await res.json();
+          useActivityStore.getState().updateActivity(activity.id, updated);
+        }
+      } catch (err) {
+        console.error('[Auto-Sync] Failed to sync activity:', err);
+      }
+    };
+
+    const interval = setInterval(autoSync, 10 * 60 * 1000); // 10 minutes
+    
+    // Also trigger an initial sync when the card mounts if it's new
+    const lastSync = activity.data?.lastSyncAt ? new Date(activity.data.lastSyncAt).getTime() : 0;
+    const now = new Date().getTime();
+    if (now - lastSync > 5 * 60 * 1000) { // If last sync was > 5m ago
+      autoSync();
+    }
+
+    return () => clearInterval(interval);
+  }, [activity.id, activity.type, activity.data?.lastSyncAt])
 
   return (
     <Card className="bg-eve-panel border-eve-border overflow-hidden relative group">
@@ -849,17 +930,108 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
             {elapsed}
           </div>
         </div>
-        <CardTitle className="text-xl mt-2 flex items-center justify-between">
-          <span className="truncate">{(activity as any).item?.name || activity.data?.siteName || 'Active Operations'}</span>
-          <Button 
-            size="icon" 
-            variant="ghost" 
-            onClick={onEnd}
-            className="h-8 w-8 text-red-400 hover:bg-red-500/10 rounded-full"
-          >
-            <StopCircle className="h-5 w-5" />
-          </Button>
-        </CardTitle>
+        <Dialog>
+          <DialogTrigger asChild>
+            <CardTitle className="text-xl mt-2 flex items-center justify-between cursor-pointer hover:text-eve-accent transition-colors">
+              <span className="truncate">{(activity as any).item?.name || activity.data?.siteName || 'Active Operations'}</span>
+              <div className="flex items-center gap-2">
+                <Info className="h-4 w-4 text-gray-500" />
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEnd();
+                  }}
+                  className="h-8 w-8 text-red-400 hover:bg-red-500/10 rounded-full"
+                >
+                  <StopCircle className="h-5 w-5" />
+                </Button>
+              </div>
+            </CardTitle>
+          </DialogTrigger>
+          <DialogContent className="bg-eve-panel border-eve-border sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-eve-accent" />
+                Operation Summary
+              </DialogTitle>
+              <DialogDescription className="text-gray-400">
+                Detailed breakdown for {(activity as any).item?.name || activity.data?.siteName || 'Active Session'}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-6 py-4">
+              {/* Financial KPIs */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 rounded-lg bg-eve-dark/50 border border-eve-border/50">
+                  <p className="text-[10px] uppercase font-bold text-gray-500 mb-1">Gross Bounties</p>
+                  <p className="text-lg font-bold text-green-400 font-mono">
+                    {formatISK((activity.data?.automatedBounties || 0) + (activity.data?.automatedEss || 0) + (activity.data?.additionalBounties || 0) + (activity.data?.automatedTaxes || 0))}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-eve-dark/50 border border-eve-border/50">
+                  <p className="text-[10px] uppercase font-bold text-gray-500 mb-1">Corp Taxes</p>
+                  <p className="text-lg font-bold text-red-400 font-mono">
+                    -{formatISK(activity.data?.automatedTaxes || 0)}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-eve-dark/50 border border-eve-border/50">
+                  <p className="text-[10px] uppercase font-bold text-gray-500 mb-1">MTU Loot Value</p>
+                  <p className="text-lg font-bold text-blue-400 font-mono">
+                    {formatISK(estimatedLootValue)}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-eve-accent/10 border border-eve-accent/20">
+                  <p className="text-[10px] uppercase font-bold text-eve-accent mb-1">Net Session Profit</p>
+                  <p className="text-lg font-bold text-white font-mono">
+                    {formatISK(
+                      (activity.data?.automatedBounties || 0) + 
+                      (activity.data?.automatedEss || 0) + 
+                      (activity.data?.additionalBounties || 0) +
+                      estimatedLootValue
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Log Timeline */}
+              <div className="space-y-3">
+                <p className="text-[10px] uppercase font-bold text-gray-500 flex items-center gap-2">
+                  <Clock className="h-3 w-3" /> Recent Transactions
+                </p>
+                <div className="max-h-[250px] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                  {activity.data?.logs?.length > 0 ? (
+                    activity.data.logs.map((log: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between text-[11px] p-2 rounded bg-eve-dark/30 border border-eve-border/30">
+                        <div className="flex flex-col">
+                          <span className={cn(
+                            "font-bold uppercase text-[9px]",
+                            log.type === 'tax' ? 'text-red-400' : 'text-green-400'
+                          )}>
+                            {log.type}
+                          </span>
+                          <span className="text-gray-400">{log.charName}</span>
+                        </div>
+                        <div className="text-right">
+                          <p className={cn("font-mono", log.type === 'tax' ? 'text-red-400' : 'text-green-400')}>
+                            {log.type === 'tax' ? '-' : '+'}{formatISK(log.amount)}
+                          </p>
+                          <p className="text-[9px] text-gray-500">{new Date(log.date).toLocaleTimeString()}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center py-8 text-gray-500 text-xs italic border border-dashed border-eve-border/50 rounded-lg">
+                      No transactions recorded yet. Click "Sync ESI" to update.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4 text-sm">
@@ -898,15 +1070,20 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
             <div className="flex justify-between items-end">
               <div>
                 <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Net ISK Profit</p>
-                <div className="text-lg font-bold text-green-400 font-mono">
+                <div className="text-lg font-bold text-green-400 font-mono leading-none">
                   {formatISK(
                     (activity.data?.automatedBounties || 0) + 
                     (activity.data?.automatedEss || 0) + 
                     (activity.data?.additionalBounties || 0)
                   )}
                 </div>
+                {estimatedLootValue > 0 && (
+                   <div className="text-xs font-bold text-blue-400 font-mono mt-0.5">
+                    + {formatISK(estimatedLootValue)} (Loot)
+                   </div>
+                )}
                 {activity.data?.automatedTaxes > 0 && (
-                  <p className="text-red-400/80 text-[9px] font-medium font-mono leading-tight">
+                  <p className="text-red-400/80 text-[9px] font-medium font-mono leading-tight mt-1">
                    - {formatISK(activity.data.automatedTaxes)} Corp Tax
                   </p>
                 )}
@@ -982,35 +1159,41 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
               </Dialog>
             </div>
             
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline" className="w-full bg-eve-dark/30 border-eve-border text-[10px] h-8 hover:bg-white hover:text-black">
-                  <Box className="h-3 w-3 mr-1" /> Managed MTUs
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-eve-panel border-eve-border sm:max-w-[450px]">
-                <DialogHeader>
-                  <DialogTitle className="text-sm">Manage MTUs & Loot</DialogTitle>
-                </DialogHeader>
-                <div className="py-2">
-                   <MTULootField 
-                      value={activity.data?.mtuContents || []} 
-                      onChange={(mtus) => {
-                        const store = useActivityStore.getState();
-                        store.updateActivity(activity.id, {
-                          data: { ...activity.data, mtuContents: mtus }
-                        });
-                      }} 
-                    />
+            <div className="space-y-3 pt-4 border-t border-eve-border/30">
+              <div className="flex items-center justify-between">
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5">
+                  <Box className="h-3 w-3" /> Managed MTUs & Loot
+                </p>
+                <Badge variant="outline" className="text-[9px] h-4 bg-eve-dark/50 border-eve-border text-gray-400">
+                  {activity.data?.mtuContents?.length || 0} Active
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between p-2 rounded bg-blue-500/5 border border-blue-500/20">
+                <div>
+                  <p className="text-[9px] uppercase font-bold text-blue-400/70">Estimated Loot Value</p>
+                  <p className="text-sm font-mono text-blue-400">{formatISK(estimatedLootValue)}</p>
                 </div>
-              </DialogContent>
-            </Dialog>
+                <Box className="h-4 w-4 text-blue-500/40" />
+              </div>
+              
+              <MTULootField 
+                value={activity.data?.mtuContents || []} 
+                onChange={(mtus) => {
+                  const store = useActivityStore.getState();
+                  store.updateActivity(activity.id, {
+                    data: { ...activity.data, mtuContents: mtus }
+                  });
+                }} 
+              />
+            </div>
           </div>
         )}
       </CardContent>
     </Card>
   )
 }
+
 
 function SelectContentList({ items }: { items: string[] }) {
   return (
@@ -1043,33 +1226,39 @@ function MTULootField({ value, onChange }: { value: MTULoot[], onChange: (mtus: 
 
   return (
     <div className="space-y-2">
-      {value.map((mtu, index) => (
-        <div key={index} className="flex gap-2 items-start">
-          <textarea
-            value={mtu.loot}
-            onChange={(e) => updateMTU(index, e.target.value)}
-            placeholder="Cole o conteúdo do MTU aqui..."
-            className="flex-1 bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[100px] font-mono"
-            rows={4}
-          />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => removeMTU(index)}
-            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-          >
-            <Minus className="h-4 w-4" />
-          </Button>
-        </div>
-      ))}
+      <div className="max-h-[300px] overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+        {value.map((mtu, index) => (
+          <div key={index} className="space-y-1.5 p-2 rounded bg-eve-dark/30 border border-eve-border/50 group">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-gray-500 font-bold">MTU UNIT #{index + 1}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => removeMTU(index)}
+                className="h-5 w-5 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+            </div>
+            <textarea
+              value={mtu.loot}
+              onChange={(e) => updateMTU(index, e.target.value)}
+              placeholder="Paste MTU inventory here..."
+              className="w-full bg-eve-dark/50 border-none rounded p-2 text-[11px] text-gray-300 min-h-[80px] font-mono resize-none focus:ring-1 focus:ring-eve-accent/30 outline-none"
+              rows={3}
+            />
+          </div>
+        ))}
+      </div>
+      
       <Button
         type="button"
-        variant="outline"
+        variant="ghost"
         onClick={addMTU}
-        className="w-full border-dashed border-eve-border hover:border-eve-accent text-gray-400 hover:text-eve-accent"
+        className="w-full h-8 border border-dashed border-eve-border/50 hover:border-eve-accent/50 text-[10px] text-gray-500 hover:text-eve-accent transition-colors"
       >
-        <Plus className="h-4 w-4 mr-2" />
-        Adicionar MTU
+        <Plus className="h-3 w-3 mr-2" />
+        Register New MTU
       </Button>
     </div>
   )

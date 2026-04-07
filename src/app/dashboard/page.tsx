@@ -54,34 +54,8 @@ export default async function DashboardPage() {
   const totalSP = characters.reduce((sum: number, c: { totalSp: number }) => sum + c.totalSp, 0)
   const totalWallet = characters.reduce((sum: number, c: { walletBalance: number }) => sum + c.walletBalance, 0)
 
-  // Fetch Wallet journal
-  const activityPromises = characters.map(async (char) => {
-    const journal = await getCharacterWalletJournal(char.id)
-    
-    const mappedJournal = Array.isArray(journal) ? journal
-      .map((entry: any) => ({
-        id: `journal-${entry.id}`,
-        type: 'wallet',
-        subType: entry.ref_type,
-        timestamp: entry.date,
-        amount: entry.amount,
-        balance: entry.balance,
-        description: entry.description,
-        characterName: char.name,
-        characterId: char.id
-      })) : []
-      
-    return mappedJournal
-  })
-
-  const activityResults = await Promise.allSettled(activityPromises)
-  const allActivity = activityResults
-    .filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled')
-    .flatMap(r => r.value)
-    
-  allActivity.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-  const recentActivity = allActivity.slice(0, 30)
-
+  // Removed legacy wallet journal fetching to optimize dashboard performance
+  const recentActivity: any[] = []
   const timeAgo = (dateString: string) => {
     const now = new Date();
     const date = new Date(dateString);
@@ -95,18 +69,6 @@ export default async function DashboardPage() {
     const diffInDays = Math.floor(diffInHours / 24);
     if (diffInDays < 30) return `${diffInDays}d ${diffInHours % 24}h ago`;
     return date.toLocaleDateString();
-  }
-
-
-
-  const getActivityTitle = (item: any) => {
-    const sign = item.amount > 0 ? '+' : ''
-    const amountStr = item.amount ? formatISK(item.amount) : '0'
-    const cleanType = (item.subType || '').replace(/_/g, ' ')
-    // capitalize
-    const typeLabel = cleanType.charAt(0).toUpperCase() + cleanType.slice(1)
-    
-    return `${typeLabel} (${sign}${amountStr})`
   }
 
   const stats = [

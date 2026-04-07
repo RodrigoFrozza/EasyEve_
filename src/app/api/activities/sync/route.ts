@@ -8,7 +8,12 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const activityId = params.id
+    const { searchParams } = new URL(request.url)
+    const activityId = searchParams.get('id')
+    
+    if (!activityId) {
+      return NextResponse.json({ error: 'Activity ID is required' }, { status: 400 })
+    }
     
     // 1. Fetch activity and its participants
     const activity = await prisma.activity.findUnique({
@@ -35,10 +40,12 @@ export async function POST(
     let totalEss = 0
     let totalTaxes = 0
     const participantEarnings: Record<number, number> = {}
+    const logs: any[] = []
 
     // 2. Loop through participants and fetch their wallet journals
     for (const participant of participants) {
       const charId = participant.characterId
+      const charName = participant.characterName
       
       try {
         const journal = await getCharacterWalletJournal(charId)
@@ -52,13 +59,17 @@ export async function POST(
             const entryDate = new Date(entry.date)
             // Filter by date range and reference types
             if (entryDate >= startTime && entryDate <= endTime) {
+              const amount = entry.amount || 0
               if (entry.ref_type === 'bounty_payout') {
-                charBounty += entry.amount || 0
+                charBounty += amount
+                logs.push({ date: entry.date, amount, type: 'bounty', charName })
               } else if (entry.ref_type === 'ess_payout') {
-                charEss += entry.amount || 0
+                charEss += amount
+                logs.push({ date: entry.date, amount, type: 'ess', charName })
               } else if (entry.ref_type === 'corporation_tax_payout') {
-                // Tax entries are usually negative values in the journal
-                charTaxes += Math.abs(entry.amount || 0)
+                const taxAmount = Math.abs(amount)
+                charTaxes += taxAmount
+                logs.push({ date: entry.date, amount: taxAmount, type: 'tax', charName })
               }
             }
           })
@@ -73,6 +84,9 @@ export async function POST(
       }
     }
 
+    // Sort logs by date descending
+    logs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
     // 3. Update activity data with new totals
     const updatedData = {
       ...(activity.data as any || {}),
@@ -81,6 +95,7 @@ export async function POST(
       automatedTaxes: totalTaxes,
       grossBounties: totalBounties + totalTaxes, // Reconstruct gross before tax
       participantEarnings,
+      logs: logs.slice(0, 50), // Keep a reasonable amount of history
       lastSyncAt: new Date().toISOString()
     }
 

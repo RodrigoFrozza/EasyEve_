@@ -19,6 +19,8 @@ export async function GET(request: Request) {
               { name: { contains: 'Hub' } },
               { name: { contains: 'Haven' } },
               { name: { contains: 'Sanctum' } },
+              { name: { contains: 'Den' } },
+              { name: { contains: 'Refuge' } },
               { name: { contains: 'Forlorn' } },
               { name: { contains: 'Forsaken' } },
               { name: { contains: 'Rally Point' } },
