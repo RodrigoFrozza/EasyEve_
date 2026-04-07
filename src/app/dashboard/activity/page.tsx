@@ -1103,8 +1103,36 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
                 </div>
               </div>
             </div>
+
+            {/* ESS Estimated Timer */}
+            {activity.type === 'ratting' && (
+              <div className="bg-eve-dark/40 rounded p-2 flex items-center justify-between border border-eve-border/30">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-3.5 w-3.5 text-yellow-500/70" />
+                  <span className="text-[10px] uppercase font-bold text-gray-400">Next ESS Payout</span>
+                </div>
+                <span className="text-[11px] font-mono text-yellow-500">
+                  {(() => {
+                    const logs = activity.data?.logs || [];
+                    const essLogs = logs.filter((l: any) => l.type === 'ess');
+                    if (essLogs.length === 0) return 'Waiting for Sync...';
+                    
+                    const lastPayout = new Date(essLogs[0].date).getTime();
+                    // 2 hours and 40 minutes (160 minutes total)
+                    const nextPayout = lastPayout + (160 * 60 * 1000);
+                    const diff = nextPayout - new Date().getTime();
+                    
+                    if (diff <= 0) return 'PAYING NOW...';
+                    
+                    const hours = Math.floor(diff / 3600000);
+                    const mins = Math.floor((diff % 3600000) / 60000);
+                    return `${hours}h ${mins}m`;
+                  })()}
+                </span>
+              </div>
+            )}
             
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <Button 
                 size="sm" 
                 variant="outline" 
@@ -1118,12 +1146,13 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
                   }
                 }}
               >
-                <Zap className="h-3 w-3 mr-1" /> Sync ESI
+                <Zap className="h-3 w-3 mr-1" /> Sync
               </Button>
+              
               <Dialog>
                 <DialogTrigger asChild>
                   <Button size="sm" variant="outline" className="bg-eve-dark/30 border-eve-border text-[10px] h-8 hover:bg-white hover:text-black">
-                    <Plus className="h-3 w-3 mr-1" /> Manual Tick
+                    <Plus className="h-3 w-3 mr-1" /> Income
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="bg-eve-panel border-eve-border sm:max-w-[300px]">
@@ -1157,7 +1186,63 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
                   </div>
                 </DialogContent>
               </Dialog>
+
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="bg-eve-dark/30 border-eve-border text-[10px] h-8 hover:border-purple-500 hover:text-purple-400">
+                    <Star className="h-3 w-3 mr-1" /> Event
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-eve-panel border-eve-border sm:max-w-[400px]">
+                  <DialogHeader>
+                    <DialogTitle className="text-sm flex items-center gap-2">
+                       <Zap className="h-4 w-4 text-purple-400" /> Special Event / Escalation
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="grid grid-cols-1 gap-2 py-4">
+                    {[
+                      { id: '4_10', label: 'Angel 4/10 (Occupied Mining)', color: 'text-blue-400' },
+                      { id: '5_10', label: 'Angel 5/10 (Redoubt)', color: 'text-blue-400' },
+                      { id: '6_10', label: 'Angel 6/10 (Warehouse)', color: 'text-purple-400' },
+                      { id: '7_10', label: 'Angel 7/10 (Military Complex)', color: 'text-purple-400' },
+                      { id: '8_10', label: 'Angel 8/10 (Cathedral)', color: 'text-orange-400' },
+                      { id: '10_10', label: 'Angel 10/10 (Raiding Outpost)', color: 'text-red-400' },
+                      { id: 'dread', label: 'Dreadnought Spawn', color: 'text-red-500 font-bold' },
+                      { id: 'faction', label: 'Faction NPC (Commander)', color: 'text-green-400' },
+                    ].map(event => (
+                      <Button
+                        key={event.id}
+                        variant="ghost"
+                        className={cn("justify-start h-9 text-[11px] bg-eve-dark/30 hover:bg-white hover:text-black", event.color)}
+                        onClick={() => {
+                          const store = useActivityStore.getState();
+                          const currentEsc = activity.data?.escalations || [];
+                          store.updateActivity(activity.id, {
+                            data: {
+                              ...activity.data,
+                              escalations: [...currentEsc, { ...event, timestamp: new Date().toISOString() }]
+                            }
+                          });
+                        }}
+                      >
+                        {event.label}
+                      </Button>
+                    ))}
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
+
+            {/* Special Events List Display */}
+            {(activity.data?.escalations?.length || 0) > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-2">
+                {activity.data.escalations.map((esc: any, idx: number) => (
+                  <Badge key={idx} variant="outline" className={cn("text-[9px] h-5 bg-purple-500/5 py-0", esc.color.replace('font-bold', ''))}>
+                    {esc.label.split('(')[0].trim()}
+                  </Badge>
+                ))}
+              </div>
+            )}
             
             <div className="space-y-3 pt-4 border-t border-eve-border/30">
               <div className="flex items-center justify-between">
