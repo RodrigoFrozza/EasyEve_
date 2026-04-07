@@ -25,8 +25,6 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Box,
-  Plus,
-  DollarSign,
   Play, 
   StopCircle,
   Users, 
@@ -924,8 +922,10 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
                 </Avatar>
               </div>
             ))}
-        </div>
-        {activity.type === 'ratting' && (
+            </div>
+          </div>
+
+          {activity.type === 'ratting' && (
           <div className="space-y-3 pt-2 border-t border-eve-border/30">
             <div className="flex justify-between items-end">
               <div>
@@ -1037,7 +1037,6 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
           </div>
         )}
       </CardContent>
-ntent>
     </Card>
   )
 }
