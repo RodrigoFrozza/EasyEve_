@@ -15,18 +15,26 @@ export interface Activity {
   region?: string
   space?: string
   miningType?: string
+  oreMined?: { typeId: number; quantity: number; value: number }[]
   npcFaction?: string
   siteName?: string
   siteType?: string
+  mtuContents?: { loot: string }[]
   tier?: string
   weather?: string
   shipSize?: string
+  lootBefore?: string
+  lootAfter?: string
   explorationSiteType?: string
   difficulty?: string
+  lootCollected?: string
   dedLevel?: string
   escalationFaction?: string
+  escalationLoot?: string
   crabPhase?: string
+  crabBounties?: { amount: number; timestamp: string }[]
   pvpType?: string
+  pvpLoot?: string
   fit?: string
   status: 'active' | 'completed'
   startedAt: Date

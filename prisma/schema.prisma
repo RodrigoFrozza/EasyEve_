@@ -77,33 +77,41 @@ model Activity {
   region       String?  // Minmatar, Gallente, etc
   space        String?  // highsec, lowsec, nullsec, wormhole
   
-  // Mining specific
+  // Mining
   miningType   String?  // ore, ice, gas
+  oreMined     Json?    // [{"typeId": 12345, "quantity": 100000, "value": 50000000}]
   
   // Ratting specific
   npcFaction   String?  // Angel Cartel, Blood Raider, etc
   siteName     String?  // Forsaken Hub, Haven, etc
   siteType     String?  // Belt, Anomaly, Signature, DED
+  mtuContents  Json?    // [{"loot": "conteudo copiado do mtu"}]
   
   // Abyssal specific
   tier         String?  // T0-T6
   weather      String?  // Electrical, Dark, Exotic, Firestorm, Gamma
   shipSize     String?  // frigate, destroyer, cruiser
+  lootBefore   String?  // Conteúdo antes da run (containers)
+  lootAfter    String?  // Conteúdo depois da run (loot)
   
   // Exploration specific
   explorationSiteType String? // Relic, Data, Ghost, Gas, Sleeper
   difficulty   String?  // I, II, III, IV, V
+  lootCollected String? // Conteúdo copiado das caixas
   
   // Escalations specific
   dedLevel     String?  // 1/10 to 10/10
   escalationFaction String? // Angel, Blood Raider, etc
+  escalationLoot String? // Loot copiado
   
   // Crab specific
   crabPhase    String?  // Deployment, Linking, Scanning, Rewards
+  crabBounties Json?    // [{"amount": 1000000, "timestamp": "2024-01-01"}]
   
   // PVP specific
   pvpType      String?  // Ganking, Small Gang, Fleet, Solo
-  
+  pvpLoot      String?  // Loot copiado (killmails)
+
   fit          String?  // Optional - free text
   
   status       String   @default("active") // active, completed

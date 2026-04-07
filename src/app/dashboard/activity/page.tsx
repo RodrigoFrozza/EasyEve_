@@ -37,10 +37,12 @@ import {
   ShieldCheck,
   Ship,
   MapPin,
-  Trash2
+  Trash2,
+  Plus,
+  Minus
 } from 'lucide-react'
 import { useActivityStore, type Activity, type ActivityParticipant } from '@/lib/stores/activity-store'
-import { useSession } from 'next-auth/react'
+import { useSession } from '@/lib/session-client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 
@@ -237,6 +239,10 @@ export default function ActivityTrackerPage() {
                         <SelectContent><SelectContentList items={MINING_TYPES} /></SelectContent>
                       </Select>
                     </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label>Melhores Minérios para Minerar</Label>
+                      <MiningValuableOres />
+                    </div>
                   </>
                 )}
 
@@ -264,53 +270,87 @@ export default function ActivityTrackerPage() {
                         className="bg-eve-dark border-eve-border"
                       />
                     </div>
-                  </>
-                )}
-
-                {newActivity.type === 'abyssal' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Tier</Label>
-                      <Select onValueChange={(v) => setNewActivity({ ...newActivity, tier: v })}>
-                        <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Tier" /></SelectTrigger>
-                        <SelectContent><SelectContentList items={ABYSSAL_TIERS} /></SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Weather</Label>
-                      <Select onValueChange={(v) => setNewActivity({ ...newActivity, weather: v })}>
-                        <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Weather" /></SelectTrigger>
-                        <SelectContent><SelectContentList items={ABYSSAL_WEATHER} /></SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Ship Size</Label>
-                      <Select onValueChange={(v) => setNewActivity({ ...newActivity, shipSize: v })}>
-                        <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Ship Size" /></SelectTrigger>
-                        <SelectContent><SelectContentList items={SHIP_SIZES} /></SelectContent>
-                      </Select>
+                    <div className="space-y-2 col-span-2">
+                      <Label>MTUs Loot</Label>
+                      <MTULootField 
+                        value={newActivity.mtuContents || []} 
+                        onChange={(mtus) => setNewActivity({ ...newActivity, mtuContents: mtus })} 
+                      />
                     </div>
                   </>
                 )}
 
-                {newActivity.type === 'exploration' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Site Type</Label>
-                      <Select onValueChange={(v) => setNewActivity({ ...newActivity, explorationSiteType: v })}>
-                        <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Site Type" /></SelectTrigger>
-                        <SelectContent><SelectContentList items={EXPLORATION_SITE_TYPES} /></SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Difficulty</Label>
-                      <Select onValueChange={(v) => setNewActivity({ ...newActivity, difficulty: v })}>
-                        <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Difficulty" /></SelectTrigger>
-                        <SelectContent><SelectContentList items={DIFFICULTIES} /></SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                )}
+              {newActivity.type === 'abyssal' && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Tier</Label>
+                    <Select onValueChange={(v) => setNewActivity({ ...newActivity, tier: v })}>
+                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Tier" /></SelectTrigger>
+                      <SelectContent><SelectContentList items={ABYSSAL_TIERS} /></SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Weather</Label>
+                    <Select onValueChange={(v) => setNewActivity({ ...newActivity, weather: v })}>
+                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Weather" /></SelectTrigger>
+                      <SelectContent><SelectContentList items={ABYSSAL_WEATHER} /></SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ship Size</Label>
+                    <Select onValueChange={(v) => setNewActivity({ ...newActivity, shipSize: v })}>
+                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Ship Size" /></SelectTrigger>
+                      <SelectContent><SelectContentList items={SHIP_SIZES} /></SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label>Containers (Antes da Run)</Label>
+                    <textarea
+                      value={newActivity.lootBefore || ''}
+                      onChange={(e) => setNewActivity({ ...newActivity, lootBefore: e.target.value })}
+                      placeholder="Cole o conteúdo dos containers antes da run..."
+                      className="w-full bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[80px] font-mono"
+                    />
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label>Loot (Depois da Run)</Label>
+                    <textarea
+                      value={newActivity.lootAfter || ''}
+                      onChange={(e) => setNewActivity({ ...newActivity, lootAfter: e.target.value })}
+                      placeholder="Cole o loot depois da run..."
+                      className="w-full bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[80px] font-mono"
+                    />
+                  </div>
+                </>
+              )}
+
+              {newActivity.type === 'exploration' && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Site Type</Label>
+                    <Select onValueChange={(v) => setNewActivity({ ...newActivity, explorationSiteType: v })}>
+                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Site Type" /></SelectTrigger>
+                      <SelectContent><SelectContentList items={EXPLORATION_SITE_TYPES} /></SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Difficulty</Label>
+                    <Select onValueChange={(v) => setNewActivity({ ...newActivity, difficulty: v })}>
+                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Difficulty" /></SelectTrigger>
+                      <SelectContent><SelectContentList items={DIFFICULTIES} /></SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label>Loot Coletado</Label>
+                    <textarea
+                      value={newActivity.lootCollected || ''}
+                      onChange={(e) => setNewActivity({ ...newActivity, lootCollected: e.target.value })}
+                      placeholder="Cole o conteúdo das caixas coletadas..."
+                      className="w-full bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[80px] font-mono"
+                    />
+                  </div>
+                </>
+              )}
 
                 {newActivity.type === 'crab' && (
                   <div className="space-y-2">
@@ -322,24 +362,69 @@ export default function ActivityTrackerPage() {
                   </div>
                 )}
 
-                {newActivity.type === 'escalations' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Faction</Label>
-                      <Select onValueChange={(v) => setNewActivity({ ...newActivity, escalationFaction: v })}>
-                        <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Faction" /></SelectTrigger>
-                        <SelectContent><SelectContentList items={NPC_FACTIONS} /></SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>DED Level</Label>
-                      <Select onValueChange={(v) => setNewActivity({ ...newActivity, dedLevel: v })}>
-                        <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Level" /></SelectTrigger>
-                        <SelectContent><SelectContentList items={DED_LEVELS} /></SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                )}
+              {newActivity.type === 'escalations' && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Faction</Label>
+                    <Select onValueChange={(v) => setNewActivity({ ...newActivity, escalationFaction: v })}>
+                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Faction" /></SelectTrigger>
+                      <SelectContent><SelectContentList items={NPC_FACTIONS} /></SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>DED Level</Label>
+                    <Select onValueChange={(v) => setNewActivity({ ...newActivity, dedLevel: v })}>
+                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Level" /></SelectTrigger>
+                      <SelectContent><SelectContentList items={DED_LEVELS} /></SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label>Loot Coletado</Label>
+                    <textarea
+                      value={newActivity.escalationLoot || ''}
+                      onChange={(e) => setNewActivity({ ...newActivity, escalationLoot: e.target.value })}
+                      placeholder="Cole o loot da escalation..."
+                      className="w-full bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[80px] font-mono"
+                    />
+                  </div>
+                </>
+              )}
+
+              {newActivity.type === 'crab' && (
+                <div className="space-y-2">
+                  <Label>Starting Phase</Label>
+                  <Select onValueChange={(v) => setNewActivity({ ...newActivity, crabPhase: v })}>
+                    <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Phase" /></SelectTrigger>
+                    <SelectContent><SelectContentList items={CRAB_PHASES} /></SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {newActivity.type === 'pvp' && (
+                <>
+                  <div className="space-y-2">
+                    <Label>PVP Type</Label>
+                    <Select onValueChange={(v) => setNewActivity({ ...newActivity, pvpType: v })}>
+                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Type" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Ganking">Ganking</SelectItem>
+                        <SelectItem value="Small Gang">Small Gang</SelectItem>
+                        <SelectItem value="Fleet">Fleet</SelectItem>
+                        <SelectItem value="Solo">Solo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label>Loot / Killmail</Label>
+                    <textarea
+                      value={newActivity.pvpLoot || ''}
+                      onChange={(e) => setNewActivity({ ...newActivity, pvpLoot: e.target.value })}
+                      placeholder="Cole o loot ou killmail..."
+                      className="w-full bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[80px] font-mono"
+                    />
+                  </div>
+                </>
+              )}
               </div>
 
               {/* Participant Selection */}
@@ -455,7 +540,7 @@ export default function ActivityTrackerPage() {
                           </div>
                           <div>
                             <p className="font-medium capitalize">{activity.type}</p>
-                            <p className="text-xs text-gray-500">{activity.siteType || activity.subType}</p>
+                            <p className="text-xs text-gray-500">{activity.siteType || activity.tier}</p>
                           </div>
                         </div>
                       </td>
@@ -573,5 +658,95 @@ function SelectContentList({ items }: { items: string[] }) {
         <SelectItem key={item} value={item}>{item}</SelectItem>
       ))}
     </>
+  )
+}
+
+interface MTULoot {
+  loot: string
+}
+
+function MTULootField({ value, onChange }: { value: MTULoot[], onChange: (mtus: MTULoot[]) => void }) {
+  const addMTU = () => {
+    onChange([...value, { loot: '' }])
+  }
+
+  const removeMTU = (index: number) => {
+    onChange(value.filter((_, i) => i !== index))
+  }
+
+  const updateMTU = (index: number, loot: string) => {
+    const newMTUs = [...value]
+    newMTUs[index] = { loot }
+    onChange(newMTUs)
+  }
+
+  return (
+    <div className="space-y-2">
+      {value.map((mtu, index) => (
+        <div key={index} className="flex gap-2 items-start">
+          <textarea
+            value={mtu.loot}
+            onChange={(e) => updateMTU(index, e.target.value)}
+            placeholder="Cole o conteúdo do MTU aqui..."
+            className="flex-1 bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[100px] font-mono"
+            rows={4}
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => removeMTU(index)}
+            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+          >
+            <Minus className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="outline"
+        onClick={addMTU}
+        className="border-eve-border text-gray-400 hover:text-white hover:bg-eve-dark"
+      >
+        <Plus className="h-4 w-4 mr-2" />
+        Adicionar MTU
+      </Button>
+    </div>
+  )
+}
+
+function MiningValuableOres() {
+  const [ores, setOres] = useState<{ name: string; valuePerUnit: number }[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/sde/ores')
+      .then(res => res.json())
+      .then(data => {
+        setOres(data.slice(0, 10))
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) {
+    return <p className="text-gray-500 text-sm">Carregando minérios...</p>
+  }
+
+  if (ores.length === 0) {
+    return <p className="text-gray-500 text-sm">Nenhum minério disponível</p>
+  }
+
+  return (
+    <div className="bg-eve-dark/50 rounded-lg p-3 border border-eve-border">
+      <p className="text-xs text-gray-400 mb-2">Top 10 Minérios mais valiosos:</p>
+      <div className="space-y-1">
+        {ores.map((ore, index) => (
+          <div key={ore.name} className="flex justify-between text-xs">
+            <span className="text-gray-300">{index + 1}. {ore.name}</span>
+            <span className="text-eve-accent font-mono">{ore.valuePerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'ISK' })}/un</span>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }

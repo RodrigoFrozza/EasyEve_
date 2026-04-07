@@ -312,3 +312,35 @@ export async function getAllianceInfo(allianceId: number) {
     return { name: `Alliance ${allianceId}` }
   }
 }
+
+export interface MiningLedgerEntry {
+  date: string
+  quantity: number
+  type_id: number
+  corporation_id: number
+}
+
+export async function getCharacterMiningLedger(
+  characterId: number,
+  accessToken: string,
+  before?: string,
+  after?: string
+): Promise<MiningLedgerEntry[]> {
+  try {
+    const params = new URLSearchParams()
+    if (before) params.set('before', before)
+    if (after) params.set('after', after)
+
+    const url = `${ESI_BASE_URL}/characters/${characterId}/mining/${params.toString() ? '?' + params.toString() : ''}`
+    
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+
+    if (!response.ok) return []
+
+    return response.json()
+  } catch {
+    return []
+  }
+}
