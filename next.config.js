@@ -1,17 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  swcMinify: false,
+  swcMinify: true,
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
-   turbo: {
-      treeShaking: true,
-    },
   },
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '*.evetools.dev',
+        hostname: 'images.evetech.net',
       },
       {
         protocol: 'https',

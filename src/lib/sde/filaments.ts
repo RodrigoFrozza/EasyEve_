@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 
 const ESI_BASE_URL = 'https://esi.evetech.net/latest'
-const USER_AGENT = 'EasyEve/1.0 (+https://easyeve.cloud; easyeve.project@gmail.com)'
+const USER_AGENT = 'EasyEve/1.0.0 (https://github.com/RodrigoFrozza/EasyEve_)'
 
 export interface FilamentType {
   id: number
