@@ -55,7 +55,7 @@ export default async function DashboardPage() {
 
   // Fetch Wallet journal
   const activityPromises = characters.map(async (char) => {
-    const journal = await getCharacterWalletJournal(char.id, char.id)
+    const journal = await getCharacterWalletJournal(char.id)
     
     const mappedJournal = Array.isArray(journal) ? journal
       .map((entry: any) => ({
