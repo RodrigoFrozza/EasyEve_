@@ -8,7 +8,7 @@ RUN npm install
 
 COPY . .
 RUN npx prisma generate
-RUN npm run build
+RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
 ENV NODE_ENV=production
 ENV PORT=80
