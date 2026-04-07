@@ -4,7 +4,7 @@ export * from './filaments'
 
 export const ESI_BASE_URL = 'https://esi.evetech.net/latest'
 export const EVE_IMAGES_URL = 'https://images.evetech.net'
-export const USER_AGENT = 'EasyEve/1.0 (+https://easyeve.cloud; easyeve.project@gmail.com)'
+export const USER_AGENT = 'EasyEve/1.0.0 (https://github.com/RodrigoFrozza/EasyEve_)'
 
 // --- Visual Helpers ---
 
@@ -229,8 +229,7 @@ export async function getCategoryInfo(categoryId: number): Promise<CategoryInfo 
     if (category) {
       return {
         id: category.id,
-        name: category.name,
-        published: category.published
+        name: category.name
       }
     }
   } catch (error) {
