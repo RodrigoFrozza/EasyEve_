@@ -344,3 +344,73 @@ export async function getCharacterMiningLedger(
     return []
   }
 }
+
+export async function getCategoryGroups(categoryId: number): Promise<number[]> {
+  try {
+    const response = await fetch(`${ESI_BASE_URL}/universe/categories/${categoryId}/`)
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.groups || []
+  } catch {
+    return []
+  }
+}
+
+export async function getGroupTypes(groupId: number): Promise<number[]> {
+  try {
+    const response = await fetch(`${ESI_BASE_URL}/universe/groups/${groupId}/`)
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.types || []
+  } catch {
+    return []
+  }
+}
+
+export interface TypeDetails {
+  type_id: number
+  name: string
+  description: string
+  group_id: number
+  volume?: number
+  capacity?: number
+  portion_size?: number
+  published: boolean
+  market_group_id?: number
+  mass?: number
+}
+
+export async function getTypeDetails(typeId: number): Promise<TypeDetails | null> {
+  try {
+    const response = await fetch(`${ESI_BASE_URL}/universe/types/${typeId}/`)
+    if (!response.ok) return null
+    return response.json()
+  } catch {
+    return null
+  }
+}
+
+export interface MarketPrice {
+  type_id: number
+  average_price?: number
+  adjusted_price?: number
+}
+
+export async function getMarketPrices(): Promise<Record<number, number>> {
+  try {
+    const response = await fetch(`${ESI_BASE_URL}/markets/prices/`)
+    if (!response.ok) return {}
+    const data: MarketPrice[] = await response.json()
+    
+    // Convert to easy lookup map
+    const priceMap: Record<number, number> = {}
+    data.forEach(item => {
+      if (item.average_price) {
+        priceMap[item.type_id] = item.average_price
+      }
+    })
+    return priceMap
+  } catch {
+    return {}
+  }
+}

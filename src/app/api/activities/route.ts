@@ -12,7 +12,10 @@ export async function GET() {
 
     const activities = await prisma.activity.findMany({
       where: { userId: user.id },
-      orderBy: { startedAt: 'desc' }
+      orderBy: { startTime: 'desc' },
+      include: {
+        item: true // Include EveType details (ship, etc.)
+      }
     })
 
     return NextResponse.json(activities)
@@ -33,32 +36,12 @@ export async function POST(request: Request) {
     const body = await request.json()
     const {
       type,
-      name,
+      typeId,
       region,
       space,
-      miningType,
-      oreMined,
-      npcFaction,
-      siteName,
-      siteType,
-      mtuContents,
-      tier,
-      weather,
-      shipSize,
-      lootBefore,
-      lootAfter,
-      explorationSiteType,
-      difficulty,
-      lootCollected,
-      dedLevel,
-      escalationFaction,
-      escalationLoot,
-      crabPhase,
-      crabBounties,
-      pvpType,
-      pvpLoot,
-      fit,
-      participants
+      participants,
+      characterId,
+      ...extraData // Todos os outros campos vão para o JSON 'data'
     } = body
 
     if (!type) {
@@ -93,34 +76,17 @@ export async function POST(request: Request) {
     const activity = await prisma.activity.create({
       data: {
         userId: user.id,
+        characterId: characterId || characterIds[0], // Use primary char or first participant
         type,
-        name,
+        typeId,
         region,
         space,
-        miningType,
-        oreMined,
-        npcFaction,
-        siteName,
-        siteType,
-        mtuContents,
-        tier,
-        weather,
-        shipSize,
-        lootBefore,
-        lootAfter,
-        explorationSiteType,
-        difficulty,
-        lootCollected,
-        dedLevel,
-        escalationFaction,
-        escalationLoot,
-        crabPhase,
-        crabBounties,
-        pvpType,
-        pvpLoot,
-        fit,
         status: 'active',
+        data: extraData as any,
         participants: participants as any
+      },
+      include: {
+        item: true
       }
     })
 

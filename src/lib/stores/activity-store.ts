@@ -10,35 +10,25 @@ export interface ActivityParticipant {
 
 export interface Activity {
   id: string
-  type: 'mining' | 'ratting' | 'abyssal' | 'exploration' | 'crab' | 'escalations' | 'pvp'
-  name?: string
+  type: string // MINING, RATTING, ABYSSAL, etc.
+  status: 'active' | 'completed'
+  startTime: string | Date
+  endTime?: string | Date
+  
+  // Link to primary item (ship, etc.)
+  typeId?: number
+  
+  // Basic Context
   region?: string
   space?: string
-  miningType?: string
-  oreMined?: { typeId: number; quantity: number; value: number }[]
-  npcFaction?: string
-  siteName?: string
-  siteType?: string
-  mtuContents?: { loot: string }[]
-  tier?: string
-  weather?: string
-  shipSize?: string
-  lootBefore?: string
-  lootAfter?: string
-  explorationSiteType?: string
-  difficulty?: string
-  lootCollected?: string
-  dedLevel?: string
-  escalationFaction?: string
-  escalationLoot?: string
-  crabPhase?: string
-  crabBounties?: { amount: number; timestamp: string }[]
-  pvpType?: string
-  pvpLoot?: string
-  fit?: string
-  status: 'active' | 'completed'
-  startedAt: Date
-  endedAt?: Date
+  
+  // Flexible data object for activity-specific fields
+  // Examples: 
+  // { oreMined: {...}, miningType: "..." }
+  // { mtuContents: [...], totalBounty: 100 }
+  // { tier: "T6", weather: "Dark" }
+  data?: any 
+  
   participants: ActivityParticipant[]
 }
 

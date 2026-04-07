@@ -43,7 +43,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { status, endedAt } = body
+    const { status, endTime } = body
 
     const existingActivity = await prisma.activity.findFirst({
       where: {
@@ -60,7 +60,7 @@ export async function PUT(
       where: { id: params.id },
       data: {
         ...(status && { status }),
-        ...(endedAt && { endedAt: new Date(endedAt) })
+        ...(endTime && { endTime: new Date(endTime) })
       }
     })
 

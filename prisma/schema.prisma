@@ -67,66 +67,80 @@ model Fit {
 
 
 model Activity {
-  id           String   @id @default(cuid())
-  userId       String
+  id               String       @id @default(cuid())
+  userId           String
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterId      Int?
   
-  type         String   // mining, ratting, abyssal, exploration, crab, escalations, pvp
-  name         String?
+  type             String       // EX: MINING, RATTING, ABYSSAL, EXPLORATION, ESCALATIONS, CRAB, PVP
+  status           String       @default("active") // active, completed
+  startTime        DateTime     @default(now())
+  endTime          DateTime?
   
-  // Common fields
-  region       String?  // Minmatar, Gallente, etc
-  space        String?  // highsec, lowsec, nullsec, wormhole
-  
-  // Mining
-  miningType   String?  // ore, ice, gas
-  oreMined     Json?    // [{"typeId": 12345, "quantity": 100000, "value": 50000000}]
-  
-  // Ratting specific
-  npcFaction   String?  // Angel Cartel, Blood Raider, etc
-  siteName     String?  // Forsaken Hub, Haven, etc
-  siteType     String?  // Belt, Anomaly, Signature, DED
-  mtuContents  Json?    // [{"loot": "conteudo copiado do mtu"}]
-  
-  // Abyssal specific
-  tier         String?  // T0-T6
-  weather      String?  // Electrical, Dark, Exotic, Firestorm, Gamma
-  shipSize     String?  // frigate, destroyer, cruiser
-  lootBefore   String?  // Conteúdo antes da run (containers)
-  lootAfter    String?  // Conteúdo depois da run (loot)
-  
-  // Exploration specific
-  explorationSiteType String? // Relic, Data, Ghost, Gas, Sleeper
-  difficulty   String?  // I, II, III, IV, V
-  lootCollected String? // Conteúdo copiado das caixas
-  
-  // Escalations specific
-  dedLevel     String?  // 1/10 to 10/10
-  escalationFaction String? // Angel, Blood Raider, etc
-  escalationLoot String? // Loot copiado
-  
-  // Crab specific
-  crabPhase    String?  // Deployment, Linking, Scanning, Rewards
-  crabBounties Json?    // [{"amount": 1000000, "timestamp": "2024-01-01"}]
-  
-  // PVP specific
-  pvpType      String?  // Ganking, Small Gang, Fleet, Solo
-  pvpLoot      String?  // Loot copiado (killmails)
+  // Link to the primary item for this activity (e.g., the ship used or the key item)
+  typeId           Int?
+  item             EveType?     @relation(fields: [typeId], references: [id])
 
-  fit          String?  // Optional - free text
+  // Contextual information
+  region           String?
+  space            String?
   
-  status       String   @default("active") // active, completed
-  startedAt    DateTime @default(now())
-  endedAt      DateTime?
+  // Dynamic Activity Data (JSON for flexibility and easy copying/pasting)
+  // Mining: { oreMined: { typeId: count } }
+  // Ratting: { mtuContents: [{ typeId: count }], totalBounty: number }
+  // Abyssal: { lootBefore: string, lootAfter: string, tier: string, weather: string }
+  data             Json?        @default("{}")
   
-  participants Json     @default("[]") // [{"characterId": 123, "fit": "optional"}]
-  
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
+  participants     Json         @default("[]") // [{"characterId": 123, "fit": "optional"}]
+
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
   @@index([userId])
   @@index([status])
+}
+
+// --- NEW UNIFIED SDE INFRASTRUCTURE ---
+
+model EveType {
+  id            Int        @id
+  name          String
+  description   String?    @db.Text
+  groupId       Int
+  group         EveGroup   @relation(fields: [groupId], references: [id])
+  volume        Float?
+  basePrice     Float?
+  iconId        Int?
+  published     Boolean    @default(true)
+  
+  activities    Activity[]
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([groupId])
+}
+
+model EveGroup {
+  id            Int         @id
+  name          String
+  categoryId    Int
+  category      EveCategory @relation(fields: [categoryId], references: [id])
+  types         EveType[]
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([categoryId])
+}
+
+model EveCategory {
+  id            Int        @id
+  name          String
+  groups        EveGroup[]
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 }
 
 model SdeCache {
@@ -139,38 +153,4 @@ model SdeCache {
 
   @@index([key])
   @@index([expiresAt])
-}
-
-model FilamentType {
-  id          Int      @id
-  name        String
-  weather     String
-  tier        Int
-  effect      String
-  published   Boolean  @default(true)
-  updatedAt   DateTime @updatedAt
-
-  @@map("filament_types")
-}
-
-model OreType {
-  id          Int      @id
-  name        String
-  groupName   String
-  volume      Float?
-  basePrice   Float?
-  published   Boolean  @default(true)
-  updatedAt   DateTime @updatedAt
-
-  @@map("ore_types")
-}
-
-model ExplorationSiteType {
-  id          Int      @id
-  name        String
-  category    String
-  published   Boolean  @default(true)
-  updatedAt   DateTime @updatedAt
-
-  @@map("exploration_site_types")
 }

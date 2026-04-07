@@ -3,16 +3,22 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    const ores = await prisma.oreType.findMany({
-      where: { published: true },
+    const ores = await prisma.eveType.findMany({
+      where: { 
+        published: true,
+        group: {
+          category: { id: 25 }
+        }
+      },
       orderBy: { basePrice: 'desc' },
       take: 20,
+      include: { group: true }
     })
 
     const formatted = ores.map(ore => ({
       name: ore.name,
       valuePerUnit: ore.basePrice || 0,
-      groupName: ore.groupName,
+      groupName: ore.group.name,
       volume: ore.volume,
     }))
 

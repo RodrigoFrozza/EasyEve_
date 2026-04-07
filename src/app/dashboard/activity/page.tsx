@@ -80,7 +80,8 @@ export default function ActivityTrackerPage() {
   const [newActivity, setNewActivity] = useState<Partial<Activity>>({
     type: 'mining',
     status: 'active',
-    participants: []
+    participants: [],
+    data: {} // Novo campo flexível
   })
 
   // Fetch activities on load
@@ -101,10 +102,20 @@ export default function ActivityTrackerPage() {
     if (!newActivity.type || !newActivity.participants?.length) return
 
     try {
+      // O backend agora coloca campos extras automaticamente em 'data'
+      const payload = {
+        type: newActivity.type,
+        typeId: newActivity.typeId,
+        region: newActivity.region,
+        space: newActivity.space,
+        participants: newActivity.participants,
+        ...newActivity.data // Spread activity-specific fields
+      }
+
       const response = await fetch('/api/activities', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newActivity)
+        body: JSON.stringify(payload)
       })
 
       if (response.ok) {
@@ -115,7 +126,8 @@ export default function ActivityTrackerPage() {
         setNewActivity({
           type: 'mining',
           status: 'active',
-          participants: []
+          participants: [],
+          data: {}
         })
       }
     } catch (error) {
@@ -128,11 +140,11 @@ export default function ActivityTrackerPage() {
       const response = await fetch(`/api/activities/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'completed', endedAt: new Date().toISOString() })
+        body: JSON.stringify({ status: 'completed', endTime: new Date().toISOString() })
       })
 
       if (response.ok) {
-        updateActivity(id, { status: 'completed', endedAt: new Date() })
+        updateActivity(id, { status: 'completed', endTime: new Date() })
       }
     } catch (error) {
       console.error('Error ending activity:', error)
@@ -168,6 +180,14 @@ export default function ActivityTrackerPage() {
         participants: [...current, { characterId, characterName }]
       })
     }
+  }
+
+  // Helper para atualizar campos dentro do data
+  const updateData = (fields: any) => {
+    setNewActivity(prev => ({
+      ...prev,
+      data: { ...(prev.data || {}), ...fields }
+    }))
   }
 
   const activeActivities = activities.filter(a => a.status === 'active')
@@ -234,7 +254,7 @@ export default function ActivityTrackerPage() {
                     </div>
                     <div className="space-y-2">
                       <Label>Mining Type</Label>
-                      <Select onValueChange={(v) => setNewActivity({ ...newActivity, miningType: v })}>
+                      <Select onValueChange={(v) => updateData({ miningType: v })}>
                         <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Type" /></SelectTrigger>
                         <SelectContent><SelectContentList items={MINING_TYPES} /></SelectContent>
                       </Select>
@@ -250,14 +270,14 @@ export default function ActivityTrackerPage() {
                   <>
                     <div className="space-y-2">
                       <Label>NPC Faction</Label>
-                      <Select onValueChange={(v) => setNewActivity({ ...newActivity, npcFaction: v })}>
+                      <Select onValueChange={(v) => updateData({ npcFaction: v })}>
                         <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Faction" /></SelectTrigger>
                         <SelectContent><SelectContentList items={NPC_FACTIONS} /></SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
                       <Label>Site Type</Label>
-                      <Select onValueChange={(v) => setNewActivity({ ...newActivity, siteType: v })}>
+                      <Select onValueChange={(v) => updateData({ siteType: v })}>
                         <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Site Type" /></SelectTrigger>
                         <SelectContent><SelectContentList items={SITE_TYPES_RATTING} /></SelectContent>
                       </Select>
@@ -266,15 +286,15 @@ export default function ActivityTrackerPage() {
                       <Label>Site Name (Optional)</Label>
                       <Input 
                         placeholder="e.g. Haven, Forsaken Hub" 
-                        onBlur={(e) => setNewActivity({ ...newActivity, siteName: e.target.value })}
+                        onBlur={(e) => updateData({ siteName: e.target.value })}
                         className="bg-eve-dark border-eve-border"
                       />
                     </div>
                     <div className="space-y-2 col-span-2">
                       <Label>MTUs Loot</Label>
                       <MTULootField 
-                        value={newActivity.mtuContents || []} 
-                        onChange={(mtus) => setNewActivity({ ...newActivity, mtuContents: mtus })} 
+                        value={newActivity.data?.mtuContents || []} 
+                        onChange={(mtus) => updateData({ mtuContents: mtus })} 
                       />
                     </div>
                   </>
@@ -284,21 +304,21 @@ export default function ActivityTrackerPage() {
                 <>
                   <div className="space-y-2">
                     <Label>Tier</Label>
-                    <Select onValueChange={(v) => setNewActivity({ ...newActivity, tier: v })}>
+                    <Select onValueChange={(v) => updateData({ tier: v })}>
                       <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Tier" /></SelectTrigger>
                       <SelectContent><SelectContentList items={ABYSSAL_TIERS} /></SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Weather</Label>
-                    <Select onValueChange={(v) => setNewActivity({ ...newActivity, weather: v })}>
+                    <Select onValueChange={(v) => updateData({ weather: v })}>
                       <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Weather" /></SelectTrigger>
                       <SelectContent><SelectContentList items={ABYSSAL_WEATHER} /></SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Ship Size</Label>
-                    <Select onValueChange={(v) => setNewActivity({ ...newActivity, shipSize: v })}>
+                    <Select onValueChange={(v) => updateData({ shipSize: v })}>
                       <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Ship Size" /></SelectTrigger>
                       <SelectContent><SelectContentList items={SHIP_SIZES} /></SelectContent>
                     </Select>
@@ -306,8 +326,8 @@ export default function ActivityTrackerPage() {
                   <div className="space-y-2 col-span-2">
                     <Label>Containers (Antes da Run)</Label>
                     <textarea
-                      value={newActivity.lootBefore || ''}
-                      onChange={(e) => setNewActivity({ ...newActivity, lootBefore: e.target.value })}
+                      value={newActivity.data?.lootBefore || ''}
+                      onChange={(e) => updateData({ lootBefore: e.target.value })}
                       placeholder="Cole o conteúdo dos containers antes da run..."
                       className="w-full bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[80px] font-mono"
                     />
@@ -315,8 +335,8 @@ export default function ActivityTrackerPage() {
                   <div className="space-y-2 col-span-2">
                     <Label>Loot (Depois da Run)</Label>
                     <textarea
-                      value={newActivity.lootAfter || ''}
-                      onChange={(e) => setNewActivity({ ...newActivity, lootAfter: e.target.value })}
+                      value={newActivity.data?.lootAfter || ''}
+                      onChange={(e) => updateData({ lootAfter: e.target.value })}
                       placeholder="Cole o loot depois da run..."
                       className="w-full bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[80px] font-mono"
                     />
@@ -328,14 +348,14 @@ export default function ActivityTrackerPage() {
                 <>
                   <div className="space-y-2">
                     <Label>Site Type</Label>
-                    <Select onValueChange={(v) => setNewActivity({ ...newActivity, explorationSiteType: v })}>
+                    <Select onValueChange={(v) => updateData({ explorationSiteType: v })}>
                       <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Site Type" /></SelectTrigger>
                       <SelectContent><SelectContentList items={EXPLORATION_SITE_TYPES} /></SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Difficulty</Label>
-                    <Select onValueChange={(v) => setNewActivity({ ...newActivity, difficulty: v })}>
+                    <Select onValueChange={(v) => updateData({ difficulty: v })}>
                       <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Difficulty" /></SelectTrigger>
                       <SelectContent><SelectContentList items={DIFFICULTIES} /></SelectContent>
                     </Select>
@@ -343,47 +363,9 @@ export default function ActivityTrackerPage() {
                   <div className="space-y-2 col-span-2">
                     <Label>Loot Coletado</Label>
                     <textarea
-                      value={newActivity.lootCollected || ''}
-                      onChange={(e) => setNewActivity({ ...newActivity, lootCollected: e.target.value })}
+                      value={newActivity.data?.lootCollected || ''}
+                      onChange={(e) => updateData({ lootCollected: e.target.value })}
                       placeholder="Cole o conteúdo das caixas coletadas..."
-                      className="w-full bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[80px] font-mono"
-                    />
-                  </div>
-                </>
-              )}
-
-                {newActivity.type === 'crab' && (
-                  <div className="space-y-2">
-                    <Label>Starting Phase</Label>
-                    <Select onValueChange={(v) => setNewActivity({ ...newActivity, crabPhase: v })}>
-                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Phase" /></SelectTrigger>
-                      <SelectContent><SelectContentList items={CRAB_PHASES} /></SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-              {newActivity.type === 'escalations' && (
-                <>
-                  <div className="space-y-2">
-                    <Label>Faction</Label>
-                    <Select onValueChange={(v) => setNewActivity({ ...newActivity, escalationFaction: v })}>
-                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Faction" /></SelectTrigger>
-                      <SelectContent><SelectContentList items={NPC_FACTIONS} /></SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>DED Level</Label>
-                    <Select onValueChange={(v) => setNewActivity({ ...newActivity, dedLevel: v })}>
-                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Level" /></SelectTrigger>
-                      <SelectContent><SelectContentList items={DED_LEVELS} /></SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2 col-span-2">
-                    <Label>Loot Coletado</Label>
-                    <textarea
-                      value={newActivity.escalationLoot || ''}
-                      onChange={(e) => setNewActivity({ ...newActivity, escalationLoot: e.target.value })}
-                      placeholder="Cole o loot da escalation..."
                       className="w-full bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[80px] font-mono"
                     />
                   </div>
@@ -393,18 +375,46 @@ export default function ActivityTrackerPage() {
               {newActivity.type === 'crab' && (
                 <div className="space-y-2">
                   <Label>Starting Phase</Label>
-                  <Select onValueChange={(v) => setNewActivity({ ...newActivity, crabPhase: v })}>
+                  <Select onValueChange={(v) => updateData({ crabPhase: v })}>
                     <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Phase" /></SelectTrigger>
                     <SelectContent><SelectContentList items={CRAB_PHASES} /></SelectContent>
                   </Select>
                 </div>
               )}
 
+              {newActivity.type === 'escalations' && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Faction</Label>
+                    <Select onValueChange={(v) => updateData({ escalationFaction: v })}>
+                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Faction" /></SelectTrigger>
+                      <SelectContent><SelectContentList items={NPC_FACTIONS} /></SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>DED Level</Label>
+                    <Select onValueChange={(v) => updateData({ dedLevel: v })}>
+                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Level" /></SelectTrigger>
+                      <SelectContent><SelectContentList items={DED_LEVELS} /></SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label>Loot Coletado</Label>
+                    <textarea
+                      value={newActivity.data?.escalationLoot || ''}
+                      onChange={(e) => updateData({ escalationLoot: e.target.value })}
+                      placeholder="Cole o loot da escalation..."
+                      className="w-full bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[80px] font-mono"
+                    />
+                  </div>
+                </>
+              )}
+
               {newActivity.type === 'pvp' && (
                 <>
                   <div className="space-y-2">
                     <Label>PVP Type</Label>
-                    <Select onValueChange={(v) => setNewActivity({ ...newActivity, pvpType: v })}>
+                    <Select onValueChange={(v) => updateData({ pvpType: v })}>
                       <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Type" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Ganking">Ganking</SelectItem>
@@ -417,8 +427,8 @@ export default function ActivityTrackerPage() {
                   <div className="space-y-2 col-span-2">
                     <Label>Loot / Killmail</Label>
                     <textarea
-                      value={newActivity.pvpLoot || ''}
-                      onChange={(e) => setNewActivity({ ...newActivity, pvpLoot: e.target.value })}
+                      value={newActivity.data?.pvpLoot || ''}
+                      onChange={(e) => updateData({ pvpLoot: e.target.value })}
                       placeholder="Cole o loot ou killmail..."
                       className="w-full bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[80px] font-mono"
                     />
@@ -540,7 +550,7 @@ export default function ActivityTrackerPage() {
                           </div>
                           <div>
                             <p className="font-medium capitalize">{activity.type}</p>
-                            <p className="text-xs text-gray-500">{activity.siteType || activity.tier}</p>
+                            <p className="text-xs text-gray-500">{activity.data?.siteType || activity.data?.tier || 'General'}</p>
                           </div>
                         </div>
                       </td>
@@ -551,7 +561,7 @@ export default function ActivityTrackerPage() {
                         {activity.space}
                       </td>
                       <td className="py-4 px-4 text-gray-400">
-                        {new Date(activity.startedAt).toLocaleDateString()}
+                        {new Date(activity.startTime).toLocaleDateString()}
                       </td>
                       <td className="py-4 pl-4 text-right">
                         <Button 
@@ -581,14 +591,14 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
 
   useEffect(() => {
     const timer = setInterval(() => {
-      const diff = new Date().getTime() - new Date(activity.startedAt).getTime()
+      const diff = new Date().getTime() - new Date(activity.startTime).getTime()
       const hours = Math.floor(diff / 3600000)
       const mins = Math.floor((diff % 3600000) / 60000)
       const secs = Math.floor((diff % 60000) / 1000)
       setElapsed(`${hours > 0 ? `${hours}h ` : ''}${mins}m ${secs}s`)
     }, 1000)
     return () => clearInterval(timer)
-  }, [activity.startedAt])
+  }, [activity.startTime])
 
   return (
     <Card className="bg-eve-panel border-eve-border overflow-hidden relative group">
@@ -604,10 +614,10 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
           </div>
         </div>
         <CardTitle className="text-xl mt-2 flex items-center justify-between">
-          <span className="truncate">{activity.name || (activity.siteName || 'Active Operations')}</span>
+          <span className="truncate">{(activity as any).item?.name || activity.data?.siteName || 'Active Operations'}</span>
           <Button 
             size="icon" 
-            variant="ghost"
+            variant="ghost" 
             onClick={onEnd}
             className="h-8 w-8 text-red-400 hover:bg-red-500/10 rounded-full"
           >
@@ -628,7 +638,7 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
             <p className="text-gray-500 text-xs uppercase font-bold tracking-wider">Detail</p>
             <div className="flex items-center gap-2 text-white">
               <Zap className="h-3 w-3 text-gray-400" />
-              {activity.tier || activity.siteType || activity.miningType || 'N/A'}
+              {activity.data?.tier || activity.data?.siteType || activity.data?.miningType || 'N/A'}
             </div>
           </div>
         </div>
