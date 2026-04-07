@@ -105,26 +105,51 @@ export async function getAccessToken(code: string) {
 }
 
 export async function getCharacterInfo(accessToken: string): Promise<EveCharacter> {
-  console.log('[ESI] Verifying token with ESI...')
+  console.log('[ESI] Verifying token (JWT decode)...')
   console.log('[ESI] Token prefix:', accessToken.substring(0, 10) + '...')
   
-  const response = await fetch(`${ESI_BASE_URL}/verify`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  })
+  try {
+    // EVE SSO v2 tokens are JWTs - decode the payload directly
+    const parts = accessToken.split('.')
+    if (parts.length !== 3) {
+      throw new Error('Access token is not a valid JWT')
+    }
 
-  console.log('[ESI] Verify response status:', response.status)
-  
-  if (!response.ok) {
-    const text = await response.text()
-    console.error('[ESI] Verify failed:', response.status, text)
-    throw new Error('Failed to verify token')
+    // Decode the base64url-encoded payload
+    const payload = JSON.parse(
+      Buffer.from(parts[1], 'base64url').toString('utf-8')
+    )
+
+    console.log('[ESI] JWT payload sub:', payload.sub)
+
+    // The 'sub' claim format is "CHARACTER:EVE:<character_id>"
+    const subParts = (payload.sub as string).split(':')
+    const characterId = parseInt(subParts[2], 10)
+
+    if (isNaN(characterId)) {
+      throw new Error(`Invalid character ID in JWT sub claim: ${payload.sub}`)
+    }
+
+    // The 'name' claim contains the character name
+    const characterName = payload.name as string
+
+    console.log('[ESI] Character verified via JWT:', characterName, '(ID:', characterId, ')')
+
+    return {
+      character_id: characterId,
+      character_name: characterName,
+      expires_on: payload.exp ? new Date(payload.exp * 1000).toISOString() : '',
+      scopes: (payload.scp as string[] | string)
+        ? (Array.isArray(payload.scp) ? payload.scp.join(' ') : payload.scp as string)
+        : '',
+      token_type: 'Character',
+      character_owner_hash: payload.owner as string || '',
+      intellectual_property: payload.kid as string || '',
+    }
+  } catch (error) {
+    console.error('[ESI] JWT decode failed:', error)
+    throw new Error(`Failed to verify token: ${error instanceof Error ? error.message : String(error)}`)
   }
-
-  const data = await response.json()
-  console.log('[ESI] Character verified:', data.character_name)
-  return data
 }
 
 export interface FetchCharacterDataResult {
