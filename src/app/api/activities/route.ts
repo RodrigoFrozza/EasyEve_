@@ -101,6 +101,7 @@ export async function POST(request: Request) {
         region,
         space,
         status: 'active',
+        startTime: new Date().toISOString(), // Forced UTC for ESI compatibility
         data: extraData as any,
         participants: participants as any
       },

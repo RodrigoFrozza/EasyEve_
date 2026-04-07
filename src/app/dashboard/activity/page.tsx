@@ -46,7 +46,8 @@ import {
   TrendingUp,
   DollarSign,
   Star,
-  Info
+  Info,
+  Edit2
 } from 'lucide-react'
 import { useActivityStore, type Activity, type ActivityParticipant } from '@/lib/stores/activity-store'
 import { useSession } from '@/lib/session-client'
@@ -865,13 +866,13 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
           if (match) qty = parseInt(match[2].replace(/[,.]/g, '')) || 1;
         }
 
-        let itemValue = 50000;
-        const name = parts[0].toLowerCase();
-        if (name.includes('tag')) itemValue = 1500000;
-        if (name.includes('bluePrint')) itemValue = 5000000;
-        if (name.includes('artillery') || name.includes('cannon')) itemValue = 800000;
-        if (name.includes('missile') || name.includes('ammo') || name.includes('torpedo')) itemValue = 2000;
-        if (name.includes('scrap')) itemValue = 15000;
+        let itemValue = 10000;
+        const name = (parts[0] || '').toLowerCase();
+        if (name.includes('tag')) itemValue = 450000;
+        if (name.includes('blueprint')) itemValue = 1000000;
+        if (name.includes('artillery') || name.includes('cannon')) itemValue = 150000;
+        if (name.includes('missile') || name.includes('ammo') || name.includes('torpedo') || name.includes('charge')) itemValue = 100;
+        if (name.includes('scrap')) itemValue = 5000;
 
         mtuTotal += (itemValue * qty);
       });
@@ -954,81 +955,75 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
             </CardTitle>
           </DialogTrigger>
           <DialogContent className="bg-eve-panel border-eve-border sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-eve-accent" />
-                Operation Summary
+            <DialogHeader className="border-b border-eve-border/50 pb-4">
+              <DialogTitle className="text-center font-mono uppercase tracking-[0.2em] text-gray-400">
+                Bounty History
               </DialogTitle>
-              <DialogDescription className="text-gray-400">
-                Detailed breakdown for {(activity as any).item?.name || activity.data?.siteName || 'Active Session'}
+              <DialogDescription className="text-center text-[10px] text-gray-500">
+                Session: {new Date(activity.startTime).toLocaleTimeString()} - {activity.endTime ? new Date(activity.endTime).toLocaleTimeString() : 'Active'}
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-6 py-4">
-              {/* Financial KPIs */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 rounded-lg bg-eve-dark/50 border border-eve-border/50">
-                  <p className="text-[10px] uppercase font-bold text-gray-500 mb-1">Gross Bounties</p>
-                  <p className="text-lg font-bold text-green-400 font-mono">
-                    {formatISK((activity.data?.automatedBounties || 0) + (activity.data?.automatedEss || 0) + (activity.data?.additionalBounties || 0) + (activity.data?.automatedTaxes || 0))}
+            <div className="py-6 space-y-6">
+              {/* Transaction Logs */}
+              <div className="space-y-1.5 max-h-[200px] overflow-y-auto px-2 custom-scrollbar">
+                {(activity.data?.logs || []).length === 0 ? (
+                  <p className="text-center text-[10px] text-gray-600 italic py-8 border border-dashed border-eve-border/30 rounded">
+                    No transactions recorded yet. Click "Sync" to update.
                   </p>
+                ) : (
+                  (activity.data?.logs || []).map((log: any, idx: number) => (
+                    <div key={idx} className="flex justify-between text-[11px] font-mono py-1.5 border-b border-eve-border/10">
+                      <div className="flex flex-col">
+                        <span className="text-gray-400 font-bold uppercase text-[9px]">{log.type}</span>
+                        <span className="text-gray-600 text-[9px]">{log.charName}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className={cn(
+                          "font-bold",
+                          log.type === 'tax' ? 'text-red-400' : 'text-green-400/80'
+                        )}>
+                          {log.type === 'tax' ? '-' : '+'}{formatISK(log.amount)}
+                        </span>
+                        <p className="text-[8px] text-gray-600">
+                          {new Date(log.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Totals Section */}
+              <div className="border-t border-eve-border/50 pt-6 space-y-3 font-mono">
+                <div className="flex justify-between text-xs items-center">
+                  <span className="text-gray-500 uppercase tracking-tighter">Bounty</span>
+                  <span className="text-green-400 font-bold">+{formatISK((activity.data?.automatedBounties || 0) + (activity.data?.additionalBounties || 0))}</span>
                 </div>
-                <div className="p-3 rounded-lg bg-eve-dark/50 border border-eve-border/50">
-                  <p className="text-[10px] uppercase font-bold text-gray-500 mb-1">Corp Taxes</p>
-                  <p className="text-lg font-bold text-red-400 font-mono">
-                    -{formatISK(activity.data?.automatedTaxes || 0)}
-                  </p>
+                <div className="flex justify-between text-xs items-center">
+                  <span className="text-gray-500 uppercase tracking-tighter">ESS (BANCO)</span>
+                  <span className="text-green-400 font-bold">+{formatISK(activity.data?.automatedEss || 0)}</span>
                 </div>
-                <div className="p-3 rounded-lg bg-eve-dark/50 border border-eve-border/50">
-                  <p className="text-[10px] uppercase font-bold text-gray-500 mb-1">MTU Loot Value</p>
-                  <p className="text-lg font-bold text-blue-400 font-mono">
-                    {formatISK(estimatedLootValue)}
-                  </p>
+                <div className="flex justify-between text-xs items-center">
+                  <span className="text-gray-500 uppercase tracking-tighter">LOOT</span>
+                  <span className="text-blue-400 font-bold">+{formatISK(estimatedLootValue)}</span>
                 </div>
-                <div className="p-3 rounded-lg bg-eve-accent/10 border border-eve-accent/20">
-                  <p className="text-[10px] uppercase font-bold text-eve-accent mb-1">Net Session Profit</p>
-                  <p className="text-lg font-bold text-white font-mono">
+                <div className="flex justify-between text-xs items-center">
+                  <span className="text-gray-500 uppercase tracking-tighter">CORP TAX</span>
+                  <span className="text-red-400 font-bold">-{formatISK(activity.data?.automatedTaxes || 0)}</span>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-eve-border/30 flex justify-between items-baseline">
+                  <span className="text-[10px] uppercase font-black text-gray-500">NET RUN PROFIT</span>
+                  <span className="text-xl font-black text-eve-accent tracking-tighter">
                     {formatISK(
                       (activity.data?.automatedBounties || 0) + 
                       (activity.data?.automatedEss || 0) + 
-                      (activity.data?.additionalBounties || 0) +
-                      estimatedLootValue
+                      (activity.data?.additionalBounties || 0) + 
+                      estimatedLootValue - 
+                      (activity.data?.automatedTaxes || 0)
                     )}
-                  </p>
-                </div>
-              </div>
-
-              {/* Log Timeline */}
-              <div className="space-y-3">
-                <p className="text-[10px] uppercase font-bold text-gray-500 flex items-center gap-2">
-                  <Clock className="h-3 w-3" /> Recent Transactions
-                </p>
-                <div className="max-h-[250px] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
-                  {activity.data?.logs?.length > 0 ? (
-                    activity.data.logs.map((log: any, idx: number) => (
-                      <div key={idx} className="flex items-center justify-between text-[11px] p-2 rounded bg-eve-dark/30 border border-eve-border/30">
-                        <div className="flex flex-col">
-                          <span className={cn(
-                            "font-bold uppercase text-[9px]",
-                            log.type === 'tax' ? 'text-red-400' : 'text-green-400'
-                          )}>
-                            {log.type}
-                          </span>
-                          <span className="text-gray-400">{log.charName}</span>
-                        </div>
-                        <div className="text-right">
-                          <p className={cn("font-mono", log.type === 'tax' ? 'text-red-400' : 'text-green-400')}>
-                            {log.type === 'tax' ? '-' : '+'}{formatISK(log.amount)}
-                          </p>
-                          <p className="text-[9px] text-gray-500">{new Date(log.date).toLocaleTimeString()}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-center py-8 text-gray-500 text-xs italic border border-dashed border-eve-border/50 rounded-lg">
-                      No transactions recorded yet. Click "Sync ESI" to update.
-                    </p>
-                  )}
+                  </span>
                 </div>
               </div>
             </div>
@@ -1267,6 +1262,7 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
               
               <MTULootField 
                 value={activity.data?.mtuContents || []} 
+                activityId={activity.id}
                 onChange={(mtus) => {
                   const store = useActivityStore.getState();
                   store.updateActivity(activity.id, {
@@ -1297,52 +1293,126 @@ interface MTULoot {
   loot: string
 }
 
-function MTULootField({ value, onChange }: { value: MTULoot[], onChange: (mtus: MTULoot[]) => void }) {
-  const addMTU = () => {
-    onChange([...value, { loot: '' }])
-  }
+function MTULootField({ value, activityId, onChange }: { value: MTULoot[], activityId: string, onChange: (mtus: MTULoot[]) => void }) {
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [tempLoot, setTempLoot] = useState('');
 
-  const removeMTU = (index: number) => {
-    onChange(value.filter((_, i) => i !== index))
-  }
+  const saveMTU = async (index: number) => {
+    const newMTUs = [...value];
+    newMTUs[index] = { loot: tempLoot };
+    
+    // Save to server immediately to prevent sync data loss
+    const res = await fetch(`/api/activities/${activityId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: { mtuContents: newMTUs } })
+    });
 
-  const updateMTU = (index: number, loot: string) => {
-    const newMTUs = [...value]
-    newMTUs[index] = { loot }
-    onChange(newMTUs)
-  }
+    if (res.ok) {
+      onChange(newMTUs);
+      setEditingIndex(null);
+    }
+  };
+
+  const removeMTU = async (index: number) => {
+    const newMTUs = value.filter((_, i) => i !== index);
+    const res = await fetch(`/api/activities/${activityId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: { mtuContents: newMTUs } })
+    });
+    if (res.ok) onChange(newMTUs);
+  };
 
   return (
     <div className="space-y-2">
       <div className="max-h-[300px] overflow-y-auto pr-1 space-y-2 custom-scrollbar">
-        {value.map((mtu, index) => (
-          <div key={index} className="space-y-1.5 p-2 rounded bg-eve-dark/30 border border-eve-border/50 group">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-gray-500 font-bold">MTU UNIT #{index + 1}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => removeMTU(index)}
-                className="h-5 w-5 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-              >
-                <Minus className="h-3 w-3" />
-              </Button>
+        {value.map((mtu, index) => {
+          const isEditing = editingIndex === index;
+          const lineCount = (mtu.loot || '').split('\n').filter(l => l.trim()).length;
+
+          return (
+            <div key={index} className="space-y-1.5 p-2 rounded bg-eve-dark/30 border border-eve-border/50 group">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">
+                  MTU UNIT #{index + 1} {!isEditing && `(${lineCount} items)`}
+                </span>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {!isEditing && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setEditingIndex(index);
+                        setTempLoot(mtu.loot);
+                      }}
+                      className="h-5 w-5 text-gray-400 hover:text-white"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeMTU(index)}
+                    className="h-5 w-5 text-gray-400 hover:text-red-400"
+                  >
+                    <Minus className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+              
+              {isEditing ? (
+                <div className="space-y-2">
+                  <textarea
+                    value={tempLoot}
+                    onChange={(e) => setTempLoot(e.target.value)}
+                    placeholder="Paste MTU inventory here..."
+                    className="w-full bg-eve-dark/70 border border-eve-accent/30 rounded p-2 text-[11px] text-gray-300 min-h-[80px] font-mono resize-none focus:ring-1 focus:ring-eve-accent/30 outline-none"
+                    rows={4}
+                  />
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm" 
+                      className="h-7 text-[10px] flex-1 bg-eve-accent text-black hover:bg-white"
+                      onClick={() => saveMTU(index)}
+                    >
+                      Save Loot Content
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="h-7 text-[10px] text-gray-500"
+                      onClick={() => setEditingIndex(null)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div 
+                  className="text-[10px] text-gray-500 italic truncate cursor-pointer hover:text-gray-400"
+                  onClick={() => {
+                    setEditingIndex(index);
+                    setTempLoot(mtu.loot);
+                  }}
+                >
+                  {mtu.loot ? mtu.loot.substring(0, 100) + '...' : 'Click to paste loot...'}
+                </div>
+              )}
             </div>
-            <textarea
-              value={mtu.loot}
-              onChange={(e) => updateMTU(index, e.target.value)}
-              placeholder="Paste MTU inventory here..."
-              className="w-full bg-eve-dark/50 border-none rounded p-2 text-[11px] text-gray-300 min-h-[80px] font-mono resize-none focus:ring-1 focus:ring-eve-accent/30 outline-none"
-              rows={3}
-            />
-          </div>
-        ))}
+          );
+        })}
       </div>
       
       <Button
         type="button"
         variant="ghost"
-        onClick={addMTU}
+        onClick={() => {
+          onChange([...value, { loot: '' }]);
+          setEditingIndex(value.length);
+          setTempLoot('');
+        }}
         className="w-full h-8 border border-dashed border-eve-border/50 hover:border-eve-accent/50 text-[10px] text-gray-500 hover:text-eve-accent transition-colors"
       >
         <Plus className="h-3 w-3 mr-2" />
@@ -1351,6 +1421,7 @@ function MTULootField({ value, onChange }: { value: MTULoot[], onChange: (mtus: 
     </div>
   )
 }
+
 
 function MiningValuableOres() {
   const [ores, setOres] = useState<any[]>([])

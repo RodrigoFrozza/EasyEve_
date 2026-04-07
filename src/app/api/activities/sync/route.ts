@@ -33,7 +33,9 @@ export async function POST(
       return NextResponse.json({ error: 'No participants to sync' }, { status: 400 })
     }
 
-    const startTime = new Date(activity.startTime)
+    // BROADEN THE WINDOW: Check from 10m before startTime to handle ESI/Server clock diffs
+    const startTimeManual = new Date(activity.startTime)
+    const startTime = new Date(startTimeManual.getTime() - (10 * 60 * 1000))
     const endTime = activity.endTime ? new Date(activity.endTime) : new Date()
 
     let totalBounties = 0
@@ -87,15 +89,16 @@ export async function POST(
     // Sort logs by date descending
     logs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
-    // 3. Update activity data with new totals
+    // 3. Update activity data with new totals, ensuring we fetch LATEST DB state to merge
+    const currentActivity = await prisma.activity.findUnique({ where: { id: activityId } })
     const updatedData = {
-      ...(activity.data as any || {}),
+      ...(currentActivity?.data as any || {}),
       automatedBounties: totalBounties,
       automatedEss: totalEss,
       automatedTaxes: totalTaxes,
-      grossBounties: totalBounties + totalTaxes, // Reconstruct gross before tax
+      grossBounties: totalBounties + totalTaxes,
       participantEarnings,
-      logs: logs.slice(0, 50), // Keep a reasonable amount of history
+      logs: logs.slice(0, 50),
       lastSyncAt: new Date().toISOString()
     }
 
