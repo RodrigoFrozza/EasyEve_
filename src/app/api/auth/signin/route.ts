@@ -19,6 +19,7 @@ const EVE_SCOPES = [
   'esi-clones.read_implants.v1',
   'esi-industry.read_character_mining.v1',
   'esi-industry.read_corporation_mining.v1',
+  'esi-characters.read_notifications.v1',
 ].join(' ')
 
 function generateState(): string {

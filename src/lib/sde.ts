@@ -324,3 +324,17 @@ export async function getCharacterContracts(characterId: number, character: numb
     return []
   }
 }
+
+export async function getCharacterNotifications(characterId: number, character: number) {
+  try {
+    const response = await fetchWithAuth(`/characters/${character}/notifications/`, characterId)
+    if (!response.ok) {
+      console.warn(`[ESI] Non-OK response for notifications (Char ${character}): ${response.status}`)
+      return []
+    }
+    return response.json()
+  } catch (error) {
+    console.error(`Failed to fetch notifications for char ${character}:`, error)
+    return []
+  }
+}

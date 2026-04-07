@@ -12,11 +12,15 @@ import {
   Ship,
   Clock,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Bell,
+  MessageSquare,
+  Info
 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { getSession } from '@/lib/session'
+import { getCharacterNotifications } from '@/lib/sde'
 
 async function getCharacterDetails(charId: number) {
   const response = await fetch(`https://esi.evetech.net/latest/characters/${charId}/`, {
@@ -48,6 +52,58 @@ export default async function DashboardPage() {
 
   const totalSP = characters.reduce((sum: number, c: { totalSp: number }) => sum + c.totalSp, 0)
   const totalWallet = characters.reduce((sum: number, c: { walletBalance: number }) => sum + c.walletBalance, 0)
+
+  // Fetch notifications
+  const notificationsPromises = characters.map(async (char) => {
+    const notifs = await getCharacterNotifications(char.id, char.id)
+    if (!Array.isArray(notifs)) return []
+    return notifs.map(n => ({
+      ...n,
+      characterName: char.name,
+      characterId: char.id
+    }))
+  })
+
+  const notificationsResults = await Promise.allSettled(notificationsPromises)
+  const allNotifications = notificationsResults
+    .filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled')
+    .flatMap(r => r.value)
+    
+  allNotifications.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  const recentNotifications = allNotifications.slice(0, 30)
+
+  const timeAgo = (dateString: string) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 30) return `${diffInDays}d ${diffInHours % 24}h ago`;
+    return date.toLocaleDateString();
+  }
+
+  const getNotificationIcon = (type: string) => {
+    // Basic mapping of some common EVE notification types
+    if (type.includes('ContactAdd')) return <Users className="h-4 w-4 text-blue-400" />
+    if (type.includes('Structure')) return <ArrowDownRight className="h-4 w-4 text-red-400" />
+    if (type.includes('Skill')) return <Clock className="h-4 w-4 text-purple-400" />
+    if (type.includes('Corp')) return <Users className="h-4 w-4 text-green-400" />
+    if (type.includes('CharAppAccept')) return <ArrowUpRight className="h-4 w-4 text-green-400" />
+    return <Info className="h-4 w-4 text-gray-400" />
+  }
+
+  const getNotificationColor = (type: string) => {
+    if (type.includes('ContactAdd')) return 'bg-blue-500/20'
+    if (type.includes('Structure') || type.includes('Loss')) return 'bg-red-500/20'
+    if (type.includes('Skill')) return 'bg-purple-500/20'
+    if (type.includes('Corp') || type.includes('CharAppAccept')) return 'bg-green-500/20'
+    return 'bg-gray-500/20'
+  }
 
   const stats = [
     {
@@ -226,36 +282,28 @@ export default async function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex items-center gap-3 text-sm">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/20">
-                <ArrowUpRight className="h-4 w-4 text-green-400" />
-              </div>
-              <div className="flex-1">
-                <p className="text-white">Mining session completed</p>
-                <p className="text-xs text-gray-500">2 hours ago</p>
-              </div>
-              <span className="text-green-400">+12.5M ISK</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/20">
-                <Clock className="h-4 w-4 text-blue-400" />
-              </div>
-              <div className="flex-1">
-                <p className="text-white">Skill training complete</p>
-                <p className="text-xs text-gray-500">5 hours ago</p>
-              </div>
-              <span className="text-blue-400">Large Energy Turret V</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/20">
-                <ArrowDownRight className="h-4 w-4 text-red-400" />
-              </div>
-              <div className="flex-1">
-                <p className="text-white">Ship lost in combat</p>
-                <p className="text-xs text-gray-500">Yesterday</p>
-              </div>
-              <span className="text-red-400">-45M ISK</span>
-            </div>
+            {recentNotifications.length === 0 ? (
+              <p className="text-gray-500 text-sm">No recent notifications.</p>
+            ) : (
+              recentNotifications.map((notif: any) => (
+                <div key={notif.notification_id} className="flex flex-col sm:flex-row sm:items-center gap-3 text-sm p-2 hover:bg-eve-dark/50 rounded-md transition-colors">
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${getNotificationColor(notif.type)}`}>
+                    {getNotificationIcon(notif.type)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white truncate font-medium">
+                      {notif.type.replace(/([A-Z])/g, ' $1').trim()}
+                    </p>
+                    <p className="text-xs text-eve-accent font-medium mt-0.5">
+                      {notif.characterName}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0 mt-1 sm:mt-0">
+                    <span className="text-gray-500 text-xs">{timeAgo(notif.timestamp)}</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
