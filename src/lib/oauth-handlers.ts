@@ -21,7 +21,7 @@ export function parseState(state: string | null): OAuthState | null {
 export async function exchangeCodeForToken(code: string): Promise<{
   access_token: string
   refresh_token: string
-  expires_on: string
+  expires_in: number
 }> {
   const callbackUrl = `${process.env.NEXTAUTH_URL}/api/auth/callback/eveonline`
   
@@ -82,7 +82,7 @@ export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
       data: {
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
-        tokenExpiresAt: new Date(tokenData.expires_on),
+        tokenExpiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
         name: characterName,
       },
     })
@@ -106,7 +106,7 @@ export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
         userId: user.id,
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
-        tokenExpiresAt: new Date(tokenData.expires_on),
+        tokenExpiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
         totalSp: charData.total_sp || 0,
         walletBalance: charData.wallet || 0,
         location: charData.location,
@@ -171,7 +171,7 @@ export async function handleLinkFlow(
       data: {
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
-        tokenExpiresAt: new Date(tokenData.expires_on),
+        tokenExpiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
         name: characterName,
       },
     })
@@ -186,7 +186,7 @@ export async function handleLinkFlow(
         userId: user.id,
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
-        tokenExpiresAt: new Date(tokenData.expires_on),
+        tokenExpiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
         totalSp: charData.total_sp || 0,
         walletBalance: charData.wallet || 0,
         location: charData.location,
