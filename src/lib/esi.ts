@@ -13,6 +13,8 @@ import {
   getTypeIconUrl,
 } from './sde'
 
+import { getValidAccessToken } from './token-manager'
+
 export {
   getTypeName,
   getSolarSystemName,
@@ -413,5 +415,99 @@ export async function getMarketPrices(): Promise<Record<number, number>> {
     return priceMap
   } catch {
     return {}
+  }
+}
+
+// --- Authenticated ESI Helpers ---
+
+export async function fetchWithAuth(endpoint: string, characterId: number): Promise<Response> {
+  const { accessToken } = await getValidAccessToken(characterId)
+  
+  if (!accessToken) {
+    throw new Error('No valid access token available')
+  }
+  
+  return fetch(`${ESI_BASE_URL}${endpoint}`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'X-User-Agent': USER_AGENT,
+    },
+  })
+}
+
+export async function getCharacterFits(characterId: number) {
+  try {
+    const response = await fetchWithAuth(`/characters/${characterId}/fits/`, characterId)
+    if (!response.ok) return []
+    return response.json()
+  } catch (error) {
+    console.error('Failed to fetch fits:', error)
+    return []
+  }
+}
+
+export async function getCharacterAssets(characterId: number) {
+  try {
+    const response = await fetchWithAuth(`/characters/${characterId}/assets/`, characterId)
+    if (!response.ok) return []
+    return response.json()
+  } catch (error) {
+    console.error('Failed to fetch assets:', error)
+    return []
+  }
+}
+
+export async function getCharacterWalletTransactions(characterId: number) {
+  try {
+    const response = await fetchWithAuth(`/characters/${characterId}/wallet/transactions/`, characterId)
+    if (!response.ok) return []
+    return response.json()
+  } catch (error) {
+    console.error('Failed to fetch wallet transactions:', error)
+    return []
+  }
+}
+
+export async function getCharacterIndustryJobs(characterId: number) {
+  try {
+    const response = await fetchWithAuth(`/characters/${characterId}/industry/jobs/`, characterId)
+    if (!response.ok) return []
+    return response.json()
+  } catch (error) {
+    console.error('Failed to fetch industry jobs:', error)
+    return []
+  }
+}
+
+export async function getCharacterContracts(characterId: number) {
+  try {
+    const response = await fetchWithAuth(`/characters/${characterId}/contracts/`, characterId)
+    if (!response.ok) return []
+    return response.json()
+  } catch (error) {
+    console.error('Failed to fetch contracts:', error)
+    return []
+  }
+}
+
+export async function getCharacterNotifications(characterId: number) {
+  try {
+    const response = await fetchWithAuth(`/characters/${characterId}/notifications/`, characterId)
+    if (!response.ok) return []
+    return response.json()
+  } catch (error) {
+    console.error('Failed to fetch notifications:', error)
+    return []
+  }
+}
+
+export async function getCharacterWalletJournal(characterId: number) {
+  try {
+    const response = await fetchWithAuth(`/characters/${characterId}/wallet/journal/`, characterId)
+    if (!response.ok) return []
+    return response.json()
+  } catch (error) {
+    console.error('Failed to fetch wallet journal:', error)
+    return []
   }
 }

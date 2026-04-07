@@ -20,7 +20,7 @@ import {
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { getSession } from '@/lib/session'
-import { getCharacterWalletJournal } from '@/lib/sde'
+import { getCharacterWalletJournal } from '@/lib/esi'
 
 async function getCharacterDetails(charId: number) {
   const response = await fetch(`https://esi.evetech.net/latest/characters/${charId}/`, {
@@ -231,30 +231,30 @@ export default async function DashboardPage() {
             <CardTitle className="text-white">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Link href="/dashboard/fleet" className="block">
+            <Link href="/dashboard/activity?type=pvp" className="block">
               <div className="flex items-center justify-between rounded-lg border border-eve-border bg-eve-dark/50 p-4 transition-colors hover:bg-eve-dark">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-eve-accent/20">
                     <Users className="h-5 w-5 text-eve-accent" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-white">Fleet Calculator</h3>
-                    <p className="text-sm text-gray-400">Calculate fleet profits</p>
+                    <h3 className="font-medium text-white">Capture Operations</h3>
+                    <p className="text-sm text-gray-400">Track combat & fleet activities</p>
                   </div>
                 </div>
                 <ArrowUpRight className="h-4 w-4 text-gray-500" />
               </div>
             </Link>
 
-            <Link href="/dashboard/mining" className="block">
+            <Link href="/dashboard/activity?type=mining" className="block">
               <div className="flex items-center justify-between rounded-lg border border-eve-border bg-eve-dark/50 p-4 transition-colors hover:bg-eve-dark">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/20">
                     <TrendingUp className="h-5 w-5 text-blue-400" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-white">Track Mining</h3>
-                    <p className="text-sm text-gray-400">Log your mining sessions</p>
+                    <h3 className="font-medium text-white">Industrial Tracking</h3>
+                    <p className="text-sm text-gray-400">Log your extraction sessions</p>
                   </div>
                 </div>
                 <ArrowUpRight className="h-4 w-4 text-gray-500" />
