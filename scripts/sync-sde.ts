@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import { getGroupTypes, getTypeDetails, getMarketPrices, getCategoryGroups } from '../src/lib/esi'
+import { getGroupTypes, getTypeDetails, getMarketPrices, getCategoryGroups } from '../src/lib/esi.ts'
 
 const prisma = new PrismaClient()
 
@@ -20,7 +20,9 @@ const SYNC_CONFIG = [
   { id: 18, name: 'Drones' },
   { id: 4,  name: 'Materials/Moon' },
   { id: 63, name: 'Special Items/Filaments' },
-  { id: 2,  name: 'Celestial Objects/Sites' }
+  { id: 2,  name: 'Celestial Objects/Sites' },
+  { id: 17, name: 'Trade Goods/Tags' },
+  { id: 34, name: 'Ancient Relics/Data Loot' }
 ]
 
 async function main() {
