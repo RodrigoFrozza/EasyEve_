@@ -238,9 +238,6 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
         onClick={async () => {
           const newMTUs = [...value, { loot: '' }];
           const newIndex = value.length;
-          setEditingIndex(newIndex);
-          setTempLoot('');
-          setCurrentPage(Math.floor(newIndex / ITEMS_PER_PAGE));
           try {
             const res = await fetch(`/api/activities/${activityId}`, {
               method: 'PATCH',
@@ -249,6 +246,11 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
             });
             if (res.ok) {
               onChange(newMTUs);
+              setTimeout(() => {
+                setEditingIndex(newIndex);
+                setTempLoot('');
+                setCurrentPage(Math.floor(newIndex / ITEMS_PER_PAGE));
+              }, 0);
             } else {
               toast.error('Failed to add MTU');
             }

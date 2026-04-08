@@ -721,14 +721,40 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                   </div>
                 )}
               </div>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setDisplayMode('tabs')}
-                className="text-xs text-gray-500"
-              >
-                View Details
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    const newMTUs = [...mtuContents, { loot: '' }]
+                    handleMTUChange(newMTUs)
+                  }}
+                  className="text-xs text-blue-400/70 hover:text-blue-400"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  MTU
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    const newSalvage = [...salvageContents, { loot: '' }]
+                    handleSalvageChange(newSalvage)
+                  }}
+                  className="text-xs text-orange-400/70 hover:text-orange-400"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Salvage
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setDisplayMode('tabs')}
+                  className="text-xs text-gray-500"
+                >
+                  View Details
+                </Button>
+              </div>
             </div>
           </>
         ) : displayMode === 'tabs' ? (
@@ -1080,7 +1106,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                       const logs = activity.data?.logs || [];
                       const essLogs = logs.filter((l: any) => l.type === 'ess');
                       if (essLogs.length === 0) return '—';
-                      const lastPayout = new Date(essLogs[0].date).getTime();
+                      const lastPayout = new Date(essLogs[0].date || Date.now()).getTime();
                       const nextPayout = lastPayout + (168 * 60 * 1000);
                       const diff = nextPayout - Date.now();
                       if (diff <= 0) return 'NOW';
