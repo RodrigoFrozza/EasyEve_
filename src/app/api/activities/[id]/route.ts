@@ -49,7 +49,10 @@ export async function PATCH(
     if (!existingActivity) return NextResponse.json({ error: 'Activity not found' }, { status: 404 })
 
     // If MTU or Salvage loot is updated, appraise it on the server
-    let updatedData = data || (existingActivity.data as any) || {}
+    let updatedData = { ...((existingActivity.data as any) || {}) }
+    if (data) {
+      updatedData = { ...updatedData, ...data }
+    }
     if (data && (data.mtuContents || data.salvageContents)) {
       const allLootLines: { name: string, quantity: number, category: 'mtu' | 'salvage', mtuIndex?: number }[] = []
       const mtuItems: { [index: number]: { name: string, quantity: number }[] } = {}
