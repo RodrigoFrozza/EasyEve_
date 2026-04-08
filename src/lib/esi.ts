@@ -504,11 +504,31 @@ export async function getCharacterNotifications(characterId: number) {
 
 export async function getCharacterWalletJournal(characterId: number) {
   try {
-    const response = await fetchWithAuth(`/characters/${characterId}/wallet/journal/`, characterId)
-    if (!response.ok) return []
-    return response.json()
+    const results = []
+    
+    // Fetch first 2 pages (100 entries) to ensure we don't miss entries during long activities
+    for (let page = 1; page <= 2; page++) {
+      const response = await fetchWithAuth(`/characters/${characterId}/wallet/journal/?page=${page}`, characterId)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error(`[ESI] Wallet Journal Error (Page ${page}, Char ${characterId}): ${response.status} ${errorText}`)
+        break
+      }
+      
+      const data = await response.json()
+      if (Array.isArray(data) && data.length > 0) {
+        results.push(...data)
+        // If we got less than 50, it's the last page
+        if (data.length < 50) break
+      } else {
+        break
+      }
+    }
+    
+    return results
   } catch (error) {
-    console.error('Failed to fetch wallet journal:', error)
+    console.error(`[ESI] Exception fetching wallet journal for ${characterId}:`, error)
     return []
   }
 }
