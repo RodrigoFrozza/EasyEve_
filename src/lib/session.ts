@@ -7,6 +7,8 @@ export interface SessionUser {
   accountCode: string
   characterId: number
   ownerHash: string
+  role: string
+  allowedActivities: string[]
   characters: Array<{
     id: number
     name: string
@@ -48,6 +50,8 @@ export async function getSession(): Promise<Session | null> {
       accountCode: character.user.accountCode || '',
       characterId: character.id,
       ownerHash: character.ownerHash,
+      role: (character.user as any).role || 'user',
+      allowedActivities: (character.user as any).allowedActivities || ['ratting'],
       characters: character.user.characters,
     },
   }

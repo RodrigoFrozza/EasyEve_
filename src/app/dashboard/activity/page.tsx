@@ -59,7 +59,8 @@ import {
   Edit2,
   Loader2,
   CheckCircle,
-  XCircle
+  XCircle,
+  Lock
 } from 'lucide-react'
 import { useActivityStore, type Activity, type ActivityParticipant } from '@/lib/stores/activity-store'
 import { useSession } from '@/lib/session-client'
@@ -100,6 +101,9 @@ function ActivityTrackerContent() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
   const typeParam = searchParams.get('type')?.toLowerCase()
+  
+  const userAllowedActivities = session?.user?.allowedActivities || ['ratting']
+  const userRole = session?.user?.role || 'user'
   
   const { activities, setActivities, addActivity, updateActivity, removeActivity, isCharacterBusy } = useActivityStore()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -338,21 +342,30 @@ function ActivityTrackerContent() {
             <div className="space-y-6 py-4">
               {/* Activity Type Selection */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {ACTIVITY_TYPES.map((type) => (
-                  <button
-                    key={type.id}
-                    onClick={() => setNewActivity({ ...newActivity, type: type.id as any })}
-                    className={cn(
-                      "flex flex-col items-center justify-center p-3 rounded-lg border transition-all gap-2",
-                      newActivity.type === type.id 
-                        ? "border-eve-accent bg-eve-accent/10" 
-                        : "border-eve-border bg-eve-dark/50 hover:bg-eve-dark"
-                    )}
-                  >
-                    <type.icon className={cn("h-6 w-6", type.color)} />
-                    <span className="text-xs font-medium">{type.label}</span>
-                  </button>
-                ))}
+                {ACTIVITY_TYPES.map((type) => {
+                  const hasAccess = userAllowedActivities.includes(type.id) || userRole === 'master'
+                  return (
+                    <button
+                      key={type.id}
+                      disabled={!hasAccess}
+                      onClick={() => setNewActivity({ ...newActivity, type: type.id as any })}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-3 rounded-lg border transition-all gap-2",
+                        !hasAccess && "opacity-50 cursor-not-allowed",
+                        newActivity.type === type.id 
+                          ? "border-eve-accent bg-eve-accent/10" 
+                          : "border-eve-border bg-eve-dark/50 hover:bg-eve-dark"
+                      )}
+                    >
+                      {hasAccess ? (
+                        <type.icon className={cn("h-6 w-6", type.color)} />
+                      ) : (
+                        <Lock className="h-6 w-6 text-gray-500" />
+                      )}
+                      <span className={cn("text-xs font-medium", !hasAccess && "text-gray-500")}>{type.label}</span>
+                    </button>
+                  )
+                })}
               </div>
 
               {/* Dynamic Fields based on Type */}

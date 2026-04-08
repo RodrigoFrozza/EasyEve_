@@ -8,15 +8,17 @@ datasource db {
 }
 
 model User {
-  id            String       @id @default(cuid())
-  accountCode   String?      @unique
-  email         String?
-  name          String?
-  characters    Character[]
-  fits          Fit[]
-  activities    Activity[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                String       @id @default(cuid())
+  accountCode        String?      @unique
+  email             String?
+  name              String?
+  role              String       @default("user")
+  allowedActivities String[]      @default(["ratting"])
+  characters        Character[]
+  fits             Fit[]
+  activities        Activity[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 }
 
 model Character {

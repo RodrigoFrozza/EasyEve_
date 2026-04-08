@@ -6,6 +6,8 @@ interface SessionUser {
   id: string
   accountCode: string
   characterId: number
+  role: string
+  allowedActivities: string[]
   characters: Array<{
     id: number
     name: string

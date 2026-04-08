@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   ChevronDown,
+  Shield,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -28,6 +29,10 @@ const navigation = [
   { name: 'Characters', href: '/dashboard/characters', icon: Users },
   { name: 'Activity Tracker', href: '/dashboard/activity', icon: Target },
   { name: 'Fits', href: '/dashboard/fits', icon: Ship },
+]
+
+const adminNavigation = [
+  { name: 'Admin', href: '/dashboard/admin', icon: Shield },
 ]
 
 export function Sidebar() {
@@ -68,6 +73,29 @@ export function Sidebar() {
             </Link>
           )
         })}
+        
+        {session?.user?.role === 'master' && (
+          <div className="pt-4 mt-4 border-t border-eve-border">
+            {adminNavigation.map((item) => {
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-eve-accent/20 text-eve-accent'
+                      : 'text-eve-accent hover:bg-eve-accent/10 hover:text-eve-accent'
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  {item.name}
+                </Link>
+              )
+            })}
+          </div>
+        )}
       </nav>
 
       <div className="border-t border-eve-border p-4">

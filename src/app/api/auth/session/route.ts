@@ -15,6 +15,8 @@ export async function GET() {
       id: session.user.id,
       accountCode: session.user.accountCode,
       characterId: session.user.characterId,
+      role: session.user.role,
+      allowedActivities: session.user.allowedActivities,
       characters: session.user.characters,
     }
   })

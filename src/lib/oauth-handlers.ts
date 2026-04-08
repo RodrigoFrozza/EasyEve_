@@ -93,6 +93,8 @@ export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
       data: {
         accountCode,
         name: characterName,
+        role: 'user',
+        allowedActivities: ['ratting'],
       },
     })
 

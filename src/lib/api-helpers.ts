@@ -40,7 +40,7 @@ export async function getCurrentUser() {
     return null
   }
   
-  return await prisma.user.findFirst({
+  const user = await prisma.user.findFirst({
     where: {
       characters: {
         some: {
@@ -52,4 +52,12 @@ export async function getCurrentUser() {
       characters: true
     }
   })
+  
+  if (!user) return null
+  
+  return {
+    ...user,
+    role: (user as any).role || 'user',
+    allowedActivities: (user as any).allowedActivities || ['ratting']
+  } as any
 }
