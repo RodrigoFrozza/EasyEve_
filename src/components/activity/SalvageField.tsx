@@ -40,15 +40,23 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
     const newSalvage = [...value];
     newSalvage[index] = { loot: tempLoot };
     
-    const res = await fetch(`/api/activities/${activityId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: { salvageContents: newSalvage } })
-    });
+    try {
+      const res = await fetch(`/api/activities/${activityId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { salvageContents: newSalvage } })
+      });
 
-    if (res.ok) {
-      onChange(newSalvage);
-      setEditingIndex(null);
+      if (res.ok) {
+        onChange(newSalvage);
+        setEditingIndex(null);
+      } else {
+        const { toast } = await import('sonner');
+        toast.error('Failed to save Salvage');
+      }
+    } catch (e) {
+      const { toast } = await import('sonner');
+      toast.error('Failed to save Salvage');
     }
   };
 
@@ -77,12 +85,22 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
 
   const removeSalvage = async (index: number) => {
     const newSalvage = value.filter((_, i) => i !== index);
-    const res = await fetch(`/api/activities/${activityId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: { salvageContents: newSalvage } })
-    });
-    if (res.ok) onChange(newSalvage);
+    try {
+      const res = await fetch(`/api/activities/${activityId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { salvageContents: newSalvage } })
+      });
+      if (res.ok) {
+        onChange(newSalvage);
+      } else {
+        const { toast } = await import('sonner');
+        toast.error('Failed to remove Salvage');
+      }
+    } catch (e) {
+      const { toast } = await import('sonner');
+      toast.error('Failed to remove Salvage');
+    }
   };
 
   return (
@@ -201,11 +219,27 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
       <Button
         type="button"
         variant="ghost"
-        onClick={() => {
-          onChange([...value, { loot: '' }]);
-          setEditingIndex(value.length);
-          setCurrentPage(Math.floor(value.length / ITEMS_PER_PAGE));
-          setTempLoot('');
+        onClick={async () => {
+          const newSalvage = [...value, { loot: '' }];
+          try {
+            const res = await fetch(`/api/activities/${activityId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ data: { salvageContents: newSalvage } })
+            });
+            if (res.ok) {
+              onChange(newSalvage);
+              setEditingIndex(value.length);
+              setCurrentPage(Math.floor(value.length / ITEMS_PER_PAGE));
+              setTempLoot('');
+            } else {
+              const { toast } = await import('sonner');
+              toast.error('Failed to add Salvage');
+            }
+          } catch (e) {
+            const { toast } = await import('sonner');
+            toast.error('Failed to add Salvage');
+          }
         }}
         className="w-full h-8 border border-dashed border-orange-900/50 hover:border-orange-700/50 text-[10px] text-orange-500/70 hover:text-orange-400 transition-colors"
       >

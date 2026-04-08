@@ -50,9 +50,9 @@ export async function POST(
     const logMap = new Map<string, any>()
     
     // Index existing logs by composite key to prevent duplicates
-    // KEY INCLUDES: charId + refId + type (to avoid conflicts between characters)
+    // KEY INCLUDES: charId + refId + type + timestamp (more robust)
     existingLogs.forEach((log: any) => {
-      const key = `${log.charId}-${log.refId || log.date}-${log.type}`
+      const key = `${log.charId}-${log.refId}-${log.type}-${new Date(log.date).getTime()}`
       logMap.set(key, log)
     })
 
@@ -86,8 +86,9 @@ export async function POST(
               }
 
               if (type && refId) {
-                // Use composite key to prevent duplicates between different characters
-                const compositeKey = `${charId}-${refId}-${type}`
+                // Use composite key with timestamp to prevent duplicates
+                const entryTimestamp = new Date(entry.date).getTime()
+                const compositeKey = `${charId}-${refId}-${type}-${entryTimestamp}`
                 
                 // Check if we already have this transaction for this specific character
                 if (!logMap.has(compositeKey)) {

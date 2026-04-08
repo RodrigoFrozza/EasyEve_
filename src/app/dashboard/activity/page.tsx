@@ -122,7 +122,7 @@ function ActivityTrackerContent() {
   const userAllowedActivities = session?.user?.allowedActivities || ['ratting']
   const userRole = session?.user?.role || 'user'
   
-  const { activities, setActivities, addActivity, updateActivity, removeActivity, isCharacterBusy } = useActivityStore()
+  const { activities, setActivities, addActivity, updateActivity, removeActivity, isCharacterBusy, fetchFromAPI, startPolling, stopPolling } = useActivityStore()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [userFits, setUserFits] = useState<any[]>([])
@@ -152,7 +152,7 @@ function ActivityTrackerContent() {
     }
   }, [typeParam])
 
-  // Fetch activities on load
+  // Fetch activities on load + start polling
   useEffect(() => {
     const url = typeParam ? `/api/activities?type=${typeParam}` : '/api/activities'
     fetch(url)
@@ -171,9 +171,15 @@ function ActivityTrackerContent() {
       })
       .catch(err => {
         console.error('Failed to fetch activities:', err)
-        setActivities([]) // Reset to empty array on error
+        setActivities([])
         setIsLoading(false)
       })
+    
+    // Start polling for active activities (every 30s)
+    startPolling(30000)
+    
+    // Cleanup on unmount
+    return () => stopPolling()
   }, [setActivities, typeParam])
 
   const handleStartActivity = async () => {

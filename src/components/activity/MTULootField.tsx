@@ -42,15 +42,23 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
     const newMTUs = [...value];
     newMTUs[index] = { loot: tempLoot };
     
-    const res = await fetch(`/api/activities/${activityId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: { mtuContents: newMTUs } })
-    });
+    try {
+      const res = await fetch(`/api/activities/${activityId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { mtuContents: newMTUs } })
+      });
 
-    if (res.ok) {
-      onChange(newMTUs);
-      setEditingIndex(null);
+      if (res.ok) {
+        onChange(newMTUs);
+        setEditingIndex(null);
+      } else {
+        const { toast } = await import('sonner');
+        toast.error('Failed to save MTU');
+      }
+    } catch (e) {
+      const { toast } = await import('sonner');
+      toast.error('Failed to save MTU');
     }
   };
 
@@ -79,12 +87,22 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
 
   const removeMTU = async (index: number) => {
     const newMTUs = value.filter((_, i) => i !== index);
-    const res = await fetch(`/api/activities/${activityId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: { mtuContents: newMTUs } })
-    });
-    if (res.ok) onChange(newMTUs);
+    try {
+      const res = await fetch(`/api/activities/${activityId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { mtuContents: newMTUs } })
+      });
+      if (res.ok) {
+        onChange(newMTUs);
+      } else {
+        const { toast } = await import('sonner');
+        toast.error('Failed to remove MTU');
+      }
+    } catch (e) {
+      const { toast } = await import('sonner');
+      toast.error('Failed to remove MTU');
+    }
   };
 
   return (
@@ -220,11 +238,27 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
       <Button
         type="button"
         variant="ghost"
-        onClick={() => {
-          onChange([...value, { loot: '' }]);
-          setEditingIndex(value.length);
-          setCurrentPage(Math.floor(value.length / ITEMS_PER_PAGE));
-          setTempLoot('');
+        onClick={async () => {
+          const newMTUs = [...value, { loot: '' }];
+          try {
+            const res = await fetch(`/api/activities/${activityId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ data: { mtuContents: newMTUs } })
+            });
+            if (res.ok) {
+              onChange(newMTUs);
+              setEditingIndex(value.length);
+              setCurrentPage(Math.floor(value.length / ITEMS_PER_PAGE));
+              setTempLoot('');
+            } else {
+              const { toast } = await import('sonner');
+              toast.error('Failed to add MTU');
+            }
+          } catch (e) {
+            const { toast } = await import('sonner');
+            toast.error('Failed to add MTU');
+          }
         }}
         className="w-full h-8 border border-dashed border-zinc-800 hover:border-zinc-700 text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
       >

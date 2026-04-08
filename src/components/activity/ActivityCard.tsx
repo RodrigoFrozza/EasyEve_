@@ -29,7 +29,11 @@ import {
   Table2,
   HelpCircle,
   Download,
-  Filter
+  Filter,
+  LayoutGrid,
+  AlignJustify,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import { 
   Dialog, 
@@ -65,6 +69,19 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   const [logFilterType, setLogFilterType] = useState('all')
   const [logFilterChar, setLogFilterChar] = useState('all')
 
+  // Toggle de visualização
+  const [displayMode, setDisplayMode] = useState<'compact' | 'tabs' | 'expanded'>('compact')
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    fleet: true,
+    mtu: true,
+    salvage: true,
+    transactions: false
+  })
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
+  }
+
   const logs = (activity.data as any)?.logs || []
   const [logsData, setLogsData] = useState<any[]>(logs)
 
@@ -94,17 +111,43 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   }, [logsData, logFilterType, logFilterChar])
 
   const handleMTUChange = async (mtus: any[]) => {
+    // 1. Atualiza store local (feedback imediato)
     const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
     store.updateActivity(activity.id, {
       data: { ...activity.data, mtuContents: mtus }
     });
+    
+    // 2. Persiste no banco
+    try {
+      const res = await fetch(`/api/activities/${activity.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { mtuContents: mtus } })
+      });
+      if (!res.ok) throw new Error('Failed to save MTU');
+    } catch (e) {
+      toast.error('Failed to save MTU changes. Please try again.');
+    }
   }
 
   const handleSalvageChange = async (salvage: any[]) => {
+    // 1. Atualiza store local (feedback imediato)
     const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
     store.updateActivity(activity.id, {
       data: { ...activity.data, salvageContents: salvage }
     });
+    
+    // 2. Persiste no banco
+    try {
+      const res = await fetch(`/api/activities/${activity.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { salvageContents: salvage } })
+      });
+      if (!res.ok) throw new Error('Failed to save Salvage');
+    } catch (e) {
+      toast.error('Failed to save Salvage changes. Please try again.');
+    }
   }
 
   const [mtuPage, setMtuPage] = useState(0)
@@ -239,26 +282,53 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   }
 
   return (
-    <Card className="bg-eve-panel border-eve-border overflow-hidden relative group">
-      <div className={cn("absolute top-0 left-0 w-1 h-full", typeInfo?.color.replace('text-', 'bg-'))} />
-      <CardHeader className="pb-2">
+    <Card className="bg-[#0a0a0f] border-[#1f1f2e] rounded-xl overflow-hidden">
+      <CardHeader className="pb-2 px-4 py-3 border-b border-[#1f1f2e]">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Badge className={cn("capitalize", typeInfo?.bg, typeInfo?.color)}>
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-2 h-2 rounded-full",
+              activity.status === 'active' ? "bg-green-500 animate-pulse" : "bg-gray-500"
+            )} />
+            <Badge className={cn("capitalize text-[10px] uppercase tracking-wider", typeInfo?.bg, typeInfo?.color)}>
               {activity.type}
             </Badge>
-            {activity.type === 'ratting' && (
-              <RattingHelpModal />
-            )}
+            <span className="text-sm text-gray-400 truncate max-w-[150px]">
+              {activity.data?.siteName || activity.data?.siteType || activity.space || 'Active Operations'}
+            </span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-gray-400">
-            <Clock className="h-3 w-3" />
-            {elapsed}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-[#12121a] rounded-lg p-0.5">
+              <button
+                onClick={() => setDisplayMode('compact')}
+                className={cn(
+                  "p-1.5 rounded transition-colors",
+                  displayMode === 'compact' ? "bg-cyan-500/20 text-cyan-400" : "text-gray-500 hover:text-gray-300"
+                )}
+                title="Compact"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setDisplayMode('tabs')}
+                className={cn(
+                  "p-1.5 rounded transition-colors",
+                  displayMode === 'tabs' ? "bg-cyan-500/20 text-cyan-400" : "text-gray-500 hover:text-gray-300"
+                )}
+                title="Tabs"
+              >
+                <AlignJustify className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-gray-400 bg-[#12121a] px-2 py-1 rounded">
+              <Clock className="h-3 w-3" />
+              {elapsed}
+            </div>
           </div>
         </div>
         <Dialog>
           <DialogTrigger asChild>
-            <CardTitle className="text-xl mt-2 flex items-center justify-between cursor-pointer hover:text-eve-accent transition-colors">
+            <CardTitle className="text-lg mt-2 flex items-center justify-between cursor-pointer hover:text-cyan-400 transition-colors">
               <span className="truncate">{(activity as any).item?.name || activity.data?.siteName || 'Active Operations'}</span>
               <div className="flex items-center gap-2">
                 <Button 
@@ -593,8 +663,183 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
         </Dialog>
       </CardHeader>
       
-      <CardContent className="space-y-4">
-        {activity.type === 'ratting' ? (
+      <CardContent className="space-y-3 p-4">
+        {displayMode === 'compact' ? (
+          <>
+            {/* Compact Stats Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="bg-[#12121a] rounded-lg p-3 text-center">
+                <p className="text-[10px] text-gray-500 uppercase">Bounty</p>
+                <p className="text-sm font-bold text-green-400">{formatISK(activity.data?.grossBounties || activity.data?.automatedBounties || 0)}</p>
+              </div>
+              <div className="bg-[#12121a] rounded-lg p-3 text-center">
+                <p className="text-[10px] text-gray-500 uppercase">ESS</p>
+                <p className="text-sm font-bold text-yellow-400">{formatISK(activity.data?.automatedEss || 0)}</p>
+              </div>
+              <div className="bg-[#12121a] rounded-lg p-3 text-center">
+                <p className="text-[10px] text-gray-500 uppercase">Loot</p>
+                <p className="text-sm font-bold text-blue-400">{formatISK(estimatedLootValue)}</p>
+              </div>
+              <div className="bg-[#12121a] rounded-lg p-3 text-center">
+                <p className="text-[10px] text-gray-500 uppercase">Salvage</p>
+                <p className="text-sm font-bold text-orange-400">{formatISK(estimatedSalvageValue)}</p>
+              </div>
+            </div>
+
+            {/* Summary Bar */}
+            <div className="flex items-center justify-between bg-[#12121a] rounded-xl p-3">
+              <div>
+                <p className="text-xs text-gray-500 uppercase">Total</p>
+                <p className="text-lg font-bold text-green-400">{formatISK(totalIsk)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-500 uppercase">Rate</p>
+                <p className="text-sm font-medium text-cyan-400">{formatISK(totalIsk / Math.max(1, (Date.now() - new Date(activity.startTime).getTime()) / 3600000))}/h</p>
+              </div>
+              {activity.type === 'ratting' && (
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  disabled={isSyncing}
+                  onClick={handleSyncFinancials}
+                  className="h-8"
+                >
+                  {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                </Button>
+              )}
+            </div>
+
+            {/* Quick Fleet Preview */}
+            <div className="flex items-center justify-between">
+              <div className="flex -space-x-2">
+                {activity.participants.slice(0, 4).map(p => (
+                  <Avatar key={p.characterId} className="h-8 w-8 border-2 border-[#0a0a0f]">
+                    <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
+                    <AvatarFallback className="bg-[#12121a] text-[10px]">
+                      {p.characterName?.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
+                {activity.participants.length > 4 && (
+                  <div className="h-8 w-8 rounded-full bg-[#12121a] border-2 border-[#0a0a0f] flex items-center justify-center text-[10px] text-gray-400">
+                    +{activity.participants.length - 4}
+                  </div>
+                )}
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setDisplayMode('tabs')}
+                className="text-xs text-gray-500"
+              >
+                View Details
+              </Button>
+            </div>
+          </>
+        ) : displayMode === 'tabs' ? (
+          <>
+            {/* Tabs Mode - Stats + Actions */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-green-950/20 border border-green-900/30 rounded-lg p-2">
+                <p className="text-[10px] text-green-400/70 uppercase">Bounty</p>
+                <p className="text-lg font-bold text-green-400">{formatISK(activity.data?.grossBounties || 0)}</p>
+              </div>
+              <div className="bg-yellow-950/20 border border-yellow-900/30 rounded-lg p-2">
+                <p className="text-[10px] text-yellow-400/70 uppercase">ESS</p>
+                <p className="text-lg font-bold text-yellow-400">{formatISK(activity.data?.automatedEss || 0)}</p>
+              </div>
+            </div>
+
+            {/* Tabs Navigation */}
+            <div className="flex gap-1 bg-[#12121a] p-1 rounded-lg overflow-x-auto">
+              <button
+                onClick={() => toggleSection('fleet')}
+                className={cn(
+                  "flex-1 px-3 py-1.5 text-xs rounded transition-colors whitespace-nowrap",
+                  expandedSections.fleet ? "bg-cyan-500/20 text-cyan-400" : "text-gray-400"
+                )}
+              >
+                Fleet ({activity.participants.length})
+              </button>
+              <button
+                onClick={() => toggleSection('mtu')}
+                className={cn(
+                  "flex-1 px-3 py-1.5 text-xs rounded transition-colors whitespace-nowrap",
+                  expandedSections.mtu ? "bg-blue-500/20 text-blue-400" : "text-gray-400"
+                )}
+              >
+                MTU ({mtuContents.length})
+              </button>
+              <button
+                onClick={() => toggleSection('salvage')}
+                className={cn(
+                  "flex-1 px-3 py-1.5 text-xs rounded transition-colors whitespace-nowrap",
+                  expandedSections.salvage ? "bg-orange-500/20 text-orange-400" : "text-gray-400"
+                )}
+              >
+                Salvage ({salvageContents.length})
+              </button>
+            </div>
+
+            {/* Tab Content */}
+            {expandedSections.fleet && (
+              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                {activity.participants.map(p => (
+                  <div key={p.characterId} className="flex items-center gap-2 p-2 bg-[#12121a] rounded-lg">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
+                      <AvatarFallback className="bg-[#12121a] text-xs">{p.characterName?.slice(0, 2)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-200 truncate">{p.characterName}</p>
+                      <p className="text-[10px] text-gray-500 truncate">{p.fit || 'No fit'}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {expandedSections.mtu && mtuContents.length > 0 && (
+              <div className="grid grid-cols-2 gap-2 max-h-[150px] overflow-y-auto">
+                {mtuContents.map((mtu, idx) => (
+                  <div key={idx} className="bg-blue-950/20 border border-blue-900/30 rounded p-2">
+                    <div className="flex justify-between">
+                      <span className="text-xs text-blue-400">MTU #{idx + 1}</span>
+                      <span className="text-xs text-gray-500">{mtu.loot ? mtu.loot.split('\n').length : 0} items</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {expandedSections.salvage && salvageContents.length > 0 && (
+              <div className="grid grid-cols-2 gap-2 max-h-[150px] overflow-y-auto">
+                {salvageContents.map((s, idx) => (
+                  <div key={idx} className="bg-orange-950/20 border border-orange-900/30 rounded p-2">
+                    <div className="flex justify-between">
+                      <span className="text-xs text-orange-400">Salvage #{idx + 1}</span>
+                      <span className="text-xs text-gray-500">{s.loot ? s.loot.split('\n').length : 0} items</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Sync Button */}
+            {activity.type === 'ratting' && (
+              <Button 
+                variant="outline" 
+                disabled={isSyncing}
+                onClick={handleSyncFinancials}
+                className="w-full"
+              >
+                {isSyncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                Sync ESI
+              </Button>
+            )}
+          </>
+        ) : (
+          /* Expanded Mode - Full layout */
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {/* FLEET COLUMN */}
             <div className="space-y-3">
@@ -842,8 +1087,10 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
               </div>
             </div>
           </div>
-        ) : (
-          /* Default layout for non-ratting */
+        )}
+        
+        {/* Non-ratting expanded layout */}
+        {displayMode === 'expanded' && activity.type !== 'ratting' && (
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="space-y-1">
               <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Space Type</p>
@@ -863,14 +1110,14 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
               <div className="flex flex-wrap gap-4">
                 {activity.participants.map(p => (
                   <div key={p.characterId} className="relative group/participant">
-                    <Avatar className="h-12 w-12 border-2 border-zinc-900 group-hover/participant:border-eve-accent transition-all duration-300">
+                    <Avatar className="h-12 w-12 border-2 border-zinc-900 group-hover/participant:border-cyan-400 transition-all duration-300">
                       <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
                       <AvatarFallback className="bg-zinc-800 text-zinc-400 text-xs">
                         {p.characterName?.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     {p.shipTypeId && (
-                      <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-black border border-zinc-800 flex items-center justify-center overflow-hidden group-hover/participant:border-eve-accent transition-colors">
+                      <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-black border border-zinc-800 flex items-center justify-center overflow-hidden group-hover/participant:border-cyan-400 transition-colors">
                         <Image 
                           src={`https://images.evetech.net/types/${p.shipTypeId}/icon?size=32`}
                           alt="ship"
@@ -886,20 +1133,15 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
           </div>
         )}
 
-        {/* Actions for Ratting */}
-        {activity.type === 'ratting' && (
-          <div className="flex gap-2 pt-3 border-t border-eve-border/30">
+        {/* Actions Footer */}
+        <div className="flex gap-2 pt-3 border-t border-[#1f1f2e]">
+          {activity.type === 'ratting' && displayMode !== 'compact' && (
             <Button 
               size="sm" 
               variant="outline" 
               disabled={isSyncing}
-              className={cn(
-                "flex-1 text-xs h-9 transition-all duration-300 uppercase font-bold tracking-wide",
-                syncStatus === 'success' ? "bg-green-500/20 border-green-500/50 text-green-400" :
-                syncStatus === 'error' ? "bg-red-500/20 border-red-500/50 text-red-400" :
-                "bg-eve-accent/10 border-eve-accent/20 text-white hover:bg-eve-accent hover:text-black"
-              )}
               onClick={handleSyncFinancials}
+              className="flex-1"
             >
               {isSyncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> :
                syncStatus === 'success' ? <CheckCircle className="h-4 w-4 mr-2" /> :
@@ -907,8 +1149,8 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                <RefreshCw className="h-4 w-4 mr-2" />}
               {isSyncing ? 'Syncing...' : syncStatus === 'success' ? 'Updated' : syncStatus === 'error' ? 'Failed' : 'Sync ESI'}
             </Button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Non-ratting financial and loot sections */}
         {activity.type !== 'ratting' && (
