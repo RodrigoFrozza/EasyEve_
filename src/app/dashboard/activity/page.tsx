@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -90,6 +90,19 @@ const CRAB_PHASES = ['Deployment', 'Linking (4min)', 'Scanning (10min)', 'Reward
 const DED_LEVELS = ['1/10', '2/10', '3/10', '4/10', '5/10', '6/10', '7/10', '8/10', '9/10', '10/10']
 
 export default function ActivityTrackerPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <p className="text-muted-foreground animate-pulse">Carregando rastreador...</p>
+      </div>
+    }>
+      <ActivityTrackerContent />
+    </Suspense>
+  )
+}
+
+function ActivityTrackerContent() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
   const typeParam = searchParams.get('type')?.toLowerCase()

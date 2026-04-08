@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+
+export const dynamic = 'force-dynamic'
 import { syncFilamentTypes } from '@/lib/sde/filaments'
 
 export async function POST() {

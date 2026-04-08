@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+
+export const dynamic = 'force-dynamic'
 import { getFilamentTypes, getTierLabel } from '@/lib/sde/filaments'
 
 export async function GET() {

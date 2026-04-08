@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 const ESI_BASE_URL = 'https://esi.evetech.net/latest'
 const JITA_REGION_ID = 10000002
 const JITA_44_STATION_ID = 60003760
