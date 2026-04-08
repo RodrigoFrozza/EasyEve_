@@ -1,24 +1,26 @@
 import { NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
+import { requireAdmin } from '@/lib/admin-auth'
 
 export async function GET() {
   try {
-    const currentUser = await getCurrentUser()
-    
-    if (!currentUser || currentUser.role !== 'master') {
-      return NextResponse.json({ error: 'Unauthorized - Master access required' }, { status: 403 })
-    }
+    const { error } = await requireAdmin()
+    if (error) return error
     
     const accounts = await prisma.user.findMany({
-      select: {
-        id: true,
-        accountCode: true,
-        name: true,
-        role: true,
-        allowedActivities: true,
-        createdAt: true,
+      include: {
+        characters: {
+          select: {
+            id: true,
+            name: true,
+            isMain: true,
+            location: true,
+            ship: true,
+            walletBalance: true,
+          },
+          orderBy: { isMain: 'desc' }
+        },
         _count: {
           select: {
             characters: true,
@@ -29,26 +31,8 @@ export async function GET() {
       orderBy: { createdAt: 'desc' }
     })
     
-    const accountsWithCharacters = await Promise.all(
-      accounts.map(async (account) => {
-        const characters = await prisma.character.findMany({
-          where: { userId: account.id },
-          select: {
-            id: true,
-            name: true,
-            isMain: true,
-            location: true,
-            ship: true,
-            walletBalance: true,
-          },
-          orderBy: { isMain: 'desc' }
-        })
-        return { ...account, characters }
-      })
-    )
-    
     return NextResponse.json({
-      accounts: accountsWithCharacters,
+      accounts: accounts,
       availableActivities: ACTIVITY_TYPES.map(a => a.id)
     })
   } catch (error) {
@@ -59,11 +43,8 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const currentUser = await getCurrentUser()
-    
-    if (!currentUser || currentUser.role !== 'master') {
-      return NextResponse.json({ error: 'Unauthorized - Master access required' }, { status: 403 })
-    }
+    const { error } = await requireAdmin()
+    if (error) return error
     
     const body = await request.json()
     const { userId, allowedActivities } = body

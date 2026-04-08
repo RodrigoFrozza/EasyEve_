@@ -544,3 +544,35 @@ export async function getCharacterWalletJournal(characterId: number, untilDate?:
     return []
   }
 }
+export async function getCorporationWalletJournal(corporationId: number, characterId: number, division: number = 1) {
+  try {
+    const results: any[] = []
+    
+    // We paginate up to 20 pages (1000 entries)
+    for (let page = 1; page <= 20; page++) {
+      const response = await fetchWithAuth(
+        `/corporations/${corporationId}/wallets/${division}/journal/?page=${page}`, 
+        characterId
+      )
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error(`[ESI] Corp Wallet Journal Error (Page ${page}, Corp ${corporationId}): ${response.status} ${errorText}`)
+        break
+      }
+      
+      const data = await response.json()
+      if (Array.isArray(data) && data.length > 0) {
+        results.push(...data)
+        if (data.length < 50) break
+      } else {
+        break
+      }
+    }
+    
+    return results
+  } catch (error) {
+    console.error(`[ESI] Exception fetching corp wallet journal for corp ${corporationId}:`, error)
+    return []
+  }
+}

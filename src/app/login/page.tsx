@@ -41,6 +41,21 @@ function LoginContent() {
             </div>
           )}
 
+          {searchParams.get('blocked') === 'true' && (
+            <div className="rounded-lg bg-red-500/20 border border-red-500 p-3 text-sm text-red-400 flex flex-col gap-1">
+              <p className="font-bold flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                CONTA BLOQUEADA
+              </p>
+              <p className="text-xs opacity-80">
+                Motivo: {searchParams.get('reason') || 'Violação dos termos ou pendência administrativa.'}
+              </p>
+              <p className="text-[10px] mt-2 italic">
+                Entre em contato via Discord para contestação.
+              </p>
+            </div>
+          )}
+
           <Button
             onClick={handleLogin}
             className="w-full bg-eve-accent text-black hover:bg-eve-accent/80 h-12 text-base font-semibold"

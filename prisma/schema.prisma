@@ -12,11 +12,19 @@ model User {
   accountCode        String?      @unique
   email             String?
   name              String?
-  role              String       @default("user")
+  role              String       @default("user") // master, user
   allowedActivities String[]      @default(["ratting"])
+  
+  // Subscription & Blocking
+  isBlocked         Boolean      @default(false)
+  blockedAt         DateTime?
+  blockReason       String?
+  subscriptionEnd   DateTime?
+
   characters        Character[]
   fits             Fit[]
   activities        Activity[]
+  payments         Payment[]
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 }
@@ -36,6 +44,7 @@ model Character {
   shipTypeId      Int?
   
   isMain          Boolean   @default(false)
+  isCorpManager   Boolean   @default(false) // Designated for corp wallet sync
   
   userId          String
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -45,6 +54,36 @@ model Character {
   updatedAt       DateTime  @updatedAt
 
   @@index([userId])
+}
+
+model Payment {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  amount            Float
+  monthsPaid        Int      @default(1)
+  payerCharacterId  Int?
+  payerCharacterName String?
+  journalId         String?  @unique // ESI wallet journal ID to prevent duplicates
+  
+  status            String   @default("pending") // pending, approved, rejected
+  modules           String[] // Modules this payment is for
+  
+  createdAt         DateTime @default(now())
+  approvedAt        DateTime?
+
+  @@index([userId])
+  @@index([journalId])
+}
+
+model ModulePrice {
+  id        String   @id @default(cuid())
+  module    String   @unique // e.g., "ratting", "mining"
+  price     Float
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Fit {

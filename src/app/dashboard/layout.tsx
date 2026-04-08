@@ -13,6 +13,10 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
+  if (session.user.isBlocked) {
+    redirect(`/login?blocked=true&reason=${encodeURIComponent(session.user.blockReason || 'Manual block')}`)
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-eve-dark">
       <Sidebar />

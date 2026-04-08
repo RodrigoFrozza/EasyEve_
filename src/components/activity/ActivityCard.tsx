@@ -93,6 +93,20 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
     })
   }, [logsData, logFilterType, logFilterChar])
 
+  const handleMTUChange = async (mtus: any[]) => {
+    const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
+    store.updateActivity(activity.id, {
+      data: { ...activity.data, mtuContents: mtus }
+    });
+  }
+
+  const handleSalvageChange = async (salvage: any[]) => {
+    const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
+    store.updateActivity(activity.id, {
+      data: { ...activity.data, salvageContents: salvage }
+    });
+  }
+
   const typeInfo = ACTIVITY_TYPES.find(t => t.id === activity.type)
 
   const handleExportCSV = () => {
@@ -162,9 +176,9 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
         const newLogsCount = updated.data?.logs?.length || 0
         toast.success("ESI Sync Complete", { id: toastId, description: `Found ${newLogsCount} recent transactions.` })
         
-        // Also refresh appraisal automatically on sync if needed
-        if (activity.data?.mtuContents?.length > 0) {
-          handleRefreshAppraisal(false) // Pass false to avoid double toasting
+        // Also refresh appraisal automatically on sync if needed - use UPDATED data, not old activity.data
+        if (updated.data?.mtuContents?.length > 0) {
+          handleRefreshAppraisal(false, updated.data)
         }
       } else {
         setSyncStatus('error')
@@ -181,20 +195,18 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
     }
   }
 
-  const handleRefreshAppraisal = async (showToast = true) => {
+  const handleRefreshAppraisal = async (showToast = true, appraisalData?: any) => {
     if (isAppraising) return
     setIsAppraising(true)
     let toastId;
     if (showToast) toastId = toast.loading("Appraising Loot...", { description: "Fetching live prices from Jita 4-4." })
     try {
+      const dataToSend = appraisalData || (activity.data as any)
       const res = await fetch(`/api/activities/${activity.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          data: { 
-            ...(activity.data as any),
-            _appraise: true // Hint to backend if we want to be explicit, though it does it automatically for mtuContents
-          } 
+          data: dataToSend
         })
       })
       if (res.ok) {
@@ -569,62 +581,260 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {/* Detail Grid */}
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div className="space-y-1">
-            <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Space Type</p>
-            <div className="flex items-center gap-2 text-white font-medium">
-              <Box className="h-3 w-3 text-zinc-500" />
-              {activity.space || 'Unknown'}
-            </div>
-          </div>
-          <div className="space-y-1 text-right">
-            <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Detail</p>
-            <div className="text-white font-medium">
-              {activity.data?.siteType || activity.data?.tier || activity.data?.miningType || 'General'}
-            </div>
-          </div>
-        </div>
-
-        {/* Participants / Active Fleet */}
-        <div className="space-y-3">
-          <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Active Fleet</p>
-          <div className="flex flex-wrap gap-4">
-            {activity.participants.map(p => (
-              <div key={p.characterId} className="relative group/participant">
-                {/* Character Avatar */}
-                <div className="relative">
-                  <Avatar className="h-12 w-12 border-2 border-zinc-900 group-hover/participant:border-eve-accent transition-all duration-300">
-                    <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
-                    <AvatarFallback className="bg-zinc-800 text-zinc-400 text-xs">
-                      {p.characterName?.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  {/* Ship Icon Overlay */}
-                  <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-black border border-zinc-800 flex items-center justify-center overflow-hidden group-hover/participant:border-eve-accent transition-colors">
-                    {p.shipTypeId ? (
-                      <Image 
-                        src={`https://images.evetech.net/types/${p.shipTypeId}/icon?size=32`}
-                        alt="ship"
-                        fill
-                        className="object-cover p-0.5"
-                      />
-                    ) : (
-                      <HelpCircle className="h-3.5 w-3.5 text-zinc-500" />
-                    )}
-                  </div>
+        {activity.type === 'ratting' ? (
+          <div className="grid grid-cols-12 gap-3">
+            {/* LEFT COLUMN: Fleet & Stats */}
+            <div className="col-span-12 lg:col-span-4 space-y-3">
+              {/* Fleet Section - RPG Style */}
+              <div className="bg-zinc-950/60 rounded-lg border border-zinc-800/60 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-px flex-1 bg-zinc-800"></div>
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Fleet</span>
+                  <div className="h-px flex-1 bg-zinc-800"></div>
                 </div>
-
-                {/* Custom Tooltip */}
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black/90 border border-eve-border rounded text-[10px] text-white whitespace-nowrap opacity-0 group-hover/participant:opacity-100 pointer-events-none transition-opacity z-50">
-                  <p className="font-bold text-eve-accent">{p.characterName}</p>
-                  <p className="text-zinc-500">{p.shipTypeId ? 'Click for fit info' : 'Unknown Ship'}</p>
+                <div className="space-y-1.5">
+                  {activity.participants.map(p => (
+                    <div key={p.characterId} className="flex items-center gap-2 p-1.5 rounded bg-zinc-900/40 border border-zinc-800/30 hover:border-eve-accent/30 transition-colors group">
+                      <Avatar className="h-8 w-8 border border-zinc-800">
+                        <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
+                        <AvatarFallback className="bg-zinc-800 text-zinc-400 text-[10px]">
+                          {p.characterName?.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-medium text-zinc-200 truncate">{p.characterName}</p>
+                        <div className="flex items-center gap-1">
+                          {p.shipTypeId ? (
+                            <div className="flex items-center gap-1">
+                              <Image 
+                                src={`https://images.evetech.net/types/${p.shipTypeId}/icon?size=32`}
+                                alt="ship"
+                                width={14}
+                                height={14}
+                                className="object-contain"
+                              />
+                              <span className="text-[9px] text-zinc-500 truncate">{p.fit || 'Unknown Fit'}</span>
+                            </div>
+                          ) : (
+                            <span className="text-[9px] text-zinc-600">No ship data</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="w-1.5 h-6 bg-green-500/20 rounded-full group-hover:bg-green-500/50 transition-colors"></div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
+
+              {/* Quick Stats */}
+              <div className="bg-zinc-950/60 rounded-lg border border-zinc-800/60 p-3 space-y-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-px flex-1 bg-zinc-800"></div>
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Stats</span>
+                  <div className="h-px flex-1 bg-zinc-800"></div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-zinc-900/40 rounded p-2 border border-zinc-800/30">
+                    <p className="text-[9px] text-zinc-600 uppercase">Duration</p>
+                    <p className="text-sm font-mono text-zinc-300">{elapsed}</p>
+                  </div>
+                  <div className="bg-zinc-900/40 rounded p-2 border border-zinc-800/30">
+                    <p className="text-[9px] text-zinc-600 uppercase">Location</p>
+                    <p className="text-[11px] text-zinc-300 truncate">{activity.space || 'Unknown'}</p>
+                  </div>
+                </div>
+                <div className="bg-zinc-900/40 rounded p-2 border border-zinc-800/30">
+                  <p className="text-[9px] text-zinc-600 uppercase">Site Type</p>
+                  <p className="text-[11px] text-zinc-300">{activity.data?.siteType || 'General'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN: Inventory */}
+            <div className="col-span-12 lg:col-span-8 space-y-3">
+              {/* MTU Inventory */}
+              <div className="bg-blue-950/20 rounded-lg border border-blue-900/40 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Image 
+                      src="https://images.evetech.net/Render/33475_512.png"
+                      alt="MTU"
+                      width={16}
+                      height={16}
+                      className="object-contain"
+                    />
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-blue-400/70 font-bold">Loot Containers</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-zinc-500">{activity.data?.mtuContents?.length || 0} MTUs</span>
+                    {(isAppraising) && <Loader2 className="h-3 w-3 animate-spin text-blue-400" />}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {(activity.data?.mtuContents as any[])?.map((mtu: any, idx: number) => {
+                    const lines = (mtu.loot || '').split('\n').filter((l: string) => l.trim())
+                    const itemCount = lines.length
+                    const mtuValue = (activity.data?.mtuValues as number[])?.[idx] || 0
+                    return (
+                      <div 
+                        key={idx}
+                        className="relative bg-zinc-950/60 rounded border border-blue-900/30 hover:border-blue-500/50 transition-all cursor-pointer group"
+                      >
+                        <div className="p-2 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-blue-400">#{idx + 1}</span>
+                            <span className="text-[9px] text-zinc-600">{itemCount} items</span>
+                          </div>
+                          <div className="h-8 overflow-hidden">
+                            <p className="text-[8px] text-zinc-500 leading-relaxed line-clamp-2">
+                              {mtu.loot ? mtu.loot.substring(0, 60) + '...' : 'Empty'}
+                            </p>
+                          </div>
+                          <div className="text-[10px] font-mono text-blue-400/80 text-right">
+                            {mtuValue > 0 ? formatISK(mtuValue) : '—'}
+                          </div>
+                        </div>
+                        <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity rounded pointer-events-none"></div>
+                      </div>
+                    )
+                  })}
+                  {/* Add MTU placeholder */}
+                  <div 
+                    className="bg-zinc-950/30 rounded border border-dashed border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer flex items-center justify-center min-h-[80px] group"
+                    onClick={() => {
+                      const newMTUs = [...((activity.data?.mtuContents as any[]) || []), { loot: '' }]
+                      handleMTUChange(newMTUs)
+                    }}
+                  >
+                    <div className="text-center">
+                      <Plus className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400 mx-auto mb-1" />
+                      <span className="text-[9px] text-zinc-600">Add MTU</span>
+                    </div>
+                  </div>
+                </div>
+                {estimatedLootValue > 0 && (
+                  <div className="mt-2 pt-2 border-t border-blue-900/30 flex justify-end">
+                    <span className="text-xs font-bold text-blue-400 font-mono">
+                      Total: {formatISK(estimatedLootValue)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Salvage Inventory */}
+              <div className="bg-orange-950/20 rounded-lg border border-orange-900/40 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Wrench className="h-4 w-4 text-orange-400/70" />
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-orange-400/70 font-bold">Salvage</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-zinc-500">{(activity.data?.salvageContents as any[])?.length || 0} units</span>
+                    {(isSalvageAppraising) && <Loader2 className="h-3 w-3 animate-spin text-orange-400" />}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {(activity.data?.salvageContents as any[])?.map((salvage: any, idx: number) => {
+                    const lines = (salvage.loot || '').split('\n').filter((l: string) => l.trim())
+                    const itemCount = lines.length
+                    return (
+                      <div 
+                        key={idx}
+                        className="relative bg-zinc-950/60 rounded border border-orange-900/30 hover:border-orange-500/50 transition-all cursor-pointer group"
+                      >
+                        <div className="p-2 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-orange-400">Unit #{idx + 1}</span>
+                            <span className="text-[9px] text-zinc-600">{itemCount} items</span>
+                          </div>
+                          <div className="h-8 overflow-hidden">
+                            <p className="text-[8px] text-zinc-500 leading-relaxed line-clamp-2">
+                              {salvage.loot ? salvage.loot.substring(0, 60) + '...' : 'Empty'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="absolute inset-0 bg-orange-500/10 opacity-0 group-hover:opacity-100 transition-opacity rounded pointer-events-none"></div>
+                      </div>
+                    )
+                  })}
+                  {/* Add Salvage placeholder */}
+                  <div 
+                    className="bg-zinc-950/30 rounded border border-dashed border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer flex items-center justify-center min-h-[60px] group"
+                    onClick={() => {
+                      const newSalvage = [...((activity.data?.salvageContents as any[]) || []), { loot: '' }]
+                      handleSalvageChange(newSalvage)
+                    }}
+                  >
+                    <div className="text-center">
+                      <Plus className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400 mx-auto mb-1" />
+                      <span className="text-[9px] text-zinc-600">Add Salvage</span>
+                    </div>
+                  </div>
+                </div>
+                {estimatedSalvageValue > 0 && (
+                  <div className="mt-2 pt-2 border-t border-orange-900/30 flex justify-end">
+                    <span className="text-xs font-bold text-orange-400 font-mono">
+                      Total: {formatISK(estimatedSalvageValue)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
+        ) : (
+          /* Default layout for non-ratting */
+          <>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="space-y-1">
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Space Type</p>
+                <div className="flex items-center gap-2 text-white font-medium">
+                  <Box className="h-3 w-3 text-zinc-500" />
+                  {activity.space || 'Unknown'}
+                </div>
+              </div>
+              <div className="space-y-1 text-right">
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Detail</p>
+                <div className="text-white font-medium">
+                  {activity.data?.siteType || activity.data?.tier || activity.data?.miningType || 'General'}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Active Fleet</p>
+              <div className="flex flex-wrap gap-4">
+                {activity.participants.map(p => (
+                  <div key={p.characterId} className="relative group/participant">
+                    <div className="relative">
+                      <Avatar className="h-12 w-12 border-2 border-zinc-900 group-hover/participant:border-eve-accent transition-all duration-300">
+                        <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
+                        <AvatarFallback className="bg-zinc-800 text-zinc-400 text-xs">
+                          {p.characterName?.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-black border border-zinc-800 flex items-center justify-center overflow-hidden group-hover/participant:border-eve-accent transition-colors">
+                        {p.shipTypeId ? (
+                          <Image 
+                            src={`https://images.evetech.net/types/${p.shipTypeId}/icon?size=32`}
+                            alt="ship"
+                            fill
+                            className="object-cover p-0.5"
+                          />
+                        ) : (
+                          <HelpCircle className="h-3.5 w-3.5 text-zinc-500" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black/90 border border-eve-border rounded text-[10px] text-white whitespace-nowrap opacity-0 group-hover/participant:opacity-100 pointer-events-none transition-opacity z-50">
+                      <p className="font-bold text-eve-accent">{p.characterName}</p>
+                      <p className="text-zinc-500">{p.shipTypeId ? 'Click for fit info' : 'Unknown Ship'}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Financial Highlights */}
         {activity.type === 'ratting' && (

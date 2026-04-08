@@ -75,6 +75,7 @@ export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
   })
 
   let userId: string
+  let user: any
 
   if (existingChar) {
     await prisma.character.update({
@@ -87,9 +88,10 @@ export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
       },
     })
     userId = existingChar.userId
+    user = existingChar.user
   } else {
     const accountCode = generateAccountCode()
-    const user = await prisma.user.create({
+    user = await prisma.user.create({
       data: {
         accountCode,
         name: characterName,
@@ -120,6 +122,25 @@ export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
     userId = user.id
   }
 
+  // Check Blocking & Subscription
+  if (user.isBlocked) {
+    return {
+      userId,
+      characterId,
+      ownerHash,
+      redirectUrl: `/login?blocked=true&reason=${encodeURIComponent(user.blockReason || 'Manual block')}`,
+    }
+  }
+
+  // Monthly Auto-check (Subscription Expiration)
+  if (user.subscriptionEnd && new Date() > user.subscriptionEnd) {
+    console.log(`[Auth] User ${user.id} subscription expired. Resetting activities.`)
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { allowedActivities: ['ratting'] }
+    })
+  }
+
   return {
     userId,
     characterId,
@@ -146,6 +167,14 @@ export async function handleLinkFlow(
     return {
       error: 'invalid_account',
       redirectUrl: '/login?error=invalid_account',
+    }
+  }
+
+  // Blocked users cannot link new characters
+  if (user.isBlocked) {
+    return {
+      error: 'account_blocked',
+      redirectUrl: `/login?blocked=true&reason=${encodeURIComponent(user.blockReason || 'Manual block')}`,
     }
   }
 

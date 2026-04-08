@@ -28,6 +28,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Characters', href: '/dashboard/characters', icon: Users },
   { name: 'Activity Tracker', href: '/dashboard/activity', icon: Target },
+  { name: 'Subscription', href: '/dashboard/subscription', icon: Crown },
   { name: 'Fits', href: '/dashboard/fits', icon: Ship },
 ]
 
