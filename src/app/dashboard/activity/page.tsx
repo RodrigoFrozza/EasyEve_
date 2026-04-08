@@ -768,7 +768,7 @@ function ActivityTrackerContent() {
       </div>
 
       {/* Active Activities Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {activeActivities.length === 0 ? (
           <Card className="col-span-full bg-eve-panel border-dashed border-eve-border py-12">
             <CardContent className="flex flex-col items-center justify-center text-center">

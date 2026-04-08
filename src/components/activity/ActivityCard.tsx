@@ -107,6 +107,19 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
     });
   }
 
+  const [mtuPage, setMtuPage] = useState(0)
+  const [salvagePage, setSalvagePage] = useState(0)
+  const MTUS_PER_PAGE = 4
+  const SALVAGE_PER_PAGE = 4
+
+  const mtuContents = (activity.data?.mtuContents as any[]) || []
+  const salvageContents = (activity.data?.salvageContents as any[]) || []
+  const mtuTotalPages = Math.ceil(mtuContents.length / MTUS_PER_PAGE) || 1
+  const salvageTotalPages = Math.ceil(salvageContents.length / SALVAGE_PER_PAGE) || 1
+
+  const paginatedMtus = mtuContents.slice(mtuPage * MTUS_PER_PAGE, (mtuPage + 1) * MTUS_PER_PAGE)
+  const paginatedSalvage = salvageContents.slice(salvagePage * SALVAGE_PER_PAGE, (salvagePage + 1) * SALVAGE_PER_PAGE)
+
   const typeInfo = ACTIVITY_TYPES.find(t => t.id === activity.type)
 
   const handleExportCSV = () => {
@@ -649,16 +662,38 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                   />
                   <span className="text-[9px] uppercase tracking-wider text-blue-400/70 font-bold">Loot</span>
                 </div>
-                <span className="text-[9px] text-zinc-500">{(activity.data?.mtuContents as any[])?.length || 0}</span>
+                <div className="flex items-center gap-2">
+                  {mtuTotalPages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <button 
+                        onClick={() => setMtuPage(p => Math.max(0, p - 1))} 
+                        disabled={mtuPage === 0}
+                        className="text-[8px] text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
+                      >
+                        ‹
+                      </button>
+                      <span className="text-[8px] text-zinc-500">{mtuPage + 1}/{mtuTotalPages}</span>
+                      <button 
+                        onClick={() => setMtuPage(p => Math.min(mtuTotalPages - 1, p + 1))} 
+                        disabled={mtuPage >= mtuTotalPages - 1}
+                        className="text-[8px] text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
+                      >
+                        ›
+                      </button>
+                    </div>
+                  )}
+                  <span className="text-[9px] text-zinc-500">{mtuContents.length}</span>
+                </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
-                {(activity.data?.mtuContents as any[])?.map((mtu: any, idx: number) => {
+              <div className="grid grid-cols-2 gap-1.5">
+                {paginatedMtus.map((mtu: any, idx: number) => {
+                  const actualIdx = mtuPage * MTUS_PER_PAGE + idx
                   const lines = (mtu.loot || '').split('\n').filter((l: string) => l.trim())
-                  const mtuValue = (activity.data?.mtuValues as number[])?.[idx] || 0
+                  const mtuValue = (activity.data?.mtuValues as number[])?.[actualIdx] || 0
                   return (
-                    <div key={idx} className="relative bg-zinc-950/60 rounded border border-blue-900/30 hover:border-blue-500/50 transition-all cursor-pointer group p-1.5">
+                    <div key={actualIdx} className="relative bg-zinc-950/60 rounded border border-blue-900/30 hover:border-blue-500/50 transition-all cursor-pointer group p-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-bold text-blue-400">#{idx + 1}</span>
+                        <span className="text-[9px] font-bold text-blue-400">#{actualIdx + 1}</span>
                         <span className="text-[8px] text-zinc-600">{lines.length}</span>
                       </div>
                       <p className="text-[7px] text-zinc-500 truncate leading-tight mt-0.5">
@@ -673,7 +708,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                 <div 
                   className="bg-zinc-950/30 rounded border border-dashed border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer flex items-center justify-center min-h-[50px] group"
                   onClick={() => {
-                    const newMTUs = [...((activity.data?.mtuContents as any[]) || []), { loot: '' }]
+                    const newMTUs = [...mtuContents, { loot: '' }]
                     handleMTUChange(newMTUs)
                   }}
                 >
@@ -695,15 +730,37 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                   <Wrench className="h-3.5 w-3.5 text-orange-400/70" />
                   <span className="text-[9px] uppercase tracking-wider text-orange-400/70 font-bold">Salvage</span>
                 </div>
-                <span className="text-[9px] text-zinc-500">{(activity.data?.salvageContents as any[])?.length || 0}</span>
+                <div className="flex items-center gap-2">
+                  {salvageTotalPages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <button 
+                        onClick={() => setSalvagePage(p => Math.max(0, p - 1))} 
+                        disabled={salvagePage === 0}
+                        className="text-[8px] text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
+                      >
+                        ‹
+                      </button>
+                      <span className="text-[8px] text-zinc-500">{salvagePage + 1}/{salvageTotalPages}</span>
+                      <button 
+                        onClick={() => setSalvagePage(p => Math.min(salvageTotalPages - 1, p + 1))} 
+                        disabled={salvagePage >= salvageTotalPages - 1}
+                        className="text-[8px] text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
+                      >
+                        ›
+                      </button>
+                    </div>
+                  )}
+                  <span className="text-[9px] text-zinc-500">{salvageContents.length}</span>
+                </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[100px] overflow-y-auto pr-1 custom-scrollbar">
-                {(activity.data?.salvageContents as any[])?.map((salvage: any, idx: number) => {
+              <div className="grid grid-cols-2 gap-1.5">
+                {paginatedSalvage.map((salvage: any, idx: number) => {
+                  const actualIdx = salvagePage * SALVAGE_PER_PAGE + idx
                   const lines = (salvage.loot || '').split('\n').filter((l: string) => l.trim())
                   return (
-                    <div key={idx} className="relative bg-zinc-950/60 rounded border border-orange-900/30 hover:border-orange-500/50 transition-all cursor-pointer group p-1.5">
+                    <div key={actualIdx} className="relative bg-zinc-950/60 rounded border border-orange-900/30 hover:border-orange-500/50 transition-all cursor-pointer group p-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-bold text-orange-400">#{idx + 1}</span>
+                        <span className="text-[9px] font-bold text-orange-400">#{actualIdx + 1}</span>
                         <span className="text-[8px] text-zinc-600">{lines.length}</span>
                       </div>
                       <p className="text-[7px] text-zinc-500 truncate leading-tight mt-0.5">
@@ -715,7 +772,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                 <div 
                   className="bg-zinc-950/30 rounded border border-dashed border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer flex items-center justify-center min-h-[40px] group"
                   onClick={() => {
-                    const newSalvage = [...((activity.data?.salvageContents as any[]) || []), { loot: '' }]
+                    const newSalvage = [...salvageContents, { loot: '' }]
                     handleSalvageChange(newSalvage)
                   }}
                 >
