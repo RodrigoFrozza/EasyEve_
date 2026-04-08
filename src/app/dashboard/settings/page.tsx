@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Switch } from '@/components/ui/switch'
 import { Settings, User, Bell, Shield, Database, Palette, Link2 } from 'lucide-react'
 import { getSession } from '@/lib/session'
+import { DataManagement } from '@/components/settings/DataManagement'
 
 export default async function SettingsPage() {
   const session = await getSession()
@@ -153,16 +154,8 @@ export default async function SettingsPage() {
                 Data Management
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full justify-start border-eve-border">
-                Export Data
-              </Button>
-              <Button variant="outline" className="w-full justify-start border-eve-border">
-                Import Data
-              </Button>
-              <Button variant="outline" className="w-full justify-start border-red-500/50 text-red-400 hover:bg-red-500/10">
-                Delete All Data
-              </Button>
+            <CardContent>
+              <DataManagement />
             </CardContent>
           </Card>
 

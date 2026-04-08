@@ -10,6 +10,7 @@ import {
   DialogHeader, 
   DialogTitle, 
 } from '@/components/ui/dialog'
+import { toast } from 'sonner'
 
 interface SalvageItem {
   loot: string
@@ -51,11 +52,9 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
         onChange(newSalvage);
         setEditingIndex(null);
       } else {
-        const { toast } = await import('sonner');
         toast.error('Failed to save Salvage');
       }
     } catch (e) {
-      const { toast } = await import('sonner');
       toast.error('Failed to save Salvage');
     }
   };
@@ -94,11 +93,9 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
       if (res.ok) {
         onChange(newSalvage);
       } else {
-        const { toast } = await import('sonner');
         toast.error('Failed to remove Salvage');
       }
     } catch (e) {
-      const { toast } = await import('sonner');
       toast.error('Failed to remove Salvage');
     }
   };
@@ -233,11 +230,9 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
               setCurrentPage(Math.floor(value.length / ITEMS_PER_PAGE));
               setTempLoot('');
             } else {
-              const { toast } = await import('sonner');
               toast.error('Failed to add Salvage');
             }
           } catch (e) {
-            const { toast } = await import('sonner');
             toast.error('Failed to add Salvage');
           }
         }}

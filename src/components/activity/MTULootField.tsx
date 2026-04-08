@@ -11,6 +11,7 @@ import {
   DialogHeader, 
   DialogTitle, 
 } from '@/components/ui/dialog'
+import { toast } from 'sonner'
 
 interface MTULoot {
   loot: string
@@ -53,11 +54,9 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
         onChange(newMTUs);
         setEditingIndex(null);
       } else {
-        const { toast } = await import('sonner');
         toast.error('Failed to save MTU');
       }
     } catch (e) {
-      const { toast } = await import('sonner');
       toast.error('Failed to save MTU');
     }
   };
@@ -96,11 +95,9 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
       if (res.ok) {
         onChange(newMTUs);
       } else {
-        const { toast } = await import('sonner');
         toast.error('Failed to remove MTU');
       }
     } catch (e) {
-      const { toast } = await import('sonner');
       toast.error('Failed to remove MTU');
     }
   };
@@ -240,6 +237,10 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
         variant="ghost"
         onClick={async () => {
           const newMTUs = [...value, { loot: '' }];
+          const newIndex = value.length;
+          setEditingIndex(newIndex);
+          setTempLoot('');
+          setCurrentPage(Math.floor(newIndex / ITEMS_PER_PAGE));
           try {
             const res = await fetch(`/api/activities/${activityId}`, {
               method: 'PATCH',
@@ -248,22 +249,17 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
             });
             if (res.ok) {
               onChange(newMTUs);
-              setEditingIndex(value.length);
-              setCurrentPage(Math.floor(value.length / ITEMS_PER_PAGE));
-              setTempLoot('');
             } else {
-              const { toast } = await import('sonner');
               toast.error('Failed to add MTU');
             }
           } catch (e) {
-            const { toast } = await import('sonner');
             toast.error('Failed to add MTU');
           }
         }}
         className="w-full h-8 border border-dashed border-zinc-800 hover:border-zinc-700 text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
       >
         <Plus className="h-3 w-3 mr-2" />
-        Register New MTU
+        Add MTU & Paste Content
       </Button>
 
       <Dialog open={isPreviewing !== null} onOpenChange={(open) => !open && setIsPreviewing(null)}>
