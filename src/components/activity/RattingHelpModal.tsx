@@ -85,7 +85,7 @@ export function RattingHelpModal({ children }: RattingHelpModalProps) {
               <div className="space-y-2">
                 <h4 className="text-sm font-bold text-white uppercase tracking-wider">Passo A</h4>
                 <p className="text-xs text-gray-400">
-                  Clique em <span className="text-white font-bold">"Start New Activity"</span> e selecione o ícone de Ratting (mira vermelha).
+                  Clique em <span className="text-white font-bold">&quot;Start New Activity&quot;</span> e selecione o ícone de Ratting (mira vermelha).
                 </p>
               </div>
               <div className="space-y-2">
@@ -120,7 +120,7 @@ export function RattingHelpModal({ children }: RattingHelpModalProps) {
                     <span className="text-xs font-bold text-white uppercase">Ticks de Bounty</span>
                   </div>
                   <p className="text-[10px] text-gray-400">
-                    Sincronizados a cada 20 minutos (tempo padrão do jogo). Use o botão <span className="text-white font-bold">"Sync ESI"</span> para atualizar.
+                    Sincronizados a cada 20 minutos (tempo padrão do jogo). Use o botão <span className="text-white font-bold">&quot;Sync ESI&quot;</span> para atualizar.
                   </p>
                 </div>
                 <div className="bg-zinc-900 p-3 rounded-lg border border-eve-border flex-1">
@@ -153,7 +153,7 @@ export function RattingHelpModal({ children }: RattingHelpModalProps) {
             </h3>
             <ul className="text-xs text-gray-400 space-y-2 list-disc pl-4">
               <li>Priorize <span className="text-white">Havens (Rock)</span> e <span className="text-white">Sanctums</span> para melhor ISK/Hora em Nullsec.</li>
-              <li>Sempre clique em <span className="text-white">"Sync ESI"</span> antes de finalizar a atividade para garantir que o último tick foi capturado.</li>
+              <li>Sempre clique em <span className="text-white">&quot;Sync ESI&quot;</span> antes de finalizar a atividade para garantir que o último tick foi capturado.</li>
               <li>O cálculo de <span className="text-eve-accent font-bold">ISK/hr</span> considera o lucro líquido acumulado dividido pelo tempo total de operação.</li>
             </ul>
           </section>

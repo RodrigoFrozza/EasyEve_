@@ -45,7 +45,7 @@ import {
 } from '@/components/ui/dialog'
 import { cn, formatISK } from '@/lib/utils'
 import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
-import { type Activity } from '@/lib/stores/activity-store'
+import { type Activity, useActivityStore } from '@/lib/stores/activity-store'
 import { MTULootField } from './MTULootField'
 import { SalvageField } from './SalvageField'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -86,9 +86,8 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   const [logsData, setLogsData] = useState<any[]>(logs)
 
   useEffect(() => {
-    const syncStore = async () => {
-      const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
-      const currentActivity = store.activities.find(a => a.id === activity.id);
+    const syncStore = () => {
+      const currentActivity = useActivityStore.getState().activities.find(a => a.id === activity.id);
       if (currentActivity) {
         setLogsData((currentActivity.data as any)?.logs || []);
       }
@@ -112,8 +111,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
 
   const handleMTUChange = async (mtus: any[]) => {
     // 1. Atualiza store local (feedback imediato)
-    const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
-    store.updateActivity(activity.id, {
+    useActivityStore.getState().updateActivity(activity.id, {
       data: { ...activity.data, mtuContents: mtus }
     });
     
@@ -132,8 +130,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
 
   const handleSalvageChange = async (salvage: any[]) => {
     // 1. Atualiza store local (feedback imediato)
-    const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
-    store.updateActivity(activity.id, {
+    useActivityStore.getState().updateActivity(activity.id, {
       data: { ...activity.data, salvageContents: salvage }
     });
     
@@ -226,8 +223,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
       const res = await fetch(`/api/activities/sync?id=${activity.id}`, { method: 'POST' })
       if (res.ok) {
         const updated = await res.json()
-        const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
-        store.updateActivity(activity.id, updated)
+        useActivityStore.getState().updateActivity(activity.id, updated)
         setSyncStatus('success')
         const newLogsCount = updated.data?.logs?.length || 0
         toast.success("ESI Sync Complete", { id: toastId, description: `Found ${newLogsCount} recent transactions.` })
@@ -267,8 +263,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
       })
       if (res.ok) {
         const updated = await res.json()
-        const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
-        store.updateActivity(activity.id, updated)
+        useActivityStore.getState().updateActivity(activity.id, updated)
         if (showToast) toast.success("Appraisal Complete", { id: toastId, description: "Loot values have been updated." })
       } else {
          if (showToast) toast.error("Appraisal Failed", { id: toastId, description: "Could not reach market endpoints." })
@@ -1214,8 +1209,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                     activityId={activity.id}
                     mtuValues={activity.data?.mtuValues || []}
                     onChange={async (mtus) => {
-                      const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
-                      store.updateActivity(activity.id, {
+                      useActivityStore.getState().updateActivity(activity.id, {
                         data: { ...activity.data, mtuContents: mtus }
                       });
                     }} 
@@ -1227,8 +1221,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                     value={activity.data?.salvageContents || []} 
                     activityId={activity.id}
                     onChange={async (salvage) => {
-                      const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
-                      store.updateActivity(activity.id, {
+                      useActivityStore.getState().updateActivity(activity.id, {
                         data: { ...activity.data, salvageContents: salvage }
                       });
                     }} 
