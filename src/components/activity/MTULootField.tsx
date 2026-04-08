@@ -2,9 +2,15 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Plus, Minus, Edit2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Minus, Edit2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { formatISK } from '@/lib/utils'
 import Image from 'next/image'
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+} from '@/components/ui/dialog'
 
 interface MTULoot {
   loot: string
@@ -23,6 +29,11 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [tempLoot, setTempLoot] = useState('');
   const [currentPage, setCurrentPage] = useState(0);
+  
+  const [isPreviewing, setIsPreviewing] = useState<number | null>(null);
+  const [previewData, setPreviewData] = useState<any[]>([]);
+  const [previewTotal, setPreviewTotal] = useState(0);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   const totalPages = Math.ceil(value.length / ITEMS_PER_PAGE)
   const paginatedItems = value.slice(currentPage * ITEMS_PER_PAGE, (currentPage + 1) * ITEMS_PER_PAGE)
@@ -40,6 +51,29 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
     if (res.ok) {
       onChange(newMTUs);
       setEditingIndex(null);
+    }
+  };
+
+  const openPreview = async (index: number) => {
+    setIsPreviewing(index);
+    setIsLoadingPreview(true);
+    setPreviewData([]);
+    setPreviewTotal(0);
+    try {
+      const res = await fetch('/api/market/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: value[index].loot })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPreviewData(data.items);
+        setPreviewTotal(data.total);
+      }
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setIsLoadingPreview(false);
     }
   };
 
@@ -140,13 +174,17 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
                 </div>
               ) : (
                 <div 
-                  className="text-[10px] text-zinc-500 italic truncate cursor-pointer hover:text-zinc-400"
+                  className="text-[10px] text-zinc-500 italic truncate cursor-pointer hover:text-zinc-400 group-hover:text-zinc-400"
                   onClick={() => {
-                    setEditingIndex(actualIndex);
-                    setTempLoot(mtu.loot);
+                    if (!mtu.loot) {
+                      setEditingIndex(actualIndex);
+                      setTempLoot(mtu.loot);
+                    } else {
+                      openPreview(actualIndex);
+                    }
                   }}
                 >
-                  {mtu.loot ? mtu.loot.substring(0, 100) + '...' : 'Click to paste loot...'}
+                  {mtu.loot ? mtu.loot.substring(0, 100) + '... (Click to view details)' : 'Click to paste loot...'}
                 </div>
               )}
             </div>
@@ -193,6 +231,49 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
         <Plus className="h-3 w-3 mr-2" />
         Register New MTU
       </Button>
+
+      <Dialog open={isPreviewing !== null} onOpenChange={(open) => !open && setIsPreviewing(null)}>
+        <DialogContent className="bg-eve-panel border-eve-border sm:max-w-[450px]">
+          <DialogHeader className="border-b border-eve-border/50 pb-3">
+            <DialogTitle className="font-mono uppercase tracking-[0.15em] text-gray-300 text-sm flex items-center justify-between">
+              <span>MTU #{isPreviewing !== null ? isPreviewing + 1 : ''} Details</span>
+              <span className="text-blue-400">{formatISK(previewTotal)}</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-4">
+            {isLoadingPreview ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-eve-accent" />
+              </div>
+            ) : previewData.length === 0 ? (
+              <p className="text-center text-sm text-gray-500 italic py-4">No valid items found.</p>
+            ) : (
+              <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+                <table className="w-full text-[10px] font-mono">
+                  <thead className="sticky top-0 bg-eve-panel">
+                    <tr className="text-gray-500 uppercase">
+                      <th className="text-left py-2 font-medium">Item Name</th>
+                      <th className="text-right py-2 font-medium">Qty</th>
+                      <th className="text-right py-2 font-medium">Unit Price</th>
+                      <th className="text-right py-2 font-medium">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewData.map((item, i) => (
+                      <tr key={i} className="border-b border-eve-border/50 text-gray-300 hover:bg-zinc-900/50">
+                        <td className="py-1.5 pr-2 truncate max-w-[150px]">{item.name}</td>
+                        <td className="py-1.5 text-right px-2 text-gray-400">{item.quantity}</td>
+                        <td className="py-1.5 text-right px-2 text-zinc-500">{formatISK(item.unitPrice)}</td>
+                        <td className="py-1.5 text-right pl-2 font-medium text-blue-400">{formatISK(item.totalPrice)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

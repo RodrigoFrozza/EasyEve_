@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -26,7 +27,9 @@ import {
   Receipt,
   List,
   Table2,
-  HelpCircle
+  HelpCircle,
+  Download,
+  Filter
 } from 'lucide-react'
 import { 
   Dialog, 
@@ -57,7 +60,51 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   const [esiSalvageTotal, setEsiSalvageTotal] = useState(0)
   const [isSalvageAppraising, setIsSalvageAppraising] = useState(false)
   
+  const [logFilterType, setLogFilterType] = useState('all')
+  const [logFilterChar, setLogFilterChar] = useState('all')
+
+  const logs = (activity.data as any)?.logs || []
+  
+  const uniqueChars = useMemo(() => {
+    const chars = new Set<string>()
+    logs.forEach((l: any) => { if(l.charName) chars.add(l.charName) })
+    return Array.from(chars)
+  }, [logs])
+
+  const filteredLogs = useMemo(() => {
+    return logs.filter((log: any) => {
+      const matchType = logFilterType === 'all' || log.type === logFilterType
+      const matchChar = logFilterChar === 'all' || log.charName === logFilterChar
+      return matchType && matchChar
+    })
+  }, [logs, logFilterType, logFilterChar])
+
   const typeInfo = ACTIVITY_TYPES.find(t => t.id === activity.type)
+
+  const handleExportCSV = () => {
+    if (filteredLogs.length === 0) {
+      toast.error('No data to export')
+      return;
+    }
+    
+    // Sort array by date so older is at the top or bottom depending on user preference, we export newest first (as displayed).
+    const headers = ['Date', 'Character', 'Type', 'Amount (ISK)']
+    const csvContent = [
+      headers.join(','),
+      ...filteredLogs.map((log: any) => `${new Date(log.date).toISOString().replace(',', '')},${log.charName},${log.type.toUpperCase()},${log.amount}`)
+    ].join('\n')
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `financial_history_${activity.id}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success('Export Complete', { description: 'CSV file generated successfully.' })
+  }
 
   // Combined Totals from Activity Data (Appraised on Server)
   const { 
@@ -90,6 +137,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   const handleSyncFinancials = async () => {
     setIsSyncing(true)
     setSyncStatus('idle')
+    const toastId = toast.loading("Syncing with ESI...", { description: "Fetching latest wallet journal entries." })
     try {
       const res = await fetch(`/api/activities/sync?id=${activity.id}`, { method: 'POST' })
       if (res.ok) {
@@ -97,16 +145,20 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
         const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
         store.updateActivity(activity.id, updated)
         setSyncStatus('success')
+        const newLogsCount = updated.data?.logs?.length || 0
+        toast.success("ESI Sync Complete", { id: toastId, description: `Found ${newLogsCount} recent transactions.` })
         
         // Also refresh appraisal automatically on sync if needed
         if (activity.data?.mtuContents?.length > 0) {
-          handleRefreshAppraisal()
+          handleRefreshAppraisal(false) // Pass false to avoid double toasting
         }
       } else {
         setSyncStatus('error')
+        toast.error("Sync Failed", { id: toastId, description: "Could not retrieve wallet data from ESI." })
       }
     } catch (error) {
       setSyncStatus('error')
+      toast.error("Sync Error", { id: toastId, description: "A network error occurred." })
     } finally {
       setTimeout(() => {
         setIsSyncing(false)
@@ -115,9 +167,11 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
     }
   }
 
-  const handleRefreshAppraisal = async () => {
+  const handleRefreshAppraisal = async (showToast = true) => {
     if (isAppraising) return
     setIsAppraising(true)
+    let toastId;
+    if (showToast) toastId = toast.loading("Appraising Loot...", { description: "Fetching live prices from Jita 4-4." })
     try {
       const res = await fetch(`/api/activities/${activity.id}`, {
         method: 'PATCH',
@@ -133,9 +187,13 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
         const updated = await res.json()
         const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
         store.updateActivity(activity.id, updated)
+        if (showToast) toast.success("Appraisal Complete", { id: toastId, description: "Loot values have been updated." })
+      } else {
+         if (showToast) toast.error("Appraisal Failed", { id: toastId, description: "Could not reach market endpoints." })
       }
     } catch (e) {
       console.error('Appraisal failed:', e)
+      if (showToast) toast.error("Appraisal Error", { id: toastId, description: "Failed to estimate market values." })
     } finally {
       setIsAppraising(false)
     }
@@ -180,6 +238,14 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                   Financial History
                 </DialogTitle>
                 <div className="flex items-center gap-1 bg-zinc-900/50 rounded p-0.5">
+                  <button
+                    onClick={handleExportCSV}
+                    className="p-1.5 rounded transition-colors text-gray-500 hover:text-green-400"
+                    title="Export CSV"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </button>
+                  <div className="w-px h-4 bg-zinc-800 mx-1"></div>
                   <button
                     onClick={() => setViewMode('list')}
                     className={cn(
@@ -275,23 +341,50 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                 </div>
               </div>
 
-              {/* Metrics Summary */}
-              <div className="flex items-center justify-between text-[10px] text-gray-500 bg-zinc-900/30 rounded px-2 py-1.5">
-                <span>{activity.data?.logs?.length || 0} transactions</span>
-                <span className="text-gray-400">
-                  Avg: {formatISK(((activity.data?.logs || []).reduce((sum: number, l: any) => sum + l.amount, 0)) / Math.max((activity.data?.logs || []).length, 1))}
-                </span>
+              {/* Metrics Summary & Filters */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <select 
+                    value={logFilterType} 
+                    onChange={e => setLogFilterType(e.target.value)}
+                    className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-gray-300 outline-none focus:border-zinc-500 flex-1"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="bounty">Bounty</option>
+                    <option value="ess">ESS</option>
+                    <option value="tax">Corp Tax</option>
+                  </select>
+                  <select 
+                    value={logFilterChar} 
+                    onChange={e => setLogFilterChar(e.target.value)}
+                    className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-gray-300 outline-none focus:border-zinc-500 flex-1"
+                  >
+                    <option value="all">All Characters</option>
+                    {uniqueChars.map(char => (
+                      <option key={char} value={char}>{char}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-gray-500 bg-zinc-900/30 rounded px-2 py-1.5">
+                  <div className="flex gap-2 items-center">
+                    <Filter className="h-3 w-3" />
+                    <span>{filteredLogs.length} transactions</span>
+                  </div>
+                  <span className="text-gray-400">
+                    Avg: {formatISK((filteredLogs.reduce((sum: number, l: any) => sum + l.amount, 0)) / Math.max(filteredLogs.length, 1))}
+                  </span>
+                </div>
               </div>
 
               {/* Transaction Logs - List View */}
               {viewMode === 'list' && (
                 <div className="space-y-1.5 max-h-[250px] overflow-y-auto px-1 custom-scrollbar">
-                  {(activity.data?.logs || []).length === 0 ? (
+                  {filteredLogs.length === 0 ? (
                     <p className="text-center text-[10px] text-gray-600 italic py-8 border border-dashed border-eve-border/30 rounded">
-                      No transactions recorded yet. Click &quot;Sync&quot; to update.
+                      No transactions match the current filters or none recorded.
                     </p>
                   ) : (
-                    (activity.data?.logs || []).map((log: any, idx: number) => {
+                    filteredLogs.map((log: any, idx: number) => {
                       const typeColors: Record<string, string> = {
                         bounty: 'border-l-green-500 bg-green-950/10',
                         ess: 'border-l-zinc-400 bg-zinc-800/20',
@@ -365,14 +458,14 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                       </tr>
                     </thead>
                     <tbody>
-                      {(activity.data?.logs || []).length === 0 ? (
+                      {filteredLogs.length === 0 ? (
                         <tr>
                           <td colSpan={4} className="text-center text-gray-600 italic py-8">
-                            No transactions recorded yet
+                            No transactions match the current filters.
                           </td>
                         </tr>
                       ) : (
-                        (activity.data?.logs || []).map((log: any, idx: number) => (
+                        filteredLogs.map((log: any, idx: number) => (
                           <tr key={idx} className={cn(
                             "border-b border-eve-border/10",
                             idx % 2 === 0 ? "bg-zinc-900/20" : "bg-zinc-900/40"
