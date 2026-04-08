@@ -49,9 +49,12 @@ export async function POST(
     const existingLogs = activityData.logs || []
     const logMap = new Map<string, any>()
     
-    // Index existing logs by refId (if they have one) or generated key
+    // Index existing logs by composite key to prevent duplicates
+    // Include type in key since different transaction types can share refId
     existingLogs.forEach((log: any) => {
-      const key = log.refId || `${log.date}-${log.charId}-${log.amount}-${log.type}`
+      const key = log.refId 
+        ? `${log.refId}-${log.type}` 
+        : `${log.date}-${log.charId}-${log.amount}-${log.type}`
       logMap.set(key, log)
     })
 
@@ -61,7 +64,7 @@ export async function POST(
       const charName = participant.characterName || `Unknown (${charId})`
       
       try {
-        const journal = await getCharacterWalletJournal(charId, startTime)
+        const journal = await getCharacterWalletJournal(charId, endTimeLimit)
         
         if (Array.isArray(journal)) {
           console.log(`[SYNC] ${charName}: Fetched ${journal.length} entries from ESI.`)
@@ -71,7 +74,7 @@ export async function POST(
             const refType = (entry.ref_type || '').toLowerCase()
             const refId = entry.id?.toString()
             
-            // Filter by date range
+            // Filter by date range (from startTime-1h to endTimeLimit)
             if (entryDate >= startTime && entryDate <= endTimeLimit) {
               const amount = Math.abs(entry.amount || 0)
               let type: 'bounty' | 'ess' | 'tax' | null = null

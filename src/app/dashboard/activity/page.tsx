@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { ActivityCard } from '@/components/activity/ActivityCard'
+import { RattingHelpModal } from '@/components/activity/RattingHelpModal'
 import { MiningValuableOres } from '@/components/activity/MiningValuableOres'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -336,7 +337,12 @@ function ActivityTrackerContent() {
           </DialogTrigger>
           <DialogContent className="bg-eve-panel border-eve-border text-white max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Launch Activity Fleet</DialogTitle>
+              <div className="flex items-center justify-between">
+                <DialogTitle>Launch Activity Fleet</DialogTitle>
+                {newActivity.type === 'ratting' && (
+                  <RattingHelpModal />
+                )}
+              </div>
             </DialogHeader>
             
             <div className="space-y-6 py-4">

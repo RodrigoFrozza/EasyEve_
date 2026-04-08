@@ -46,6 +46,8 @@ import { MTULootField } from './MTULootField'
 import { SalvageField } from './SalvageField'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 
+import { RattingHelpModal } from './RattingHelpModal'
+
 export interface ActivityCardProps {
   activity: Activity
   onEnd: () => void
@@ -64,20 +66,32 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   const [logFilterChar, setLogFilterChar] = useState('all')
 
   const logs = (activity.data as any)?.logs || []
-  
+  const [logsData, setLogsData] = useState<any[]>(logs)
+
+  useEffect(() => {
+    const syncStore = async () => {
+      const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
+      const currentActivity = store.activities.find(a => a.id === activity.id);
+      if (currentActivity) {
+        setLogsData((currentActivity.data as any)?.logs || []);
+      }
+    };
+    syncStore();
+  }, [activity.id]);
+
   const uniqueChars = useMemo(() => {
     const chars = new Set<string>()
-    logs.forEach((l: any) => { if(l.charName) chars.add(l.charName) })
+    logsData.forEach((l: any) => { if(l.charName) chars.add(l.charName) })
     return Array.from(chars)
-  }, [logs])
+  }, [logsData])
 
   const filteredLogs = useMemo(() => {
-    return logs.filter((log: any) => {
+    return logsData.filter((log: any) => {
       const matchType = logFilterType === 'all' || log.type === logFilterType
       const matchChar = logFilterChar === 'all' || log.charName === logFilterChar
       return matchType && matchChar
     })
-  }, [logs, logFilterType, logFilterChar])
+  }, [logsData, logFilterType, logFilterChar])
 
   const typeInfo = ACTIVITY_TYPES.find(t => t.id === activity.type)
 
@@ -204,9 +218,14 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
       <div className={cn("absolute top-0 left-0 w-1 h-full", typeInfo?.color.replace('text-', 'bg-'))} />
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <Badge className={cn("capitalize", typeInfo?.bg, typeInfo?.color)}>
-            {activity.type}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge className={cn("capitalize", typeInfo?.bg, typeInfo?.color)}>
+              {activity.type}
+            </Badge>
+            {activity.type === 'ratting' && (
+              <RattingHelpModal />
+            )}
+          </div>
           <div className="flex items-center gap-1.5 text-xs text-gray-400">
             <Clock className="h-3 w-3" />
             {elapsed}
