@@ -288,9 +288,6 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
             <Badge className={cn("capitalize text-[10px] uppercase tracking-wider", typeInfo?.bg, typeInfo?.color)}>
               {activity.type}
             </Badge>
-            <span className="text-sm text-gray-400 truncate max-w-[150px]">
-              {activity.data?.siteName || activity.data?.siteType || activity.space || 'Active Operations'}
-            </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 bg-[#12121a] rounded-lg p-0.5">
@@ -433,7 +430,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                     <TrendingUp className="h-3 w-3 text-eve-accent" />
                     <span className="text-[9px] text-eve-accent/70 uppercase font-bold tracking-wider">ISK/hr</span>
                   </div>
-                  <div className="text-sm font-bold text-eve-accent font-mono">
+                  <div className="text-sm font-bold text-eve-accent font-mono tabular-nums">
                     {(() => {
                       const start = new Date(activity.startTime).getTime()
                       const end = activity.endTime ? new Date(activity.endTime).getTime() : Date.now()
@@ -642,7 +639,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
 
                 <div className="mt-4 pt-3 border-t border-eve-border/30 flex justify-between items-baseline">
                   <span className="text-[10px] uppercase font-black text-gray-500">NET RUN PROFIT</span>
-                  <span className="text-xl font-black text-eve-accent tracking-tighter">
+                  <span className="text-xl font-mono font-black text-eve-accent tracking-tighter">
                     {formatISK(
                       (activity.data?.grossBounties || 0) + 
                       (activity.data?.automatedEss || 0) + 
@@ -663,34 +660,35 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
           <>
             {/* Compact Stats Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div className="bg-[#12121a] rounded-lg p-3 text-center">
-                <p className="text-[10px] text-gray-500 uppercase">Bounty</p>
-                <p className="text-sm font-bold text-green-400">{formatISK(activity.data?.grossBounties || activity.data?.automatedBounties || 0)}</p>
+              <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-green-500/30">
+                <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Bounty</p>
+                <p className="text-sm font-bold text-green-400 font-mono">{formatISK(activity.data?.grossBounties || activity.data?.automatedBounties || 0)}</p>
               </div>
-              <div className="bg-[#12121a] rounded-lg p-3 text-center">
-                <p className="text-[10px] text-gray-500 uppercase">ESS</p>
-                <p className="text-sm font-bold text-yellow-400">{formatISK(activity.data?.automatedEss || 0)}</p>
+              <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-yellow-500/30">
+                <p className="text-[10px] text-gray-500 uppercase tracking-tighter">ESS</p>
+                <p className="text-sm font-bold text-yellow-400 font-mono">{formatISK(activity.data?.automatedEss || 0)}</p>
               </div>
-              <div className="bg-[#12121a] rounded-lg p-3 text-center">
-                <p className="text-[10px] text-gray-500 uppercase">Loot</p>
-                <p className="text-sm font-bold text-blue-400">{formatISK(estimatedLootValue)}</p>
+              <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-blue-500/30">
+                <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Loot</p>
+                <p className="text-sm font-bold text-blue-400 font-mono">{formatISK(estimatedLootValue)}</p>
               </div>
-              <div className="bg-[#12121a] rounded-lg p-3 text-center">
-                <p className="text-[10px] text-gray-500 uppercase">Salvage</p>
-                <p className="text-sm font-bold text-orange-400">{formatISK(estimatedSalvageValue)}</p>
+              <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-orange-500/30">
+                <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Salvage</p>
+                <p className="text-sm font-bold text-orange-400 font-mono">{formatISK(estimatedSalvageValue)}</p>
               </div>
             </div>
 
             {/* Summary Bar */}
-            <div className="flex items-center justify-between bg-[#12121a] rounded-xl p-3">
+            <div className="flex items-center justify-between bg-[#12121a]/80 backdrop-blur-md border border-zinc-800/50 rounded-xl p-3 shadow-lg">
               <div>
-                <p className="text-xs text-gray-500 uppercase">Total</p>
-                <p className="text-lg font-bold text-green-400">{formatISK(totalIsk)}</p>
+                <p className="text-[10px] text-gray-500 uppercase font-black">Total</p>
+                <p className="text-xl font-black text-green-400 font-mono leading-tight tracking-tighter">{formatISK(totalIsk)}</p>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-gray-500 uppercase">Rate</p>
-                <p className="text-sm font-medium text-cyan-400">{formatISK(totalIsk / Math.max(1, (Date.now() - new Date(activity.startTime).getTime()) / 3600000))}/h</p>
-              </div>
+              <div className="text-right flex items-center gap-4">
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase font-black">Rate</p>
+                  <p className="text-sm font-bold text-cyan-400 font-mono leading-tight">{formatISK(totalIsk / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000))}/h</p>
+                </div>
               {activity.type === 'ratting' && (
                 <Button 
                   size="sm" 
@@ -728,8 +726,10 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                   onClick={() => {
                     const newMTUs = [...mtuContents, { loot: '' }]
                     handleMTUChange(newMTUs)
+                    setDisplayMode('tabs')
+                    setExpandedSections(prev => ({ ...prev, mtu: true }))
                   }}
-                  className="text-xs text-blue-400/70 hover:text-blue-400"
+                  className="text-xs text-blue-400 font-bold hover:text-blue-300 hover:bg-blue-400/10 rounded-full px-3"
                 >
                   <Plus className="h-3 w-3 mr-1" />
                   MTU
@@ -740,17 +740,19 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                   onClick={() => {
                     const newSalvage = [...salvageContents, { loot: '' }]
                     handleSalvageChange(newSalvage)
+                    setDisplayMode('tabs')
+                    setExpandedSections(prev => ({ ...prev, salvage: true }))
                   }}
-                  className="text-xs text-orange-400/70 hover:text-orange-400"
+                  className="text-xs text-orange-400 font-bold hover:text-orange-300 hover:bg-orange-400/10 rounded-full px-3"
                 >
                   <Plus className="h-3 w-3 mr-1" />
                   Salvage
                 </Button>
                 <Button 
-                  variant="ghost" 
-                  size="sm"
+                  variant="outline" 
+                   size="sm"
                   onClick={() => setDisplayMode('tabs')}
-                  className="text-xs text-gray-500"
+                  className="text-xs border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-full px-4"
                 >
                   View Details
                 </Button>
@@ -1184,10 +1186,8 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
           )}
         </div>
 
-        {/* Non-ratting financial and loot sections */}
-        {activity.type !== 'ratting' && (
-          <>
-            <div className="space-y-3 pt-2 border-t border-eve-border/30">
+        {/* Financial and loot sections - unified for all types including ratting */}
+        <div className="space-y-3 pt-2 border-t border-eve-border/30">
               <div className="flex justify-between items-end">
                 <div>
                   <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Net ISK Profit</p>
@@ -1255,8 +1255,8 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                 </div>
               </div>
             </div>
-          </>
-        )}
+          </div>
+        </div>
       </CardContent>
     </Card>
   )
