@@ -272,10 +272,11 @@ function ActivityTrackerContent() {
 
   const setParticipantFit = (characterId: number, fitId: string) => {
     const current = newActivity.participants || []
+    const fit = userFits.find(f => f.id === fitId)
     setNewActivity({
       ...newActivity,
       participants: current.map(p => 
-        p.characterId === characterId ? { ...p, fit: fitId } : p
+        p.characterId === characterId ? { ...p, fit: fitId, shipTypeId: fit?.shipTypeId } : p
       )
     })
   }

@@ -6,6 +6,7 @@ export interface ActivityParticipant {
   characterId: number
   characterName?: string
   fit?: string
+  shipTypeId?: number
 }
 
 export interface Activity {

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import Image from 'next/image'
 import { 
   Box, 
   Play, 
@@ -24,7 +25,8 @@ import {
   Package,
   Receipt,
   List,
-  Table2
+  Table2,
+  HelpCircle
 } from 'lucide-react'
 import { 
   Dialog, 
@@ -52,127 +54,24 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   const [isAppraising, setIsAppraising] = useState(false)
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [viewMode, setViewMode] = useState<'list' | 'table'>('list')
-  const [esiLootTotal, setEsiLootTotal] = useState(0)
   const [esiSalvageTotal, setEsiSalvageTotal] = useState(0)
   const [isSalvageAppraising, setIsSalvageAppraising] = useState(false)
   
   const typeInfo = ACTIVITY_TYPES.find(t => t.id === activity.type)
 
-  // Pure ESI Market Appraisal
-  useEffect(() => {
-    const fetchESIAppraisal = async () => {
-      if (!activity.data?.mtuContents || activity.data.mtuContents.length === 0) {
-        setEsiLootTotal(0)
-        return
-      }
+  // Combined Totals from Activity Data (Appraised on Server)
+  const { 
+    automatedBounties = 0, 
+    automatedEss = 0, 
+    automatedTaxes = 0,
+    estimatedLootValue = 0,
+    estimatedSalvageValue = 0,
+    lootAppraisedAt = null
+  } = (activity.data as any) || {}
 
-      setIsAppraising(true)
-      const allNames: string[] = []
-      activity.data.mtuContents.forEach((mtu: any) => {
-        const lines = (mtu.loot || '').split('\n')
-        lines.forEach((l: string) => {
-          const name = l.split('\t')[0]?.trim()
-          if (name && name.length > 2) allNames.push(name)
-        })
-      })
+  const totalIsk = automatedBounties + automatedEss + estimatedLootValue + estimatedSalvageValue
 
-      if (allNames.length === 0) {
-        setEsiLootTotal(0)
-        setIsAppraising(false)
-        return
-      }
-
-      try {
-        const res = await fetch('/api/market/appraisal', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: Array.from(new Set(allNames)) })
-        })
-        if (res.ok) {
-          const { prices } = await res.json()
-          let totalValue = 0
-          activity.data.mtuContents.forEach((mtu: any) => {
-            const lines = (mtu.loot || '').split('\n')
-            lines.forEach((line: string) => {
-              const parts = line.split('\t')
-              const name = parts[0]?.trim().toLowerCase()
-              const qty = parseInt(parts[1]?.replace(/[^0-9]/g, '')) || 1
-              if (name && prices[name]) {
-                totalValue += (prices[name] * qty)
-              }
-            })
-          })
-          setEsiLootTotal(totalValue)
-        }
-      } catch (e) {
-        console.error('ESI Appraisal failed:', e)
-      } finally {
-        setIsAppraising(false)
-      }
-    }
-
-    fetchESIAppraisal()
-  }, [activity.data?.mtuContents])
-
-  // Salvage ESI Market Appraisal
-  useEffect(() => {
-    const fetchSalvageAppraisal = async () => {
-      if (!activity.data?.salvageContents || activity.data.salvageContents.length === 0) {
-        setEsiSalvageTotal(0)
-        return
-      }
-
-      setIsSalvageAppraising(true)
-      const allNames: string[] = []
-      activity.data.salvageContents.forEach((salvage: any) => {
-        const lines = (salvage.loot || '').split('\n')
-        lines.forEach((l: string) => {
-          const name = l.split('\t')[0]?.trim()
-          if (name && name.length > 2) allNames.push(name)
-        })
-      })
-
-      if (allNames.length === 0) {
-        setEsiSalvageTotal(0)
-        setIsSalvageAppraising(false)
-        return
-      }
-
-      try {
-        const res = await fetch('/api/market/appraisal', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: Array.from(new Set(allNames)) })
-        })
-        if (res.ok) {
-          const { prices } = await res.json()
-          let totalValue = 0
-          activity.data.salvageContents.forEach((salvage: any) => {
-            const lines = (salvage.loot || '').split('\n')
-            lines.forEach((line: string) => {
-              const parts = line.split('\t')
-              const name = parts[0]?.trim().toLowerCase()
-              const qty = parseInt(parts[1]?.replace(/[^0-9]/g, '')) || 1
-              if (name && prices[name]) {
-                totalValue += (prices[name] * qty)
-              }
-            })
-          })
-          setEsiSalvageTotal(totalValue)
-        }
-      } catch (e) {
-        console.error('Salvage ESI Appraisal failed:', e)
-      } finally {
-        setIsSalvageAppraising(false)
-      }
-    }
-
-    fetchSalvageAppraisal()
-  }, [activity.data?.salvageContents])
-
-  const estimatedLootValue = useMemo(() => esiLootTotal || 0, [esiLootTotal])
-  const estimatedSalvageValue = useMemo(() => esiSalvageTotal || 0, [esiSalvageTotal])
-
+  // Elapsed Time Timer
   useEffect(() => {
     const timer = setInterval(() => {
       const start = new Date(activity.startTime).getTime()
@@ -192,22 +91,53 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
     setIsSyncing(true)
     setSyncStatus('idle')
     try {
-      const res = await fetch(`/api/activities/sync?id=${activity.id}`, { method: 'POST' });
+      const res = await fetch(`/api/activities/sync?id=${activity.id}`, { method: 'POST' })
       if (res.ok) {
-        setSyncStatus('success')
         const updated = await res.json()
         const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
         store.updateActivity(activity.id, updated)
+        setSyncStatus('success')
+        
+        // Also refresh appraisal automatically on sync if needed
+        if (activity.data?.mtuContents?.length > 0) {
+          handleRefreshAppraisal()
+        }
       } else {
         setSyncStatus('error')
       }
-    } catch (e) {
+    } catch (error) {
       setSyncStatus('error')
     } finally {
       setTimeout(() => {
         setIsSyncing(false)
         setTimeout(() => setSyncStatus('idle'), 3000)
       }, 500)
+    }
+  }
+
+  const handleRefreshAppraisal = async () => {
+    if (isAppraising) return
+    setIsAppraising(true)
+    try {
+      const res = await fetch(`/api/activities/${activity.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          data: { 
+            ...(activity.data as any),
+            _appraise: true // Hint to backend if we want to be explicit, though it does it automatically for mtuContents
+          } 
+        })
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
+        store.updateActivity(activity.id, updated)
+      }
+    } catch (e) {
+      console.error('Appraisal failed:', e)
+    } finally {
+      setIsAppraising(false)
     }
   }
 
@@ -381,7 +311,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                         )}>
                           <div className="flex items-center gap-2.5">
                             <Avatar className="h-6 w-6">
-                              <AvatarImage src={`https://images.evesteam.es/characters/${log.charId}/portrait?size=32`} />
+                              <AvatarImage src={`https://images.evetech.net/characters/${log.charId}/portrait?size=64`} />
                               <AvatarFallback className="text-[8px] bg-zinc-800 text-zinc-400">
                                 {log.charName?.slice(0, 2).toUpperCase()}
                               </AvatarFallback>
@@ -453,7 +383,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                             <td className="py-2 px-2">
                               <div className="flex items-center gap-2">
                                 <Avatar className="h-5 w-5">
-                                  <AvatarImage src={`https://images.evesteam.es/characters/${log.charId}/portrait?size=32`} />
+                                  <AvatarImage src={`https://images.evetech.net/characters/${log.charId}/portrait?size=64`} />
                                   <AvatarFallback className="text-[7px] bg-zinc-800 text-zinc-400">
                                     {log.charName?.slice(0, 2).toUpperCase()}
                                   </AvatarFallback>
@@ -545,14 +475,41 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
           </div>
         </div>
 
-        {/* Participants */}
-        <div className="space-y-2">
+        {/* Participants / Active Fleet */}
+        <div className="space-y-3">
           <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Active Fleet</p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-4">
             {activity.participants.map(p => (
-              <div key={p.characterId} className="flex items-center gap-1.5 px-2 py-1 rounded bg-zinc-950/50 border border-zinc-800 text-[11px] font-medium text-zinc-400">
-                <div className="w-1.5 h-1.5 rounded-full bg-eve-accent animate-pulse" />
-                {p.characterName}
+              <div key={p.characterId} className="relative group/participant">
+                {/* Character Avatar */}
+                <div className="relative">
+                  <Avatar className="h-12 w-12 border-2 border-zinc-900 group-hover/participant:border-eve-accent transition-all duration-300">
+                    <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
+                    <AvatarFallback className="bg-zinc-800 text-zinc-400 text-xs">
+                      {p.characterName?.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  {/* Ship Icon Overlay */}
+                  <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-black border border-zinc-800 flex items-center justify-center overflow-hidden group-hover/participant:border-eve-accent transition-colors">
+                    {p.shipTypeId ? (
+                      <Image 
+                        src={`https://images.evetech.net/types/${p.shipTypeId}/icon?size=32`}
+                        alt="ship"
+                        fill
+                        className="object-cover p-0.5"
+                      />
+                    ) : (
+                      <HelpCircle className="h-3.5 w-3.5 text-zinc-500" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Custom Tooltip */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black/90 border border-eve-border rounded text-[10px] text-white whitespace-nowrap opacity-0 group-hover/participant:opacity-100 pointer-events-none transition-opacity z-50">
+                  <p className="font-bold text-eve-accent">{p.characterName}</p>
+                  <p className="text-zinc-500">{p.shipTypeId ? 'Click for fit info' : 'Unknown Ship'}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -617,23 +574,79 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                 <Clock className="h-3.5 w-3.5 text-yellow-500/70" />
                 <span className="text-[10px] uppercase font-bold text-zinc-500">Next ESS Payout</span>
               </div>
-              <span className="text-[11px] font-mono text-yellow-500 font-bold">
-                {(() => {
-                  const logs = activity.data?.logs || [];
-                  const essLogs = logs.filter((l: any) => l.type === 'ess');
-                  if (essLogs.length === 0) return 'WAITING SYNC...';
+              {(() => {
+                const logs = activity.data?.logs || [];
+                const essLogs = logs.filter((l: any) => l.type === 'ess');
+                const manualHours = activity.data?.essManualHours;
+                
+                const getTimeRemaining = () => {
+                  // Se o usuário definiu manualmente, usar esse valor
+                  if (manualHours !== undefined && manualHours !== null) {
+                    const ms = manualHours * 60 * 60 * 1000 - (Date.now() - (activity.data?.essManualSetAt ? new Date(activity.data.essManualSetAt).getTime() : Date.now()));
+                    if (ms <= 0) return { text: 'PAYING NOW...', isManual: true };
+                    const h = Math.floor(ms / 3600000);
+                    const m = Math.floor((ms % 3600000) / 60000);
+                    return { text: `${h}h ${m}m`, isManual: true };
+                  }
+                  
+                  // Caso contrário, usar o cálculo automático do último payout
+                  if (essLogs.length === 0) return { text: 'WAITING SYNC...' };
                   
                   const lastPayout = new Date(essLogs[0].date).getTime();
-                  const nextPayout = lastPayout + (160 * 60 * 1000); // 2h 40m
+                  const nextPayout = lastPayout + (168 * 60 * 1000); // 2h 48m
                   const diff = nextPayout - Date.now();
                   
-                  if (diff <= 0) return 'PAYING NOW...';
+                  if (diff <= 0) return { text: 'PAYING NOW...' };
                   
                   const h = Math.floor(diff / 3600000);
                   const m = Math.floor((diff % 3600000) / 60000);
-                  return `${h}h ${m}m`;
-                })()}
-              </span>
+                  return { text: `${h}h ${m}m`, isManual: false };
+                };
+                
+                const { text: timeText, isManual } = getTimeRemaining();
+                
+                return (
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      "text-[11px] font-mono font-bold",
+                      isManual ? "text-orange-400" : "text-yellow-500",
+                      timeText === 'PAYING NOW...' && "animate-pulse text-red-400"
+                    )}>
+                      {timeText}
+                    </span>
+                    <button
+                      onClick={async () => {
+                        const hours = window.prompt('Digite as horas faltantes para o próximo ESS payout (ex: 2.5):');
+                        if (hours && !isNaN(parseFloat(hours))) {
+                          const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
+                          store.updateActivity(activity.id, {
+                            data: { 
+                              ...activity.data, 
+                              essManualHours: parseFloat(hours),
+                              essManualSetAt: new Date().toISOString()
+                            }
+                          });
+                          // Salvar no backend
+                          await fetch(`/api/activities/${activity.id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                              data: { 
+                                ...activity.data, 
+                                essManualHours: parseFloat(hours),
+                                essManualSetAt: new Date().toISOString()
+                              } 
+                            })
+                          });
+                        }
+                      }}
+                      className="text-[10px] text-zinc-600 hover:text-zinc-400 underline"
+                    >
+                      {isManual ? '✎' : 'Set'}
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Actions for Ratting */}
@@ -713,6 +726,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
               <MTULootField 
                 value={activity.data?.mtuContents || []} 
                 activityId={activity.id}
+                mtuValues={activity.data?.mtuValues || []}
                 onChange={async (mtus) => {
                   const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
                   store.updateActivity(activity.id, {

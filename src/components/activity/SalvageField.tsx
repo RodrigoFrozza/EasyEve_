@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Plus, Minus, Edit2, Wrench } from 'lucide-react'
+import { Plus, Minus, Edit2, Wrench, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface SalvageItem {
   loot: string
@@ -14,9 +14,15 @@ interface SalvageFieldProps {
   onChange: (salvage: SalvageItem[]) => void
 }
 
+const ITEMS_PER_PAGE = 3
+
 export function SalvageField({ value, activityId, onChange }: SalvageFieldProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [tempLoot, setTempLoot] = useState('');
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const totalPages = Math.ceil(value.length / ITEMS_PER_PAGE)
+  const paginatedItems = value.slice(currentPage * ITEMS_PER_PAGE, (currentPage + 1) * ITEMS_PER_PAGE)
 
   const saveSalvage = async (index: number) => {
     const newSalvage = [...value];
@@ -47,17 +53,18 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
   return (
     <div className="space-y-2">
       <div className="max-h-[200px] overflow-y-auto pr-1 space-y-2 custom-scrollbar">
-        {value.map((item, index) => {
-          const isEditing = editingIndex === index;
+        {paginatedItems.map((item, idx) => {
+          const actualIndex = currentPage * ITEMS_PER_PAGE + idx
+          const isEditing = editingIndex === actualIndex
           const lines = (item.loot || '').split('\n').filter(l => l.trim())
-          const lineCount = lines.length;
+          const lineCount = lines.length
 
           return (
-            <div key={index} className="space-y-1.5 p-2 rounded bg-orange-950/20 border border-orange-900/30 group">
+            <div key={actualIndex} className="space-y-1.5 p-2 rounded bg-orange-950/20 border border-orange-900/30 group">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-orange-500/70 font-bold uppercase tracking-tighter flex items-center gap-1.5">
-                  <Wrench className="h-3 w-3" />
-                  Salvage Unit #{index + 1} {!isEditing && `(${lineCount} items)`}
+                  <Wrench className="h-3 w-3 text-orange-400" />
+                  Salvage Unit #{actualIndex + 1} {!isEditing && `(${lineCount} items)`}
                 </span>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   {!isEditing && (
@@ -65,7 +72,7 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
                       variant="ghost"
                       size="icon"
                       onClick={() => {
-                        setEditingIndex(index);
+                        setEditingIndex(actualIndex);
                         setTempLoot(item.loot);
                       }}
                       className="h-5 w-5 text-orange-500/50 hover:text-orange-400"
@@ -76,7 +83,7 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => removeSalvage(index)}
+                    onClick={() => removeSalvage(actualIndex)}
                     className="h-5 w-5 text-orange-500/50 hover:text-red-400"
                   >
                     <Minus className="h-3 w-3" />
@@ -97,7 +104,7 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
                     <Button 
                       size="sm" 
                       className="h-7 text-[10px] flex-1 bg-orange-600 text-white hover:bg-orange-500"
-                      onClick={() => saveSalvage(index)}
+                      onClick={() => saveSalvage(actualIndex)}
                     >
                       Save Salvage
                     </Button>
@@ -115,7 +122,7 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
                 <div 
                   className="text-[10px] text-orange-500/50 italic truncate cursor-pointer hover:text-orange-400/70"
                   onClick={() => {
-                    setEditingIndex(index);
+                    setEditingIndex(actualIndex);
                     setTempLoot(item.loot);
                   }}
                 >
@@ -126,6 +133,31 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
           );
         })}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-[10px] text-orange-500/70">
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={currentPage === 0}
+            onClick={() => setCurrentPage(p => p - 1)}
+            className="h-6 w-6"
+          >
+            <ChevronLeft className="h-3 w-3" />
+          </Button>
+          <span>{currentPage + 1} / {totalPages}</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={currentPage >= totalPages - 1}
+            onClick={() => setCurrentPage(p => p + 1)}
+            className="h-6 w-6"
+          >
+            <ChevronRight className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
       
       <Button
         type="button"
@@ -133,6 +165,7 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
         onClick={() => {
           onChange([...value, { loot: '' }]);
           setEditingIndex(value.length);
+          setCurrentPage(Math.floor(value.length / ITEMS_PER_PAGE));
           setTempLoot('');
         }}
         className="w-full h-8 border border-dashed border-orange-900/50 hover:border-orange-700/50 text-[10px] text-orange-500/70 hover:text-orange-400 transition-colors"
