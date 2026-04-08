@@ -502,12 +502,13 @@ export async function getCharacterNotifications(characterId: number) {
   }
 }
 
-export async function getCharacterWalletJournal(characterId: number) {
+export async function getCharacterWalletJournal(characterId: number, untilDate?: Date) {
   try {
-    const results = []
+    const results: any[] = []
     
-    // Fetch first 2 pages (100 entries) to ensure we don't miss entries during long activities
-    for (let page = 1; page <= 2; page++) {
+    // We paginate up to 20 pages (1000 entries) to prevent infinite loops 
+    // but ensure we cover activities that might have many transactions.
+    for (let page = 1; page <= 20; page++) {
       const response = await fetchWithAuth(`/characters/${characterId}/wallet/journal/?page=${page}`, characterId)
       
       if (!response.ok) {
@@ -519,7 +520,18 @@ export async function getCharacterWalletJournal(characterId: number) {
       const data = await response.json()
       if (Array.isArray(data) && data.length > 0) {
         results.push(...data)
-        // If we got less than 50, it's the last page
+        
+        // If an untilDate is provided, check if the last entry of this page is already older 
+        // than our threshold. If so, we can stop fetching pages.
+        if (untilDate) {
+          const lastEntry = data[data.length - 1]
+          if (new Date(lastEntry.date) < untilDate) {
+            console.log(`[ESI] Reached untilDate (${untilDate.toISOString()}) at page ${page}. Stopping.`)
+            break
+          }
+        }
+
+        // If we got less than 50, it's the last page in existence
         if (data.length < 50) break
       } else {
         break

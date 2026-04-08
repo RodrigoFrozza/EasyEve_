@@ -15,7 +15,7 @@ export async function POST(
       return NextResponse.json({ error: 'Activity ID is required' }, { status: 400 })
     }
     
-    // 1. Fetch activity and its participants
+    // 1. Fetch activity and its participants (latest state)
     const activity = await prisma.activity.findUnique({
       where: { id: activityId }
     })
@@ -33,97 +33,116 @@ export async function POST(
       return NextResponse.json({ error: 'No participants to sync' }, { status: 400 })
     }
 
-    // BROADEN THE WINDOW: Check from 1h before startTime to handle ESI delay, clock diffs, or pre-activity kills
+    // WINDOW LOGIC: 
+    // - Start: 1h before activity start (captures pre-run ticks or ESI delay)
+    // - End: Now or 4h after endTime (captures delayed ESS payouts)
     const startTimeManual = new Date(activity.startTime)
     const startTime = new Date(startTimeManual.getTime() - (60 * 60 * 1000))
-    const endTime = activity.endTime ? new Date(activity.endTime) : new Date()
+    // ESS payouts can be delayed by up to 3 hours. We look 4h ahead of endTime if set.
+    const endTimeLimit = activity.endTime ? new Date(new Date(activity.endTime).getTime() + 4 * 60 * 60 * 1000) : new Date()
 
-    console.log(`[SYNC] --- START SYNC for Activity ID: ${activityId} ---`)
-    console.log(`[SYNC] Window (UTC): ${startTime.toISOString()} to ${endTime.toISOString()}`)
+    console.log(`[SYNC] --- START INCREMENTAL SYNC for Activity ID: ${activityId} ---`)
+    console.log(`[SYNC] Window (UTC): ${startTime.toISOString()} to ${endTimeLimit.toISOString()}`)
 
-    let totalBounties = 0
-    let totalEss = 0
-    let totalTaxes = 0
-    const participantEarnings: Record<number, number> = {}
-    const logs: any[] = []
+    // 2. Load existing history to prevent duplicates
+    const activityData = (activity.data as any) || {}
+    const existingLogs = activityData.logs || []
+    const logMap = new Map<string, any>()
+    
+    // Index existing logs by refId (if they have one) or generated key
+    existingLogs.forEach((log: any) => {
+      const key = log.refId || `${log.date}-${log.charId}-${log.amount}-${log.type}`
+      logMap.set(key, log)
+    })
 
     // 2. Loop through participants and fetch their wallet journals
     for (const participant of participants) {
       const charId = participant.characterId
-      const charName = participant.characterName
+      const charName = participant.characterName || `Unknown (${charId})`
       
       try {
-        const journal = await getCharacterWalletJournal(charId)
+        const journal = await getCharacterWalletJournal(charId, startTime)
         
         if (Array.isArray(journal)) {
           console.log(`[SYNC] ${charName}: Fetched ${journal.length} entries from ESI.`)
-          let charBounty = 0
-          let charEss = 0
-          let charTaxes = 0
 
           journal.forEach((entry: any) => {
             const entryDate = new Date(entry.date)
             const refType = (entry.ref_type || '').toLowerCase()
+            const refId = entry.id?.toString()
             
             // Filter by date range
-            if (entryDate >= startTime && entryDate <= endTime) {
+            if (entryDate >= startTime && entryDate <= endTimeLimit) {
               const amount = Math.abs(entry.amount || 0)
-              
-              // EVE Journal Reference Types (mapping to app logic)
-              // Bounties: bounty_prizes (NPC), bounty_payout (Old/Misc)
-              if (refType.includes('bounty_prizes') || refType.includes('bounty_payout')) {
-                console.log(`[SYNC]   [MATCH] Bounty: ${amount} ISK for ${charName} at ${entry.date}`)
-                charBounty += amount
-                logs.push({ date: entry.date, amount, type: 'bounty', charName, charId })
-              } 
-              // ESS: ess_payout (Main Bank), ess_escrow_transfer (Into the bank? Usually ess_payout is what pays out)
-              else if (refType.includes('ess_payout') || refType.includes('ess_escrow')) {
-                console.log(`[SYNC]   [MATCH] ESS: ${amount} ISK for ${charName} at ${entry.date}`)
-                charEss += amount
-                logs.push({ date: entry.date, amount, type: 'ess', charName, charId })
-              } 
-              // Taxes: corporation_tax_payout, corporation_tax_payouts
-              else if (refType.includes('corporation_tax_payout')) {
-                console.log(`[SYNC]   [MATCH] Tax: ${amount} ISK for ${charName} at ${entry.date}`)
-                charTaxes += amount
-                logs.push({ date: entry.date, amount, type: 'tax', charName, charId })
+              let type: 'bounty' | 'ess' | 'tax' | null = null
+
+              if (refType.includes('bounty_prizes') || refType.includes('bounty_payout') || refType.includes('agent_mission_reward')) {
+                type = 'bounty'
+              } else if (refType.includes('ess_payout') || refType.includes('ess_escrow')) {
+                type = 'ess'
+              } else if (refType.includes('corporation_tax_payout')) {
+                type = 'tax'
               }
-              // Agent rewards (for missions)
-              else if (refType.includes('agent_mission_reward')) {
-                console.log(`[SYNC]   [MATCH] Mission: ${amount} ISK for ${charName} at ${entry.date}`)
-                charBounty += amount
-                logs.push({ date: entry.date, amount, type: 'bounty', charName, charId })
+
+              if (type && refId) {
+                // Check if we already have this transaction
+                if (!logMap.has(refId)) {
+                   console.log(`[SYNC]   [NEW] ${type.toUpperCase()}: ${amount} ISK for ${charName}`)
+                   logMap.set(refId, { 
+                     refId, 
+                     date: entry.date, 
+                     amount, 
+                     type, 
+                     charName, 
+                     charId 
+                   })
+                }
               }
             }
           })
-
-          participantEarnings[charId] = charBounty + charEss
-          totalBounties += charBounty
-          totalEss += charEss
-          totalTaxes += charTaxes
         }
       } catch (err) {
         console.error(`[SYNC] ERROR: Failed to sync earnings for character ${charName} (${charId}):`, err)
       }
     }
 
-    console.log(`[SYNC] --- END SYNC Summary: Bounty: ${totalBounties} | ESS: ${totalEss} | Tax: ${totalTaxes} | Count: ${logs.length} ---`)
+    // 3. Recalculate everything from the aggregated unique logs
+    const allLogs = Array.from(logMap.values())
+    
+    let totalBounties = 0
+    let totalEss = 0
+    let totalTaxes = 0
+    const participantEarnings: Record<number, number> = {}
+
+    allLogs.forEach(log => {
+      if (log.type === 'bounty') totalBounties += log.amount
+      else if (log.type === 'ess') totalEss += log.amount
+      else if (log.type === 'tax') totalTaxes += log.amount
+
+      // P3 Recommendation: Participant earnings should be gross (Bounty + ESS + Tax)
+      if (!participantEarnings[log.charId]) participantEarnings[log.charId] = 0
+      participantEarnings[log.charId] += log.amount
+    })
 
     // Sort logs by date descending
-    logs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    allLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
-    // 3. Update activity data with new totals, ensuring we fetch LATEST DB state to merge
-    const currentActivity = await prisma.activity.findUnique({ where: { id: activityId } })
+    // 4. Update activity data
+    const additionalBounties = activityData.additionalBounties || 0
+    
     const updatedData = {
-      ...(currentActivity?.data as any || {}),
+      ...activityData,
       automatedBounties: totalBounties,
       automatedEss: totalEss,
       automatedTaxes: totalTaxes,
-      grossBounties: totalBounties + totalTaxes,
+      // P4 Recommendation: Gross Bounties = Auto + Taxes + Manual
+      grossBounties: totalBounties + totalTaxes + additionalBounties,
       participantEarnings,
-      logs: logs.slice(0, 50),
+      logs: allLogs, // Now keeps full history, no slice
       lastSyncAt: new Date().toISOString()
     }
+
+    console.log(`[SYNC] --- END SYNC Summary: Bounty: ${totalBounties} | ESS: ${totalEss} | Tax: ${totalTaxes} | Total Logs: ${allLogs.length} ---`)
 
     const updatedActivity = await prisma.activity.update({
       where: { id: activityId },

@@ -280,7 +280,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                     <span className="text-[9px] text-green-400/70 uppercase font-bold tracking-wider">Bounty</span>
                   </div>
                   <div className="text-sm font-bold text-green-400 font-mono">
-                    {formatISK((activity.data?.automatedBounties || 0) + (activity.data?.additionalBounties || 0))}
+                    {formatISK(activity.data?.grossBounties || (activity.data?.automatedBounties || 0) + (activity.data?.additionalBounties || 0))}
                   </div>
                 </div>
                 <div className="bg-zinc-800/30 border border-zinc-700/30 rounded-lg p-2.5">
@@ -535,9 +535,8 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                   <span className="text-[10px] uppercase font-black text-gray-500">NET RUN PROFIT</span>
                   <span className="text-xl font-black text-eve-accent tracking-tighter">
                     {formatISK(
-                      (activity.data?.automatedBounties || 0) + 
+                      (activity.data?.grossBounties || 0) + 
                       (activity.data?.automatedEss || 0) + 
-                      (activity.data?.additionalBounties || 0) + 
                       estimatedLootValue +
                       estimatedSalvageValue - 
                       (activity.data?.automatedTaxes || 0)

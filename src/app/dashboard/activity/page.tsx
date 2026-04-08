@@ -736,7 +736,7 @@ function ActivityTrackerContent() {
                   <p className="text-2xl font-bold text-green-400">
                     {formatISK(activeActivities.reduce((sum, a) => {
                       if (a.type === 'ratting') {
-                        return sum + (a.data?.initialBounties || 0) + (a.data?.essPayout || 0) + (a.data?.additionalBounties || 0);
+                        return sum + (a.data?.automatedBounties || 0) + (a.data?.automatedEss || 0) + (a.data?.additionalBounties || 0);
                       }
                       return sum;
                     }, 0))}
