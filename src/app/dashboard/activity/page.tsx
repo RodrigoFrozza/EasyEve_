@@ -61,12 +61,28 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
-  Lock
+  Lock,
+  History
 } from 'lucide-react'
 import { useActivityStore, type Activity, type ActivityParticipant } from '@/lib/stores/activity-store'
 import { useSession } from '@/lib/session-client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn, formatISK, formatNumber } from '@/lib/utils'
+
+function getRelativeTime(date: Date): string {
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / (1000 * 60))
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  
+  if (diffMins < 1) return 'agora mesmo'
+  if (diffMins < 60) return `há ${diffMins} min`
+  if (diffHours < 24) return `há ${diffHours}h`
+  if (diffDays === 1) return 'ontem'
+  if (diffDays < 7) return `há ${diffDays} dias`
+  return `há ${Math.floor(diffDays / 7)} sem`
+}
 
 import { 
   ACTIVITY_TYPES, 
@@ -794,62 +810,125 @@ function ActivityTrackerContent() {
 
       {/* Recent History */}
       <Card className="bg-eve-panel border-eve-border">
-        <CardHeader>
-          <CardTitle className="text-lg font-medium text-white">Recent Operations History</CardTitle>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
+              <History className="h-5 w-5 text-eve-accent" />
+              Histórico de Operações
+            </CardTitle>
+            <span className="text-xs text-gray-500">{completedActivities.length} registros</span>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead>
-                <tr className="text-gray-500 border-b border-eve-border">
-                  <th className="pb-3 pr-4 font-medium">Activity</th>
-                  <th className="pb-3 px-4 font-medium">Participants</th>
-                  <th className="pb-3 px-4 font-medium">Space</th>
-                  <th className="pb-3 px-4 font-medium">Date</th>
-                  <th className="pb-3 pl-4 font-medium text-right font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-eve-border/50">
-                {completedActivities.map((activity) => {
-                  const typeInfo = ACTIVITY_TYPES.find(t => t.id === activity.type)
-                  return (
-                    <tr key={activity.id} className="text-white hover:bg-eve-dark/20 group">
-                      <td className="py-4 pr-4">
-                        <div className="flex items-center gap-3">
-                          <div className={cn("p-2 rounded-lg", typeInfo?.bg)}>
-                            {typeInfo && <typeInfo.icon className={cn("h-4 w-4", typeInfo.color)} />}
+          {completedActivities.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="p-4 rounded-full bg-eve-dark/50 mb-4">
+                <History className="h-8 w-8 text-gray-600" />
+              </div>
+              <p className="text-gray-400 font-medium">Nenhuma operação concluída</p>
+              <p className="text-gray-600 text-sm mt-1">Inicie uma atividade para começar a registrar</p>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {completedActivities.slice(0, 10).map((activity) => {
+                const typeInfo = ACTIVITY_TYPES.find(t => t.id === activity.type)
+                const startTime = new Date(activity.startTime)
+                const endTime = activity.endTime ? new Date(activity.endTime) : null
+                const durationMs = endTime ? endTime.getTime() - startTime.getTime() : 0
+                const durationHours = Math.floor(durationMs / (1000 * 60 * 60))
+                const durationMinutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60))
+                const durationText = durationHours > 0 ? `${durationHours}h ${durationMinutes}m` : `${durationMinutes}m`
+                
+                const earnings = activity.data?.totalBounty || activity.data?.loot || activity.data?.iskPerMinute * (durationMs / 60000) || 0
+                
+                return (
+                  <div 
+                    key={activity.id} 
+                    className="group relative bg-eve-dark/30 hover:bg-eve-dark/50 rounded-xl p-4 border border-eve-border/30 hover:border-eve-border transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      {/* Left: Type & Info */}
+                      <div className="flex items-center gap-4">
+                        <div className={cn("p-3 rounded-xl", typeInfo?.bg || "bg-gray-500/10")}>
+                          {typeInfo ? (
+                            <typeInfo.icon className={cn("h-6 w-6", typeInfo.color)} />
+                          ) : (
+                            <Target className="h-6 w-6 text-gray-400" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-white capitalize">{activity.type}</span>
+                            <Badge variant="outline" className={cn(
+                              "text-[10px] h-5",
+                              activity.space === 'high' && "text-green-400 border-green-400/30",
+                              activity.space === 'low' && "text-yellow-400 border-yellow-400/30",
+                              activity.space === 'null' && "text-red-400 border-red-400/30"
+                            )}>
+                              {activity.space === 'high' && 'High Sec'}
+                              {activity.space === 'low' && 'Low Sec'}
+                              {activity.space === 'null' && 'Null Sec'}
+                              {activity.space && !['high', 'low', 'null'].includes(activity.space) && activity.space}
+                            </Badge>
                           </div>
-                          <div>
-                            <p className="font-medium capitalize">{activity.type}</p>
-                            <p className="text-xs text-gray-500">{activity.data?.siteType || activity.data?.tier || 'General'}</p>
+                          <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {durationText}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {activity.participants.length} participante{activity.participants.length !== 1 ? 's' : ''}
+                            </span>
                           </div>
                         </div>
-                      </td>
-                      <td className="py-4 px-4 text-gray-400">
-                        {activity.participants.length} Chars
-                      </td>
-                      <td className="py-4 px-4 text-gray-400">
-                        {activity.space}
-                      </td>
-                      <td className="py-4 px-4 text-gray-400">
-                        {new Date(activity.startTime).toLocaleDateString()}
-                      </td>
-                      <td className="py-4 pl-4 text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                      </div>
+
+                      {/* Right: Earnings & Date */}
+                      <div className="flex items-center gap-4">
+                        {earnings > 0 && (
+                          <div className="text-right">
+                            <p className="text-green-400 font-semibold">{formatISK(earnings)}</p>
+                            <p className="text-[10px] text-gray-500 uppercase">receita</p>
+                          </div>
+                        )}
+                        <div className="text-right min-w-[80px]">
+                          <p className="text-gray-400 text-sm">{getRelativeTime(startTime)}</p>
+                          <p className="text-[10px] text-gray-600">{startTime.toLocaleDateString('pt-BR')}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleDeleteActivity(activity.id)}
-                          className="h-8 w-8 text-gray-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                          className="h-8 w-8 text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom: Additional info */}
+                    {(activity.data?.siteType || activity.data?.tier || activity.data?.filamentType) && (
+                      <div className="mt-3 pt-3 border-t border-eve-border/30 flex items-center gap-2">
+                        <span className="text-[10px] text-gray-600 uppercase tracking-wide">Detalhes:</span>
+                        <span className="text-xs text-gray-400">
+                          {activity.data?.siteType || activity.data?.tier || activity.data?.filamentType || 'Geral'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {completedActivities.length > 10 && (
+            <div className="mt-4 pt-4 border-t border-eve-border/30 text-center">
+              <Button variant="ghost" className="text-sm text-gray-500 hover:text-white">
+                Ver todos os {completedActivities.length} registros
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
