@@ -398,6 +398,3 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
     </Card>
   )
 }
-rd>
-  )
-}
