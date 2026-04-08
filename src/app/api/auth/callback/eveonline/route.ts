@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
     let result: { userId: string; characterId: number; ownerHash: string; redirectUrl: string }
 
     if (accountCode) {
+      console.log('[OAuth Callback] Calling handleLinkFlow...')
       const linkResult = await handleLinkFlow(code, accountCode, baseUrl)
       
       if ('error' in linkResult) {
@@ -66,6 +67,7 @@ export async function GET(request: NextRequest) {
       
       result = linkResult
     } else {
+      console.log('[OAuth Callback] Calling handleLoginFlow...')
       result = await handleLoginFlow(code, baseUrl)
     }
 
@@ -83,6 +85,8 @@ export async function GET(request: NextRequest) {
 
   } catch (err) {
     console.error('[OAuth Callback] Error:', err)
-    return NextResponse.redirect(new URL('/login?error=callback_error', baseUrl))
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+    console.error('[OAuth Callback] Error details:', errorMessage)
+    return NextResponse.redirect(new URL(`/login?error=callback_error&details=${encodeURIComponent(errorMessage)}`, baseUrl))
   }
 }

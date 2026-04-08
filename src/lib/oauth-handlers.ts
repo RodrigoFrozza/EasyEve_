@@ -23,7 +23,7 @@ export async function exchangeCodeForToken(code: string): Promise<{
   refresh_token: string
   expires_in: number
 }> {
-  const callbackUrl = `${process.env.NEXTAUTH_URL}/api/auth/callback/eveonline`
+  const callbackUrl = `${process.env.NEXTAUTH_URL || 'https://easyeve.cloud'}/api/auth/callback/eveonline`
   
   const credentials = Buffer.from(
     `${process.env.EVE_CLIENT_ID}:${process.env.EVE_CLIENT_SECRET}`
@@ -31,6 +31,7 @@ export async function exchangeCodeForToken(code: string): Promise<{
   
   console.log('[OAuth] Exchanging code for token...')
   console.log('[OAuth] Callback URL:', callbackUrl)
+  console.log('[OAuth] Client ID present:', !!process.env.EVE_CLIENT_ID)
   
   const response = await fetch(`${EVE_SSO_BASE_URL}/token`, {
     method: 'POST',
@@ -62,22 +63,31 @@ export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
   ownerHash: string
   redirectUrl: string
 }> {
+  console.log('[OAuth Login] Starting login flow...')
+  
   const tokenData = await exchangeCodeForToken(code)
+  console.log('[OAuth Login] Token obtained, fetching character info...')
+  
   const charInfo = await getCharacterInfo(tokenData.access_token)
   
   const characterId = charInfo.character_id
   const ownerHash = charInfo.character_owner_hash
   const characterName = charInfo.character_name
 
+  console.log('[OAuth Login] Character:', characterName, 'ID:', characterId)
+
   const existingChar = await prisma.character.findUnique({
     where: { id: characterId },
     include: { user: true }
   })
 
+  console.log('[OAuth Login] Existing character:', existingChar ? 'yes' : 'no')
+
   let userId: string
   let user: any
 
   if (existingChar) {
+    console.log('[OAuth Login] Updating existing character...')
     await prisma.character.update({
       where: { id: characterId },
       data: {
@@ -90,6 +100,7 @@ export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
     userId = existingChar.userId
     user = existingChar.user
   } else {
+    console.log('[OAuth Login] Creating new user and character...')
     const accountCode = generateAccountCode()
     user = await prisma.user.create({
       data: {
@@ -122,21 +133,24 @@ export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
     userId = user.id
   }
 
+  console.log('[OAuth Login] User found, checking block status...')
+  console.log('[OAuth Login] User isBlocked:', (user as any).isBlocked)
+  
   // Check Blocking & Subscription
-  if (user.isBlocked) {
+  if ((user as any).isBlocked === true) {
     return {
       userId,
       characterId,
       ownerHash,
-      redirectUrl: `/login?blocked=true&reason=${encodeURIComponent(user.blockReason || 'Manual block')}`,
+      redirectUrl: `/login?blocked=true&reason=${encodeURIComponent((user as any).blockReason || 'Manual block')}`,
     }
   }
 
   // Monthly Auto-check (Subscription Expiration)
-  if (user.subscriptionEnd && new Date() > user.subscriptionEnd) {
-    console.log(`[Auth] User ${user.id} subscription expired. Resetting activities.`)
+  if ((user as any).subscriptionEnd && new Date() > (user as any).subscriptionEnd) {
+    console.log(`[Auth] User ${(user as any).id} subscription expired. Resetting activities.`)
     await prisma.user.update({
-      where: { id: user.id },
+      where: { id: (user as any).id },
       data: { allowedActivities: ['ratting'] }
     })
   }
@@ -171,10 +185,10 @@ export async function handleLinkFlow(
   }
 
   // Blocked users cannot link new characters
-  if (user.isBlocked) {
+  if ((user as any).isBlocked === true) {
     return {
       error: 'account_blocked',
-      redirectUrl: `/login?blocked=true&reason=${encodeURIComponent(user.blockReason || 'Manual block')}`,
+      redirectUrl: `/login?blocked=true&reason=${encodeURIComponent((user as any).blockReason || 'Manual block')}`,
     }
   }
 
