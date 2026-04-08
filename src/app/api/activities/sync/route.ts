@@ -71,15 +71,15 @@ export async function POST(
               if (entry.ref_type === 'bounty_payout' || entry.ref_type === 'bounty_prizes') {
                 console.log(`[SYNC]   [MATCH] Bounty: ${amount} ISK for ${charName} at ${entry.date}`)
                 charBounty += amount
-                logs.push({ date: entry.date, amount, type: 'bounty', charName })
+                logs.push({ date: entry.date, amount, type: 'bounty', charName, charId })
               } else if (entry.ref_type === 'ess_payout' || entry.ref_type === 'ess_escrow_transfer') {
                 console.log(`[SYNC]   [MATCH] ESS: ${amount} ISK for ${charName} at ${entry.date}`)
                 charEss += amount
-                logs.push({ date: entry.date, amount, type: 'ess', charName })
+                logs.push({ date: entry.date, amount, type: 'ess', charName, charId })
               } else if (entry.ref_type === 'corporation_tax_payout' || entry.ref_type === 'corporation_tax_payouts') {
                 console.log(`[SYNC]   [MATCH] Tax: ${amount} ISK for ${charName} at ${entry.date}`)
                 charTaxes += amount
-                logs.push({ date: entry.date, amount, type: 'tax', charName })
+                logs.push({ date: entry.date, amount, type: 'tax', charName, charId })
               }
             }
           })

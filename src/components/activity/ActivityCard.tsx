@@ -17,7 +17,14 @@ import {
   X,
   CheckCircle,
   XCircle,
-  Loader2
+  Loader2,
+  Wrench,
+  Wallet,
+  PiggyBank,
+  Package,
+  Receipt,
+  List,
+  Table2
 } from 'lucide-react'
 import { 
   Dialog, 
@@ -25,13 +32,14 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogTrigger,
-  DialogFooter,
   DialogDescription
 } from '@/components/ui/dialog'
-import { cn, formatISK, formatNumber } from '@/lib/utils'
+import { cn, formatISK } from '@/lib/utils'
 import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
 import { type Activity } from '@/lib/stores/activity-store'
 import { MTULootField } from './MTULootField'
+import { SalvageField } from './SalvageField'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 
 export interface ActivityCardProps {
   activity: Activity
@@ -43,7 +51,10 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   const [isSyncing, setIsSyncing] = useState(false)
   const [isAppraising, setIsAppraising] = useState(false)
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [viewMode, setViewMode] = useState<'list' | 'table'>('list')
   const [esiLootTotal, setEsiLootTotal] = useState(0)
+  const [esiSalvageTotal, setEsiSalvageTotal] = useState(0)
+  const [isSalvageAppraising, setIsSalvageAppraising] = useState(false)
   
   const typeInfo = ACTIVITY_TYPES.find(t => t.id === activity.type)
 
@@ -103,7 +114,64 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
     fetchESIAppraisal()
   }, [activity.data?.mtuContents])
 
+  // Salvage ESI Market Appraisal
+  useEffect(() => {
+    const fetchSalvageAppraisal = async () => {
+      if (!activity.data?.salvageContents || activity.data.salvageContents.length === 0) {
+        setEsiSalvageTotal(0)
+        return
+      }
+
+      setIsSalvageAppraising(true)
+      const allNames: string[] = []
+      activity.data.salvageContents.forEach((salvage: any) => {
+        const lines = (salvage.loot || '').split('\n')
+        lines.forEach((l: string) => {
+          const name = l.split('\t')[0]?.trim()
+          if (name && name.length > 2) allNames.push(name)
+        })
+      })
+
+      if (allNames.length === 0) {
+        setEsiSalvageTotal(0)
+        setIsSalvageAppraising(false)
+        return
+      }
+
+      try {
+        const res = await fetch('/api/market/appraisal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: Array.from(new Set(allNames)) })
+        })
+        if (res.ok) {
+          const { prices } = await res.json()
+          let totalValue = 0
+          activity.data.salvageContents.forEach((salvage: any) => {
+            const lines = (salvage.loot || '').split('\n')
+            lines.forEach((line: string) => {
+              const parts = line.split('\t')
+              const name = parts[0]?.trim().toLowerCase()
+              const qty = parseInt(parts[1]?.replace(/[^0-9]/g, '')) || 1
+              if (name && prices[name]) {
+                totalValue += (prices[name] * qty)
+              }
+            })
+          })
+          setEsiSalvageTotal(totalValue)
+        }
+      } catch (e) {
+        console.error('Salvage ESI Appraisal failed:', e)
+      } finally {
+        setIsSalvageAppraising(false)
+      }
+    }
+
+    fetchSalvageAppraisal()
+  }, [activity.data?.salvageContents])
+
   const estimatedLootValue = useMemo(() => esiLootTotal || 0, [esiLootTotal])
+  const estimatedSalvageValue = useMemo(() => esiSalvageTotal || 0, [esiSalvageTotal])
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -175,73 +243,280 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
               </div>
             </CardTitle>
           </DialogTrigger>
-          <DialogContent className="bg-eve-panel border-eve-border sm:max-w-[500px]">
-            <DialogHeader className="border-b border-eve-border/50 pb-4">
-              <DialogTitle className="text-center font-mono uppercase tracking-[0.2em] text-gray-400">
-                Bounty History
-              </DialogTitle>
-              <DialogDescription className="text-center text-[10px] text-gray-500">
+          <DialogContent className="bg-eve-panel border-eve-border sm:max-w-[600px] max-h-[85vh] overflow-hidden flex flex-col">
+            <DialogHeader className="border-b border-eve-border/50 pb-3">
+              <div className="flex items-center justify-between">
+                <DialogTitle className="font-mono uppercase tracking-[0.15em] text-gray-300 text-sm">
+                  Financial History
+                </DialogTitle>
+                <div className="flex items-center gap-1 bg-zinc-900/50 rounded p-0.5">
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={cn(
+                      "p-1.5 rounded transition-colors",
+                      viewMode === 'list' ? "bg-eve-accent text-black" : "text-gray-500 hover:text-gray-300"
+                    )}
+                  >
+                    <List className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('table')}
+                    className={cn(
+                      "p-1.5 rounded transition-colors",
+                      viewMode === 'table' ? "bg-eve-accent text-black" : "text-gray-500 hover:text-gray-300"
+                    )}
+                  >
+                    <Table2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+              <DialogDescription className="text-[10px] text-gray-500">
                 Session: {new Date(activity.startTime).toLocaleTimeString()} - {activity.endTime ? new Date(activity.endTime).toLocaleTimeString() : 'Active'}
               </DialogDescription>
             </DialogHeader>
             
-            <div className="py-6 space-y-6">
-              {/* Transaction Logs */}
-              <div className="space-y-1.5 max-h-[200px] overflow-y-auto px-2 custom-scrollbar">
-                {(activity.data?.logs || []).length === 0 ? (
-                  <p className="text-center text-[10px] text-gray-600 italic py-8 border border-dashed border-eve-border/30 rounded">
-                    No transactions recorded yet. Click "Sync" to update.
-                  </p>
-                ) : (
-                  (activity.data?.logs || []).map((log: any, idx: number) => (
-                    <div key={idx} className="flex justify-between text-[11px] font-mono py-1.5 border-b border-eve-border/10">
-                      <div className="flex flex-col">
-                        <span className="text-gray-400 font-bold uppercase text-[9px]">{log.type}</span>
-                        <span className="text-gray-600 text-[9px]">{log.charName}</span>
-                      </div>
-                      <div className="text-right">
-                        <span className={cn(
-                          "font-bold",
-                          log.type === 'tax' ? 'text-red-400' : 'text-green-400/80'
-                        )}>
-                          {log.type === 'tax' ? '-' : '+'}{formatISK(log.amount)}
-                        </span>
-                        <p className="text-[8px] text-gray-600">
-                          {new Date(log.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                )}
+            <div className="py-4 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
+              {/* Statistics Cards */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-green-950/20 border border-green-900/30 rounded-lg p-2.5">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Wallet className="h-3 w-3 text-green-400" />
+                    <span className="text-[9px] text-green-400/70 uppercase font-bold tracking-wider">Bounty</span>
+                  </div>
+                  <div className="text-sm font-bold text-green-400 font-mono">
+                    {formatISK((activity.data?.automatedBounties || 0) + (activity.data?.additionalBounties || 0))}
+                  </div>
+                </div>
+                <div className="bg-zinc-800/30 border border-zinc-700/30 rounded-lg p-2.5">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <PiggyBank className="h-3 w-3 text-zinc-400" />
+                    <span className="text-[9px] text-zinc-400/70 uppercase font-bold tracking-wider">ESS</span>
+                  </div>
+                  <div className="text-sm font-bold text-zinc-300 font-mono">
+                    {formatISK(activity.data?.automatedEss || 0)}
+                  </div>
+                </div>
+                <div className="bg-blue-950/20 border border-blue-900/30 rounded-lg p-2.5">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Package className="h-3 w-3 text-blue-400" />
+                    <span className="text-[9px] text-blue-400/70 uppercase font-bold tracking-wider">Loot</span>
+                  </div>
+                  <div className="text-sm font-bold text-blue-400 font-mono">
+                    {formatISK(estimatedLootValue)}
+                  </div>
+                </div>
+                <div className="bg-orange-950/20 border border-orange-900/30 rounded-lg p-2.5">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Wrench className="h-3 w-3 text-orange-400" />
+                    <span className="text-[9px] text-orange-400/70 uppercase font-bold tracking-wider">Salvage</span>
+                  </div>
+                  <div className="text-sm font-bold text-orange-400 font-mono">
+                    {formatISK(estimatedSalvageValue)}
+                  </div>
+                </div>
+                <div className="bg-red-950/20 border border-red-900/30 rounded-lg p-2.5">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Receipt className="h-3 w-3 text-red-400" />
+                    <span className="text-[9px] text-red-400/70 uppercase font-bold tracking-wider">Tax</span>
+                  </div>
+                  <div className="text-sm font-bold text-red-400 font-mono">
+                    -{formatISK(activity.data?.automatedTaxes || 0)}
+                  </div>
+                </div>
+                <div className="bg-eve-accent/10 border border-eve-accent/20 rounded-lg p-2.5">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <TrendingUp className="h-3 w-3 text-eve-accent" />
+                    <span className="text-[9px] text-eve-accent/70 uppercase font-bold tracking-wider">ISK/hr</span>
+                  </div>
+                  <div className="text-sm font-bold text-eve-accent font-mono">
+                    {(() => {
+                      const start = new Date(activity.startTime).getTime()
+                      const end = activity.endTime ? new Date(activity.endTime).getTime() : Date.now()
+                      const hours = (end - start) / 3600000
+                      const total = 
+                        (activity.data?.automatedBounties || 0) + 
+                        (activity.data?.automatedEss || 0) + 
+                        (activity.data?.additionalBounties || 0) +
+                        estimatedLootValue +
+                        estimatedSalvageValue
+                      return hours > 0.01 ? formatISK(total / hours) : formatISK(0)
+                    })()}
+                  </div>
+                </div>
               </div>
 
+              {/* Metrics Summary */}
+              <div className="flex items-center justify-between text-[10px] text-gray-500 bg-zinc-900/30 rounded px-2 py-1.5">
+                <span>{activity.data?.logs?.length || 0} transactions</span>
+                <span className="text-gray-400">
+                  Avg: {formatISK(((activity.data?.logs || []).reduce((sum: number, l: any) => sum + l.amount, 0)) / Math.max((activity.data?.logs || []).length, 1))}
+                </span>
+              </div>
+
+              {/* Transaction Logs - List View */}
+              {viewMode === 'list' && (
+                <div className="space-y-1.5 max-h-[250px] overflow-y-auto px-1 custom-scrollbar">
+                  {(activity.data?.logs || []).length === 0 ? (
+                    <p className="text-center text-[10px] text-gray-600 italic py-8 border border-dashed border-eve-border/30 rounded">
+                      No transactions recorded yet. Click &quot;Sync&quot; to update.
+                    </p>
+                  ) : (
+                    (activity.data?.logs || []).map((log: any, idx: number) => {
+                      const typeColors: Record<string, string> = {
+                        bounty: 'border-l-green-500 bg-green-950/10',
+                        ess: 'border-l-zinc-400 bg-zinc-800/20',
+                        tax: 'border-l-red-500 bg-red-950/10'
+                      }
+                      const typeIcons: Record<string, any> = {
+                        bounty: Wallet,
+                        ess: PiggyBank,
+                        tax: Receipt
+                      }
+                      const IconComponent = typeIcons[log.type] || Wallet
+                      
+                      return (
+                        <div key={idx} className={cn(
+                          "flex items-center justify-between text-[11px] font-mono py-2 px-3 rounded border-l-2",
+                          typeColors[log.type] || 'border-l-green-500 bg-green-950/10'
+                        )}>
+                          <div className="flex items-center gap-2.5">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={`https://images.evesteam.es/characters/${log.charId}/portrait?size=32`} />
+                              <AvatarFallback className="text-[8px] bg-zinc-800 text-zinc-400">
+                                {log.charName?.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col">
+                              <span className="text-gray-300 text-[10px] font-medium">{log.charName}</span>
+                              <div className="flex items-center gap-1">
+                                <IconComponent className={cn(
+                                  "h-2.5 w-2.5",
+                                  log.type === 'bounty' ? 'text-green-400' : 
+                                  log.type === 'ess' ? 'text-zinc-400' : 'text-red-400'
+                                )} />
+                                <span className={cn(
+                                  "text-[8px] uppercase font-bold",
+                                  log.type === 'bounty' ? 'text-green-400/70' : 
+                                  log.type === 'ess' ? 'text-zinc-500' : 'text-red-400/70'
+                                )}>
+                                  {log.type}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className={cn(
+                              "font-bold text-[11px]",
+                              log.type === 'tax' ? 'text-red-400' : 'text-green-400'
+                            )}>
+                              {log.type === 'tax' ? '-' : '+'}{formatISK(log.amount)}
+                            </span>
+                            <p className="text-[8px] text-gray-600">
+                              {new Date(log.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              )}
+
+              {/* Transaction Logs - Table View */}
+              {viewMode === 'table' && (
+                <div className="max-h-[250px] overflow-y-auto custom-scrollbar">
+                  <table className="w-full text-[10px] font-mono">
+                    <thead className="sticky top-0 bg-zinc-900/90 backdrop-blur">
+                      <tr className="text-gray-500 uppercase text-[9px] tracking-wider">
+                        <th className="text-left py-2 px-2 font-medium">Time</th>
+                        <th className="text-left py-2 px-2 font-medium">Character</th>
+                        <th className="text-left py-2 px-2 font-medium">Type</th>
+                        <th className="text-right py-2 px-2 font-medium">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(activity.data?.logs || []).length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="text-center text-gray-600 italic py-8">
+                            No transactions recorded yet
+                          </td>
+                        </tr>
+                      ) : (
+                        (activity.data?.logs || []).map((log: any, idx: number) => (
+                          <tr key={idx} className={cn(
+                            "border-b border-eve-border/10",
+                            idx % 2 === 0 ? "bg-zinc-900/20" : "bg-zinc-900/40"
+                          )}>
+                            <td className="py-2 px-2 text-gray-400">
+                              {new Date(log.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                            <td className="py-2 px-2">
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-5 w-5">
+                                  <AvatarImage src={`https://images.evesteam.es/characters/${log.charId}/portrait?size=32`} />
+                                  <AvatarFallback className="text-[7px] bg-zinc-800 text-zinc-400">
+                                    {log.charName?.slice(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-gray-300">{log.charName}</span>
+                              </div>
+                            </td>
+                            <td className="py-2 px-2">
+                              <span className={cn(
+                                "px-1.5 py-0.5 rounded text-[8px] uppercase font-bold",
+                                log.type === 'bounty' ? 'bg-green-950/50 text-green-400' :
+                                log.type === 'ess' ? 'bg-zinc-800/50 text-zinc-400' :
+                                'bg-red-950/50 text-red-400'
+                              )}>
+                                {log.type}
+                              </span>
+                            </td>
+                            <td className={cn(
+                              "py-2 px-2 text-right font-bold",
+                              log.type === 'tax' ? 'text-red-400' : 'text-green-400'
+                            )}>
+                              {log.type === 'tax' ? '-' : '+'}{formatISK(log.amount)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
               {/* Totals Section */}
-              <div className="border-t border-eve-border/50 pt-6 space-y-3 font-mono">
+              <div className="border-t border-eve-border/50 pt-4 space-y-2 font-mono">
                 <div className="flex justify-between text-xs items-center">
                   <span className="text-gray-500 uppercase tracking-tighter">Bounty</span>
                   <span className="text-green-400 font-bold">+{formatISK((activity.data?.automatedBounties || 0) + (activity.data?.additionalBounties || 0))}</span>
                 </div>
                 <div className="flex justify-between text-xs items-center">
-                  <span className="text-gray-500 uppercase tracking-tighter">ESS (BANCO)</span>
-                  <span className="text-green-400 font-bold">+{formatISK(activity.data?.automatedEss || 0)}</span>
+                  <span className="text-gray-500 uppercase tracking-tighter">ESS</span>
+                  <span className="text-zinc-300 font-bold">+{formatISK(activity.data?.automatedEss || 0)}</span>
                 </div>
                 <div className="flex justify-between text-xs items-center">
-                  <span className="text-gray-500 uppercase tracking-tighter">LOOT</span>
+                  <span className="text-gray-500 uppercase tracking-tighter">Loot</span>
                   <span className="text-blue-400 font-bold">+{formatISK(estimatedLootValue)}</span>
                 </div>
                 <div className="flex justify-between text-xs items-center">
-                  <span className="text-gray-500 uppercase tracking-tighter">CORP TAX</span>
+                  <span className="text-gray-500 uppercase tracking-tighter">Salvage</span>
+                  <span className="text-orange-400 font-bold">+{formatISK(estimatedSalvageValue)}</span>
+                </div>
+                <div className="flex justify-between text-xs items-center">
+                  <span className="text-gray-500 uppercase tracking-tighter">Corp Tax</span>
                   <span className="text-red-400 font-bold">-{formatISK(activity.data?.automatedTaxes || 0)}</span>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-eve-border/30 flex justify-between items-baseline">
+                <div className="mt-4 pt-3 border-t border-eve-border/30 flex justify-between items-baseline">
                   <span className="text-[10px] uppercase font-black text-gray-500">NET RUN PROFIT</span>
                   <span className="text-xl font-black text-eve-accent tracking-tighter">
                     {formatISK(
                       (activity.data?.automatedBounties || 0) + 
                       (activity.data?.automatedEss || 0) + 
                       (activity.data?.additionalBounties || 0) + 
-                      estimatedLootValue - 
+                      estimatedLootValue +
+                      estimatedSalvageValue - 
                       (activity.data?.automatedTaxes || 0)
                     )}
                   </span>
@@ -293,18 +568,29 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                   {formatISK(
                     (activity.data?.automatedBounties || 0) + 
                     (activity.data?.automatedEss || 0) + 
-                    (activity.data?.additionalBounties || 0)
+                    (activity.data?.additionalBounties || 0) +
+                    estimatedLootValue +
+                    estimatedSalvageValue
                   )}
                 </div>
-                {isAppraising ? (
-                   <div className="h-4 w-24 bg-zinc-800 animate-pulse rounded mt-1"></div>
-                ) : (
-                  estimatedLootValue > 0 && (
-                    <div className="text-xs font-bold text-blue-400 font-mono mt-0.5">
-                      + {formatISK(estimatedLootValue)} (Loot)
-                    </div>
-                  )
-                )}
+                <div className="flex flex-col gap-0.5 mt-1">
+                  {(isAppraising || isSalvageAppraising) ? (
+                    <div className="h-4 w-32 bg-zinc-800 animate-pulse rounded"></div>
+                  ) : (
+                    <>
+                      {estimatedLootValue > 0 && (
+                        <div className="text-xs font-bold text-blue-400 font-mono">
+                          + {formatISK(estimatedLootValue)} (Loot)
+                        </div>
+                      )}
+                      {estimatedSalvageValue > 0 && (
+                        <div className="text-xs font-bold text-orange-400 font-mono">
+                          + {formatISK(estimatedSalvageValue)} (Salvage)
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
               <div className="text-right">
                 <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Est. ISK/hr</p>
@@ -316,7 +602,9 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                     const total = 
                       (activity.data?.automatedBounties || 0) + 
                       (activity.data?.automatedEss || 0) + 
-                      (activity.data?.additionalBounties || 0);
+                      (activity.data?.additionalBounties || 0) +
+                      estimatedLootValue +
+                      estimatedSalvageValue;
                     return hours > 0.01 ? formatISK(total / hours) : formatISK(0);
                   })()}/hr
                 </div>
@@ -372,27 +660,81 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
           </div>
         )}
 
-        {/* Managed MTUs & Loot Section */}
+        {/* Loot & Salvage Section */}
         <div className="space-y-3 pt-4 border-t border-eve-border/30">
           <div className="flex items-center justify-between">
             <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5">
-              <Box className="h-3 w-3" /> Managed MTUs & Loot
+              <Box className="h-3 w-3" /> Loot & Salvage
             </p>
-            <Badge variant="outline" className="text-[9px] h-4 bg-zinc-950/50 border-zinc-800 text-zinc-500">
-              {activity.data?.mtuContents?.length || 0} Blocks
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-[9px] h-4 bg-blue-950/30 border-blue-900/30 text-blue-400">
+                Loot: {activity.data?.mtuContents?.length || 0}
+              </Badge>
+              <Badge variant="outline" className="text-[9px] h-4 bg-orange-950/30 border-orange-900/30 text-orange-400">
+                Salvage: {activity.data?.salvageContents?.length || 0}
+              </Badge>
+            </div>
           </div>
 
-          <MTULootField 
-            value={activity.data?.mtuContents || []} 
-            activityId={activity.id}
-            onChange={async (mtus) => {
-              const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
-              store.updateActivity(activity.id, {
-                data: { ...activity.data, mtuContents: mtus }
-              });
-            }} 
-          />
+          {/* Value Summary */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-blue-950/20 border border-blue-900/30 rounded p-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Box className="h-3 w-3 text-blue-400" />
+                <span className="text-[10px] text-blue-400/70 font-medium">Loot</span>
+              </div>
+              {isAppraising ? (
+                <div className="h-4 w-16 bg-blue-900/30 animate-pulse rounded"></div>
+              ) : (
+                <span className="text-xs font-bold text-blue-400 font-mono">
+                  {formatISK(estimatedLootValue)}
+                </span>
+              )}
+            </div>
+            <div className="bg-orange-950/20 border border-orange-900/30 rounded p-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Wrench className="h-3 w-3 text-orange-400" />
+                <span className="text-[10px] text-orange-400/70 font-medium">Salvage</span>
+              </div>
+              {isSalvageAppraising ? (
+                <div className="h-4 w-16 bg-orange-900/30 animate-pulse rounded"></div>
+              ) : (
+                <span className="text-xs font-bold text-orange-400 font-mono">
+                  {formatISK(estimatedSalvageValue)}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <p className="text-[9px] text-blue-400/50 uppercase font-bold tracking-wider">MTU Loot</p>
+              <MTULootField 
+                value={activity.data?.mtuContents || []} 
+                activityId={activity.id}
+                onChange={async (mtus) => {
+                  const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
+                  store.updateActivity(activity.id, {
+                    data: { ...activity.data, mtuContents: mtus }
+                  });
+                }} 
+              />
+            </div>
+            <div className="space-y-2">
+              <p className="text-[9px] text-orange-400/50 uppercase font-bold tracking-wider">Salvage</p>
+              <SalvageField 
+                value={activity.data?.salvageContents || []} 
+                activityId={activity.id}
+                onChange={async (salvage) => {
+                  const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
+                  store.updateActivity(activity.id, {
+                    data: { ...activity.data, salvageContents: salvage }
+                  });
+                }} 
+              />
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
