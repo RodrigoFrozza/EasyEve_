@@ -832,24 +832,30 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
   const [elapsed, setElapsed] = useState('')
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle')
-  const [marketPrices, setMarketPrices] = useState<Record<string, number>>({})
+  const [esiLootTotal, setEsiLootTotal] = useState(0)
   const typeInfo = ACTIVITY_TYPES.find(t => t.id === activity.type)
 
-  // Fetch Market Prices for Loot without clipboard ISK
+  // Pure ESI Market Appraisal (Names -> ESI IDs -> ESI Orders -> Jita 4-4 Prices)
   useEffect(() => {
-    const fetchAppraisal = async () => {
+    const fetchESIAppraisal = async () => {
+      if (!activity.data?.mtuContents || activity.data.mtuContents.length === 0) {
+        setEsiLootTotal(0)
+        return
+      }
+
       const allNames: string[] = []
-      activity.data?.mtuContents?.forEach((mtu: any) => {
+      activity.data.mtuContents.forEach((mtu: any) => {
         const lines = (mtu.loot || '').split('\n')
         lines.forEach((l: string) => {
-          const parts = l.split('\t')
-          if (parts[0] && !l.toLowerCase().includes('isk')) {
-            allNames.push(parts[0].trim())
-          }
+          const name = l.split('\t')[0]?.trim()
+          if (name && name.length > 2) allNames.push(name)
         })
       })
 
-      if (allNames.length === 0) return
+      if (allNames.length === 0) {
+        setEsiLootTotal(0)
+        return
+      }
 
       try {
         const res = await fetch('/api/market/appraisal', {
@@ -859,68 +865,34 @@ function ActivityCard({ activity, onEnd }: { activity: Activity, onEnd: () => vo
         })
         if (res.ok) {
           const { prices } = await res.json()
-          setMarketPrices(prev => ({ ...prev, ...prices }))
+          
+          // Calcular o total baseado nos preços retornados e quantidades do clipboard
+          let totalValue = 0
+          activity.data.mtuContents.forEach((mtu: any) => {
+            const lines = (mtu.loot || '').split('\n')
+            lines.forEach((line: string) => {
+              const parts = line.split('\t')
+              const name = parts[0]?.trim().toLowerCase()
+              const qty = parseInt(parts[1]?.replace(/[^0-9]/g, '')) || 1
+              if (name && prices[name]) {
+                totalValue += (prices[name] * qty)
+              }
+            })
+          })
+          setEsiLootTotal(totalValue)
         }
       } catch (e) {
-        console.error('Market fetch failed:', e)
+        console.error('ESI Appraisal failed:', e)
       }
     }
 
-    fetchAppraisal()
+    fetchESIAppraisal()
   }, [activity.data?.mtuContents])
 
-  // Accurate Loot Parser (Prioritize Clipboard -> Fallback to Market API)
+  // Accurate Loot Parser (Strictly ESI Prices)
   const estimatedLootValue = useMemo(() => {
-    if (!activity.data?.mtuContents) return 0;
-    return activity.data.mtuContents.reduce((total: number, mtu: any) => {
-      const lines = (mtu.loot || '').split('\n').filter((l: string) => l.trim().length > 0);
-      
-      let mtuTotal = 0;
-      lines.forEach((line: string) => {
-        const parts = line.split('\t');
-        let qty = 1;
-        
-        // 1. Precise Clipboard Pricing (Only trust what the EVE client reports)
-        const lastPart = parts[parts.length - 1].trim();
-        if (lastPart.toLowerCase().endsWith('isk')) {
-          const rawPrice = lastPart.replace(/[^0-9,.]/g, '');
-          let cleanPrice = '0';
-          
-          if (rawPrice.includes(',') && rawPrice.includes('.')) {
-            const lastDot = rawPrice.lastIndexOf('.');
-            const lastComma = rawPrice.lastIndexOf(',');
-            if (lastComma > lastDot) {
-              cleanPrice = rawPrice.replace(/\./g, '').replace(',', '.');
-            } else {
-              cleanPrice = rawPrice.replace(/,/g, '');
-            }
-          } else if (rawPrice.includes(',')) {
-            if (/,\d{2}$/.test(rawPrice)) {
-              cleanPrice = rawPrice.replace(',', '.');
-            } else {
-              cleanPrice = rawPrice.replace(/,/g, '');
-            }
-          } else {
-            cleanPrice = rawPrice;
-          }
-          
-          mtuTotal += parseFloat(cleanPrice) || 0;
-          return;
-        }
-
-        // 2. Market API Fallback (Jita Sell Min)
-        const name = (parts[0] || '').trim().toLowerCase()
-        if (parts.length >= 2) {
-          qty = parseInt(parts[1].replace(/[^0-9]/g, '')) || 1;
-        }
-
-        const marketPrice = marketPrices[name] || 0
-        mtuTotal += (marketPrice * qty);
-      });
-      
-      return total + mtuTotal;
-    }, 0);
-  }, [activity.data?.mtuContents, marketPrices]);
+    return esiLootTotal || 0;
+  }, [esiLootTotal]);
 
   useEffect(() => {
     const timer = setInterval(() => {
