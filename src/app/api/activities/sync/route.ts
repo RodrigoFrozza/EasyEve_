@@ -50,11 +50,9 @@ export async function POST(
     const logMap = new Map<string, any>()
     
     // Index existing logs by composite key to prevent duplicates
-    // Include type in key since different transaction types can share refId
+    // KEY INCLUDES: charId + refId + type (to avoid conflicts between characters)
     existingLogs.forEach((log: any) => {
-      const key = log.refId 
-        ? `${log.refId}-${log.type}` 
-        : `${log.date}-${log.charId}-${log.amount}-${log.type}`
+      const key = `${log.charId}-${log.refId || log.date}-${log.type}`
       logMap.set(key, log)
     })
 
@@ -88,10 +86,13 @@ export async function POST(
               }
 
               if (type && refId) {
-                // Check if we already have this transaction
-                if (!logMap.has(refId)) {
+                // Use composite key to prevent duplicates between different characters
+                const compositeKey = `${charId}-${refId}-${type}`
+                
+                // Check if we already have this transaction for this specific character
+                if (!logMap.has(compositeKey)) {
                    console.log(`[SYNC]   [NEW] ${type.toUpperCase()}: ${amount} ISK for ${charName}`)
-                   logMap.set(refId, { 
+                   logMap.set(compositeKey, { 
                      refId, 
                      date: entry.date, 
                      amount, 
@@ -99,6 +100,8 @@ export async function POST(
                      charName, 
                      charId 
                    })
+                } else {
+                   console.log(`[SYNC]   [DUP] Skipping duplicate ${refId} for ${charName}`)
                 }
               }
             }

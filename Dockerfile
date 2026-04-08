@@ -1,26 +1,61 @@
-FROM node:20-alpine
+FROM node:20-alpine AS base
 
-RUN apk add --no-cache libc6-compat openssl curl
+# Install dependencies only when needed
+FROM base AS deps
+RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
+# Install dependencies based on the preferred package manager
 COPY package.json package-lock.json* ./
-ENV CI=true
 RUN npm config set maxsockets 1 && \
-    npm install --no-audit --no-fund --prefer-offline && \
-    npm cache clean --force
+    npm ci
 
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Ensure prisma binary is available for build
-RUN npx prisma generate
+# Environment variables for build time
+ARG DATABASE_URL
+ARG NEXTAUTH_SECRET
+ARG NEXTAUTH_URL
+ARG EVE_CLIENT_ID
+ARG EVE_CLIENT_SECRET
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
+RUN npx prisma generate
 RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
+# Production image, copy all the files and run next
+FROM base AS runner
+WORKDIR /app
+
 ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+
+# Set the correct permission for prerender cache
+RUN mkdir .next
+RUN chown nextjs:nodejs .next
+
+# Automatically leverage output traces to reduce image size
+# https://nextjs.org/docs/advanced-features/output-file-tracing
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 80
 ENV PORT=80
 ENV HOSTNAME="0.0.0.0"
 
-EXPOSE 80
-
-CMD ["npm", "start"]
+# server.js is created by next build from the standalone output
+# https://nextjs.org/docs/pages/api-reference/next-config-js/output
+CMD ["node", "server.js"]
