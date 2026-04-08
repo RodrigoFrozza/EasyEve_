@@ -33,9 +33,9 @@ export async function POST(
       return NextResponse.json({ error: 'No participants to sync' }, { status: 400 })
     }
 
-    // BROADEN THE WINDOW: Check from 10m before startTime to handle ESI/Server clock diffs
+    // BROADEN THE WINDOW: Check from 1h before startTime to handle ESI delay, clock diffs, or pre-activity kills
     const startTimeManual = new Date(activity.startTime)
-    const startTime = new Date(startTimeManual.getTime() - (10 * 60 * 1000))
+    const startTime = new Date(startTimeManual.getTime() - (60 * 60 * 1000))
     const endTime = activity.endTime ? new Date(activity.endTime) : new Date()
 
     console.log(`[SYNC] --- START SYNC for Activity ID: ${activityId} ---`)
@@ -63,23 +63,36 @@ export async function POST(
 
           journal.forEach((entry: any) => {
             const entryDate = new Date(entry.date)
-            // Filter by date range and reference types
+            const refType = (entry.ref_type || '').toLowerCase()
+            
+            // Filter by date range
             if (entryDate >= startTime && entryDate <= endTime) {
               const amount = Math.abs(entry.amount || 0)
               
               // EVE Journal Reference Types (mapping to app logic)
-              if (entry.ref_type === 'bounty_payout' || entry.ref_type === 'bounty_prizes') {
+              // Bounties: bounty_prizes (NPC), bounty_payout (Old/Misc)
+              if (refType.includes('bounty_prizes') || refType.includes('bounty_payout')) {
                 console.log(`[SYNC]   [MATCH] Bounty: ${amount} ISK for ${charName} at ${entry.date}`)
                 charBounty += amount
                 logs.push({ date: entry.date, amount, type: 'bounty', charName, charId })
-              } else if (entry.ref_type === 'ess_payout' || entry.ref_type === 'ess_escrow_transfer') {
+              } 
+              // ESS: ess_payout (Main Bank), ess_escrow_transfer (Into the bank? Usually ess_payout is what pays out)
+              else if (refType.includes('ess_payout') || refType.includes('ess_escrow')) {
                 console.log(`[SYNC]   [MATCH] ESS: ${amount} ISK for ${charName} at ${entry.date}`)
                 charEss += amount
                 logs.push({ date: entry.date, amount, type: 'ess', charName, charId })
-              } else if (entry.ref_type === 'corporation_tax_payout' || entry.ref_type === 'corporation_tax_payouts') {
+              } 
+              // Taxes: corporation_tax_payout, corporation_tax_payouts
+              else if (refType.includes('corporation_tax_payout')) {
                 console.log(`[SYNC]   [MATCH] Tax: ${amount} ISK for ${charName} at ${entry.date}`)
                 charTaxes += amount
                 logs.push({ date: entry.date, amount, type: 'tax', charName, charId })
+              }
+              // Agent rewards (for missions)
+              else if (refType.includes('agent_mission_reward')) {
+                console.log(`[SYNC]   [MATCH] Mission: ${amount} ISK for ${charName} at ${entry.date}`)
+                charBounty += amount
+                logs.push({ date: entry.date, amount, type: 'bounty', charName, charId })
               }
             }
           })
