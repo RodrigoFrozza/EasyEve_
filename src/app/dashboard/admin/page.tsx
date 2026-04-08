@@ -106,6 +106,7 @@ function AdminContent() {
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false)
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null)
   const [selectedModules, setSelectedModules] = useState<string[]>(['ratting'])
+  const [isSyncing, setIsSyncing] = useState(false)
 
   useEffect(() => {
     if (sessionStatus === 'unauthenticated') {

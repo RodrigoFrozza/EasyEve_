@@ -593,74 +593,70 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
         </Dialog>
       </CardHeader>
       
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {activity.type === 'ratting' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {/* FLEET COLUMN */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 mb-1">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-2">
                 <div className="h-px flex-1 bg-zinc-800"></div>
-                <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-bold">Fleet</span>
+                <span className="text-xs uppercase tracking-wider text-zinc-500 font-bold">Fleet</span>
                 <div className="h-px flex-1 bg-zinc-800"></div>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {activity.participants.map(p => (
-                  <div key={p.characterId} className="flex items-center gap-2 p-1.5 rounded bg-zinc-900/40 border border-zinc-800/30 hover:border-eve-accent/30 transition-colors group">
-                    <Avatar className="h-7 w-7 border border-zinc-800">
+                  <div key={p.characterId} className="flex items-center gap-3 p-2 rounded bg-zinc-900/40 border border-zinc-800/30 hover:border-eve-accent/30 transition-colors group">
+                    <Avatar className="h-10 w-10 border border-zinc-800">
                       <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
-                      <AvatarFallback className="bg-zinc-800 text-zinc-400 text-[9px]">
+                      <AvatarFallback className="bg-zinc-800 text-zinc-400 text-xs">
                         {p.characterName?.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-medium text-zinc-200 truncate">{p.characterName}</p>
+                      <p className="text-sm font-medium text-zinc-200 truncate">{p.characterName}</p>
                       {p.shipTypeId && (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5 mt-0.5">
                           <Image 
                             src={`https://images.evetech.net/types/${p.shipTypeId}/icon?size=32`}
                             alt="ship"
-                            width={12}
-                            height={12}
+                            width={16}
+                            height={16}
                             className="object-contain"
                           />
-                          <span className="text-[8px] text-zinc-500 truncate">{p.fit || 'Unknown'}</span>
+                          <span className="text-[10px] text-zinc-500 truncate">{p.fit || 'Unknown'}</span>
                         </div>
                       )}
                     </div>
-                    <div className="w-1 h-5 bg-green-500/20 rounded-full group-hover:bg-green-500/50 transition-colors"></div>
+                    <div className="w-1.5 h-8 bg-green-500/20 rounded-full group-hover:bg-green-500/50 transition-colors"></div>
                   </div>
                 ))}
               </div>
               
               {/* Quick Stats */}
-              <div className="grid grid-cols-3 gap-1.5 pt-1">
-                <div className="bg-zinc-900/40 rounded p-1.5 border border-zinc-800/30 text-center">
-                  <p className="text-[7px] text-zinc-600 uppercase">Duration</p>
-                  <p className="text-[10px] font-mono text-zinc-300">{elapsed}</p>
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <div className="bg-zinc-900/40 rounded p-2 border border-zinc-800/30 text-center">
+                  <p className="text-[9px] text-zinc-600 uppercase">Space</p>
+                  <p className="text-xs text-zinc-300 truncate">{activity.space || '—'}</p>
                 </div>
-                <div className="bg-zinc-900/40 rounded p-1.5 border border-zinc-800/30 text-center">
-                  <p className="text-[7px] text-zinc-600 uppercase">Space</p>
-                  <p className="text-[9px] text-zinc-300 truncate">{activity.space?.slice(0, 6) || '—'}</p>
-                </div>
-                <div className="bg-zinc-900/40 rounded p-1.5 border border-zinc-800/30 text-center">
-                  <p className="text-[7px] text-zinc-600 uppercase">Site</p>
-                  <p className="text-[9px] text-zinc-300 truncate">{activity.data?.siteType || '—'}</p>
+                <div className="bg-zinc-900/40 rounded p-2 border border-zinc-800/30 text-center">
+                  <p className="text-[9px] text-zinc-600 uppercase">Site</p>
+                  <p className="text-xs text-zinc-300 truncate">{activity.data?.siteType || '—'}</p>
                 </div>
               </div>
             </div>
 
             {/* MTU INVENTORY */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-1.5">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
                   <Image 
                     src="https://images.evetech.net/Render/33475_512.png"
                     alt="MTU"
-                    width={14}
-                    height={14}
+                    width={18}
+                    height={18}
                     className="object-contain"
                   />
-                  <span className="text-[9px] uppercase tracking-wider text-blue-400/70 font-bold">Loot</span>
+                  <span className="text-xs uppercase tracking-wider text-blue-400/70 font-bold">Loot Containers</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {mtuTotalPages > 1 && (
@@ -668,67 +664,70 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                       <button 
                         onClick={() => setMtuPage(p => Math.max(0, p - 1))} 
                         disabled={mtuPage === 0}
-                        className="text-[8px] text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
+                        className="text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
                       >
                         ‹
                       </button>
-                      <span className="text-[8px] text-zinc-500">{mtuPage + 1}/{mtuTotalPages}</span>
+                      <span className="text-xs text-zinc-500">{mtuPage + 1}/{mtuTotalPages}</span>
                       <button 
                         onClick={() => setMtuPage(p => Math.min(mtuTotalPages - 1, p + 1))} 
                         disabled={mtuPage >= mtuTotalPages - 1}
-                        className="text-[8px] text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
+                        className="text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
                       >
                         ›
                       </button>
                     </div>
                   )}
-                  <span className="text-[9px] text-zinc-500">{mtuContents.length}</span>
+                  <span className="text-xs text-zinc-500">{mtuContents.length}</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-2 gap-2">
                 {paginatedMtus.map((mtu: any, idx: number) => {
                   const actualIdx = mtuPage * MTUS_PER_PAGE + idx
                   const lines = (mtu.loot || '').split('\n').filter((l: string) => l.trim())
                   const mtuValue = (activity.data?.mtuValues as number[])?.[actualIdx] || 0
                   return (
-                    <div key={actualIdx} className="relative bg-zinc-950/60 rounded border border-blue-900/30 hover:border-blue-500/50 transition-all cursor-pointer group p-1.5">
+                    <div key={actualIdx} className="relative bg-zinc-950/60 rounded border border-blue-900/30 hover:border-blue-500/50 transition-all cursor-pointer group p-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-bold text-blue-400">#{actualIdx + 1}</span>
-                        <span className="text-[8px] text-zinc-600">{lines.length}</span>
+                        <span className="text-xs font-bold text-blue-400">#{actualIdx + 1}</span>
+                        <span className="text-[10px] text-zinc-600">{lines.length} items</span>
                       </div>
-                      <p className="text-[7px] text-zinc-500 truncate leading-tight mt-0.5">
-                        {mtu.loot ? mtu.loot.substring(0, 30) : 'Empty'}
+                      <p className="text-[10px] text-zinc-500 truncate leading-relaxed mt-1">
+                        {mtu.loot ? mtu.loot.substring(0, 40) : 'Empty'}
                       </p>
-                      <p className="text-[9px] font-mono text-blue-400/80 text-right mt-1">
+                      <p className="text-sm font-mono text-blue-400/80 text-right mt-2">
                         {mtuValue > 0 ? formatISK(mtuValue) : '—'}
                       </p>
                     </div>
                   )
                 })}
                 <div 
-                  className="bg-zinc-950/30 rounded border border-dashed border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer flex items-center justify-center min-h-[50px] group"
+                  className="bg-zinc-950/30 rounded border border-dashed border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer flex items-center justify-center min-h-[70px] group"
                   onClick={() => {
                     const newMTUs = [...mtuContents, { loot: '' }]
                     handleMTUChange(newMTUs)
                   }}
                 >
-                  <Plus className="h-3 w-3 text-zinc-600 group-hover:text-zinc-400" />
+                  <div className="text-center">
+                    <Plus className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400 mx-auto" />
+                    <span className="text-[10px] text-zinc-600">Add MTU</span>
+                  </div>
                 </div>
               </div>
-              <div className="flex justify-between items-center pt-1 border-t border-blue-900/30">
-                <span className="text-[8px] text-zinc-500">Total Loot</span>
-                <span className="text-[11px] font-bold text-blue-400 font-mono">
+              <div className="flex justify-between items-center pt-2 border-t border-blue-900/30">
+                <span className="text-xs text-zinc-500">Total Loot</span>
+                <span className="text-base font-bold text-blue-400 font-mono">
                   {isAppraising ? '...' : formatISK(estimatedLootValue)}
                 </span>
               </div>
             </div>
 
             {/* SALVAGE INVENTORY + FINANCIAL FOOTER */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-1.5">
-                  <Wrench className="h-3.5 w-3.5 text-orange-400/70" />
-                  <span className="text-[9px] uppercase tracking-wider text-orange-400/70 font-bold">Salvage</span>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Wrench className="h-4 w-4 text-orange-400/70" />
+                  <span className="text-xs uppercase tracking-wider text-orange-400/70 font-bold">Salvage</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {salvageTotalPages > 1 && (
@@ -736,61 +735,64 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                       <button 
                         onClick={() => setSalvagePage(p => Math.max(0, p - 1))} 
                         disabled={salvagePage === 0}
-                        className="text-[8px] text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
+                        className="text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
                       >
                         ‹
                       </button>
-                      <span className="text-[8px] text-zinc-500">{salvagePage + 1}/{salvageTotalPages}</span>
+                      <span className="text-xs text-zinc-500">{salvagePage + 1}/{salvageTotalPages}</span>
                       <button 
                         onClick={() => setSalvagePage(p => Math.min(salvageTotalPages - 1, p + 1))} 
                         disabled={salvagePage >= salvageTotalPages - 1}
-                        className="text-[8px] text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
+                        className="text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
                       >
                         ›
                       </button>
                     </div>
                   )}
-                  <span className="text-[9px] text-zinc-500">{salvageContents.length}</span>
+                  <span className="text-xs text-zinc-500">{salvageContents.length}</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-2 gap-2">
                 {paginatedSalvage.map((salvage: any, idx: number) => {
                   const actualIdx = salvagePage * SALVAGE_PER_PAGE + idx
                   const lines = (salvage.loot || '').split('\n').filter((l: string) => l.trim())
                   return (
-                    <div key={actualIdx} className="relative bg-zinc-950/60 rounded border border-orange-900/30 hover:border-orange-500/50 transition-all cursor-pointer group p-1.5">
+                    <div key={actualIdx} className="relative bg-zinc-950/60 rounded border border-orange-900/30 hover:border-orange-500/50 transition-all cursor-pointer group p-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-bold text-orange-400">#{actualIdx + 1}</span>
-                        <span className="text-[8px] text-zinc-600">{lines.length}</span>
+                        <span className="text-xs font-bold text-orange-400">#{actualIdx + 1}</span>
+                        <span className="text-[10px] text-zinc-600">{lines.length} items</span>
                       </div>
-                      <p className="text-[7px] text-zinc-500 truncate leading-tight mt-0.5">
-                        {salvage.loot ? salvage.loot.substring(0, 30) : 'Empty'}
+                      <p className="text-[10px] text-zinc-500 truncate leading-relaxed mt-1">
+                        {salvage.loot ? salvage.loot.substring(0, 40) : 'Empty'}
                       </p>
                     </div>
                   )
                 })}
                 <div 
-                  className="bg-zinc-950/30 rounded border border-dashed border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer flex items-center justify-center min-h-[40px] group"
+                  className="bg-zinc-950/30 rounded border border-dashed border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer flex items-center justify-center min-h-[60px] group"
                   onClick={() => {
                     const newSalvage = [...salvageContents, { loot: '' }]
                     handleSalvageChange(newSalvage)
                   }}
                 >
-                  <Plus className="h-3 w-3 text-zinc-600 group-hover:text-zinc-400" />
+                  <div className="text-center">
+                    <Plus className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400 mx-auto" />
+                    <span className="text-[10px] text-zinc-600">Add</span>
+                  </div>
                 </div>
               </div>
-              <div className="flex justify-between items-center pt-1 border-t border-orange-900/30">
-                <span className="text-[8px] text-zinc-500">Total Salvage</span>
-                <span className="text-[11px] font-bold text-orange-400 font-mono">
+              <div className="flex justify-between items-center pt-2 border-t border-orange-900/30">
+                <span className="text-xs text-zinc-500">Total Salvage</span>
+                <span className="text-base font-bold text-orange-400 font-mono">
                   {isSalvageAppraising ? '...' : formatISK(estimatedSalvageValue)}
                 </span>
               </div>
 
               {/* FINANCIAL FOOTER */}
-              <div className="bg-zinc-950/60 rounded-lg border border-zinc-800/60 p-2 mt-2 space-y-1.5">
+              <div className="bg-zinc-950/60 rounded-lg border border-zinc-800/60 p-3 mt-2 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[8px] uppercase tracking-wider text-zinc-500 font-bold">Net Profit</span>
-                  <span className="text-sm font-bold text-green-400 font-mono">
+                  <span className="text-xs uppercase tracking-wider text-zinc-500 font-bold">Net Profit</span>
+                  <span className="text-lg font-bold text-green-400 font-mono">
                     {formatISK(
                       (activity.data?.automatedBounties || 0) + 
                       (activity.data?.automatedEss || 0) + 
@@ -801,8 +803,8 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[8px] uppercase tracking-wider text-zinc-500">ISK/hr</span>
-                  <span className="text-[11px] font-medium text-eve-accent font-mono">
+                  <span className="text-xs text-zinc-500">ISK/hr</span>
+                  <span className="text-sm font-medium text-eve-accent font-mono">
                     {(() => {
                       const start = new Date(activity.startTime).getTime()
                       const end = activity.endTime ? new Date(activity.endTime).getTime() : Date.now()
@@ -817,12 +819,12 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                     })()}
                   </span>
                 </div>
-                <div className="flex items-center justify-between pt-1 border-t border-zinc-800/50">
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-3 w-3 text-yellow-500/70" />
-                    <span className="text-[8px] text-zinc-500">ESS</span>
+                <div className="flex items-center justify-between pt-2 border-t border-zinc-800/50">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-yellow-500/70" />
+                    <span className="text-xs text-zinc-500">ESS Payout</span>
                   </div>
-                  <span className="text-[10px] font-mono text-yellow-500">
+                  <span className="text-sm font-mono text-yellow-500">
                     {(() => {
                       const logs = activity.data?.logs || [];
                       const essLogs = logs.filter((l: any) => l.type === 'ess');
@@ -886,23 +888,23 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
 
         {/* Actions for Ratting */}
         {activity.type === 'ratting' && (
-          <div className="flex gap-2 pt-2 border-t border-eve-border/30">
+          <div className="flex gap-2 pt-3 border-t border-eve-border/30">
             <Button 
               size="sm" 
               variant="outline" 
               disabled={isSyncing}
               className={cn(
-                "flex-1 text-[10px] h-8 transition-all duration-300 uppercase font-black tracking-tighter",
+                "flex-1 text-xs h-9 transition-all duration-300 uppercase font-bold tracking-wide",
                 syncStatus === 'success' ? "bg-green-500/20 border-green-500/50 text-green-400" :
                 syncStatus === 'error' ? "bg-red-500/20 border-red-500/50 text-red-400" :
                 "bg-eve-accent/10 border-eve-accent/20 text-white hover:bg-eve-accent hover:text-black"
               )}
               onClick={handleSyncFinancials}
             >
-              {isSyncing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> :
-               syncStatus === 'success' ? <CheckCircle className="h-3 w-3 mr-1" /> :
-               syncStatus === 'error' ? <XCircle className="h-3 w-3 mr-1" /> :
-               <RefreshCw className="h-3 w-3 mr-1" />}
+              {isSyncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> :
+               syncStatus === 'success' ? <CheckCircle className="h-4 w-4 mr-2" /> :
+               syncStatus === 'error' ? <XCircle className="h-4 w-4 mr-2" /> :
+               <RefreshCw className="h-4 w-4 mr-2" />}
               {isSyncing ? 'Syncing...' : syncStatus === 'success' ? 'Updated' : syncStatus === 'error' ? 'Failed' : 'Sync ESI'}
             </Button>
           </div>
