@@ -69,3 +69,29 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Failed to update account' }, { status: 500 })
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { error } = await requireAdmin()
+    if (error) return error
+    
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
+    }
+    
+    // Prevent master from deleting themselves via this simple UI
+    // (Optional security layer)
+    
+    await prisma.user.delete({
+      where: { id: userId }
+    })
+    
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Admin accounts DELETE error:', error)
+    return NextResponse.json({ error: 'Failed to delete account' }, { status: 500 })
+  }
+}

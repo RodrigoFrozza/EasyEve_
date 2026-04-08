@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { 
   Loader2, Users, Shield, Lock, Unlock, Gem, Crosshair, 
   Zap, Compass, ShieldCheck, AlertTriangle, Target,
-  DollarSign, Wallet, History, Settings2, Ban, UserCheck, CheckCircle2, XCircle, Search, RefreshCw
+  DollarSign, Wallet, History, Settings2, Ban, UserCheck, CheckCircle2, XCircle, Search, RefreshCw, Trash2
 } from 'lucide-react'
 import { useSession } from '@/lib/session-client'
 import { cn, formatISK } from '@/lib/utils'
@@ -526,6 +526,26 @@ function AccountCard({
     }
   }
 
+  const handleDelete = async () => {
+    if (!confirm(`TEM CERTEZA? Esta ação é IRREVERSÍVEL. Todos os dados da conta ${account.name || account.accountCode} serão deletados permanentemente.`)) return
+    
+    setSaving('deleting')
+    try {
+      const res = await fetch(`/api/admin/accounts?userId=${account.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast.success(`Conta ${account.accountCode} deletada permanentemente`)
+        onRefresh()
+      } else {
+        const err = await res.json()
+        toast.error(`Erro: ${err.error || 'Falha ao deletar'}`)
+      }
+    } catch (err) {
+      toast.error('Erro de conexão ao deletar conta')
+    } finally {
+      setSaving(null)
+    }
+  }
+
   const isExpired = account.subscriptionEnd && new Date(account.subscriptionEnd) < new Date()
 
   return (
@@ -564,21 +584,34 @@ function AccountCard({
           
           <div className="flex items-center gap-2">
             {account.role !== 'master' && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className={cn(
-                  "h-8 gap-2 border-none transition-all", 
-                  account.isBlocked ? "bg-green-500/10 text-green-500 hover:bg-green-500/20" : "bg-red-500/10 text-red-500 hover:bg-red-500/20"
-                )}
-                onClick={handleBlock}
-                disabled={isBlocking}
-              >
-                {isBlocking ? <Loader2 className="h-3 w-3 animate-spin" /> : (
-                  account.isBlocked ? <Unlock className="h-4 w-4" /> : <Ban className="h-4 w-4" />
-                )}
-                <span className="text-[10px] font-bold uppercase">{account.isBlocked ? 'Reativar' : 'Bloquear'}</span>
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className={cn(
+                    "h-8 gap-2 border-none transition-all", 
+                    account.isBlocked ? "bg-green-500/10 text-green-500 hover:bg-green-500/20" : "bg-red-500/10 text-red-500 hover:bg-red-500/20"
+                  )}
+                  onClick={handleBlock}
+                  disabled={isBlocking || saving === 'deleting'}
+                >
+                  {isBlocking ? <Loader2 className="h-3 w-3 animate-spin" /> : (
+                    account.isBlocked ? <Unlock className="h-4 w-4" /> : <Ban className="h-4 w-4" />
+                  )}
+                  <span className="text-[10px] font-bold uppercase">{account.isBlocked ? 'Reativar' : 'Bloquear'}</span>
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className="h-8 w-8 bg-red-950/20 text-red-500 border-none hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                  onClick={handleDelete}
+                  disabled={saving === 'deleting' || isBlocking}
+                  title="Deletar Conta Permanentemente"
+                >
+                  {saving === 'deleting' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                </Button>
+              </div>
             )}
           </div>
         </div>

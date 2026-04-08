@@ -799,7 +799,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
               </div>
             )}
 
-            {expandedSections.mtu && mtuContents.length > 0 && (
+            {expandedSections.mtu && (
               <div className="grid grid-cols-2 gap-2 max-h-[150px] overflow-y-auto">
                 {mtuContents.map((mtu, idx) => (
                   <div key={idx} className="bg-blue-950/20 border border-blue-900/30 rounded p-2">
@@ -809,10 +809,22 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                     </div>
                   </div>
                 ))}
+                <div 
+                  className="bg-zinc-950/30 rounded border border-dashed border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer flex items-center justify-center p-2 min-h-[40px] group"
+                  onClick={() => {
+                    const newMTUs = [...mtuContents, { loot: '' }]
+                    handleMTUChange(newMTUs)
+                  }}
+                >
+                  <div className="text-center flex items-center gap-2">
+                    <Plus className="h-3 w-3 text-zinc-600 group-hover:text-zinc-400" />
+                    <span className="text-[10px] text-zinc-600">Add MTU</span>
+                  </div>
+                </div>
               </div>
             )}
 
-            {expandedSections.salvage && salvageContents.length > 0 && (
+            {expandedSections.salvage && (
               <div className="grid grid-cols-2 gap-2 max-h-[150px] overflow-y-auto">
                 {salvageContents.map((s, idx) => (
                   <div key={idx} className="bg-orange-950/20 border border-orange-900/30 rounded p-2">
@@ -822,20 +834,19 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                     </div>
                   </div>
                 ))}
+                <div 
+                  className="bg-zinc-950/30 rounded border border-dashed border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer flex items-center justify-center p-2 min-h-[40px] group"
+                  onClick={() => {
+                    const newSalvage = [...salvageContents, { loot: '' }]
+                    handleSalvageChange(newSalvage)
+                  }}
+                >
+                  <div className="text-center flex items-center gap-2">
+                    <Plus className="h-3 w-3 text-zinc-600 group-hover:text-zinc-400" />
+                    <span className="text-[10px] text-zinc-600">Add Salvage</span>
+                  </div>
+                </div>
               </div>
-            )}
-
-            {/* Sync Button */}
-            {activity.type === 'ratting' && (
-              <Button 
-                variant="outline" 
-                disabled={isSyncing}
-                onClick={handleSyncFinancials}
-                className="w-full"
-              >
-                {isSyncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                Sync ESI
-              </Button>
             )}
           </>
         ) : (
