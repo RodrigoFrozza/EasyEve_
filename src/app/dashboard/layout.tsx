@@ -13,8 +13,9 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
-  if (session.user.isBlocked) {
-    redirect(`/login?blocked=true&reason=${encodeURIComponent(session.user.blockReason || 'Manual block')}`)
+  if (session.user.isBlocked === true) {
+    const reason = session.user.blockReason || 'Manual block'
+    redirect(`/login?blocked=true&reason=${encodeURIComponent(reason)}`)
   }
 
   return (
