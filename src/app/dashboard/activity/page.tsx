@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { ActivityCard } from '@/components/activity/ActivityCard'
+import { MiningValuableOres } from '@/components/activity/MiningValuableOres'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -57,37 +58,22 @@ import { useSession } from '@/lib/session-client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn, formatISK, formatNumber } from '@/lib/utils'
 
-// Activity Options
-const ACTIVITY_TYPES = [
-  { id: 'mining', label: 'Mining', icon: Gem, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-  { id: 'ratting', label: 'Ratting', icon: Crosshair, color: 'text-red-400', bg: 'bg-red-500/10' },
-  { id: 'abyssal', label: 'Abyssal', icon: Zap, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-  { id: 'exploration', label: 'Exploration', icon: Compass, color: 'text-green-400', bg: 'bg-green-500/10' },
-  { id: 'crab', label: 'Crab Beacon', icon: ShieldCheck, color: 'text-orange-400', bg: 'bg-orange-500/10' },
-  { id: 'escalations', label: 'Escalations', icon: AlertTriangle, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
-  { id: 'pvp', label: 'PVP', icon: Target, color: 'text-pink-400', bg: 'bg-pink-500/10' },
-]
-
-const REGIONS = ['Minmatar', 'Gallente', 'Caldari', 'Amarr', 'Jove', 'Wormhole']
-const SPACE_TYPES = ['Highsec', 'Lowsec', 'Nullsec', 'Wormhole']
-const MINING_TYPES = ['Ore (Minério)', 'Ice (Gelo)', 'Gas']
-const NPC_FACTIONS = ['Angel Cartel', 'Blood Raider', 'Guristas', 'Sansha', 'Serpentis', 'Rogue Drones']
-const SITE_TYPES_RATTING = ['Combat Anomaly', 'Cosmic Signature', 'DED Complex', 'Belt Ratting']
-const ANOMALIES_BY_FACTION: Record<string, string[]> = {
-  'Angel Cartel': ['Angel Hub', 'Angel Haven (Rock)', 'Angel Haven (Gas)', 'Angel Sanctum', 'Angel Forsaken Hub', 'Angel Forlorn Hub', 'Angel Rally Point'],
-  'Blood Raider': ['Blood Raider Hub', 'Blood Raider Haven', 'Blood Raider Sanctum', 'Blood Raider Forsaken Hub', 'Blood Raider Forlorn Hub'],
-  'Guristas': ['Guristas Hub', 'Guristas Haven', 'Guristas Sanctum', 'Guristas Forsaken Hub', 'Guristas Forlorn Hub'],
-  'Sansha': ['Sansha Hub', 'Sansha Haven', 'Sansha Sanctum', 'Sansha Forsaken Hub', 'Sansha Forlorn Hub'],
-  'Serpentis': ['Serpentis Hub', 'Serpentis Haven', 'Serpentis Sanctum', 'Serpentis Forsaken Hub', 'Serpentis Forlorn Hub'],
-  'Rogue Drones': ['Drone Patrol', 'Drone Horde', 'Drone Squad', 'Hive']
-}
-const ABYSSAL_TIERS = ['T0 (Tranquil)', 'T1 (Calm)', 'T2 (Agitated)', 'T3 (Fierce)', 'T4 (Raging)', 'T5 (Chaotic)', 'T6 (Cataclysmic)']
-const ABYSSAL_WEATHER = ['Electrical', 'Dark', 'Exotic', 'Firestorm', 'Gamma']
-const SHIP_SIZES = ['Frigate', 'Destroyer', 'Cruiser']
-const EXPLORATION_SITE_TYPES = ['Relic Site', 'Data Site', 'Ghost Site', 'Gas Site', 'Sleeper Cache', 'Wormhole']
-const DIFFICULTIES = ['Level I', 'Level II', 'Level III', 'Level IV', 'Level V']
-const CRAB_PHASES = ['Deployment', 'Linking (4min)', 'Scanning (10min)', 'Rewards']
-const DED_LEVELS = ['1/10', '2/10', '3/10', '4/10', '5/10', '6/10', '7/10', '8/10', '9/10', '10/10']
+import { 
+  ACTIVITY_TYPES, 
+  REGIONS, 
+  SPACE_TYPES, 
+  MINING_TYPES, 
+  NPC_FACTIONS, 
+  SITE_TYPES_RATTING, 
+  ANOMALIES_BY_FACTION, 
+  ABYSSAL_TIERS, 
+  ABYSSAL_WEATHER, 
+  SHIP_SIZES, 
+  EXPLORATION_SITE_TYPES, 
+  DIFFICULTIES, 
+  CRAB_PHASES, 
+  DED_LEVELS 
+} from '@/lib/constants/activity-data'
 
 export default function ActivityTrackerPage() {
   return (
@@ -320,8 +306,9 @@ function ActivityTrackerContent() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             {currentTypeInfo && <currentTypeInfo.icon className={cn("h-5 w-5", currentTypeInfo.color)} />}
-            <h1 className="text-3xl font-bold text-white">
+            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
               {currentTypeInfo ? `${currentTypeInfo.label} Tracker` : 'Activity Tracker'}
+              <UTCClock />
             </h1>
           </div>
           <p className="text-gray-400">Track your fleet activities and income performance.</p>
