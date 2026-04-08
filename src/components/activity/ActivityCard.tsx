@@ -701,6 +701,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                 </Button>
               )}
             </div>
+            </div>
 
             {/* Quick Fleet Preview */}
             <div className="flex items-center justify-between">
@@ -1255,8 +1256,6 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
       </CardContent>
     </Card>
   )
