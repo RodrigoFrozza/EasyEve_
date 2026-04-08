@@ -1,25 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { verifyJWT } from '@/lib/auth-jwt'
+import { requireAdmin } from '@/lib/admin-auth'
 
-async function checkAdmin(request: NextRequest) {
-  const token = request.cookies.get('session')?.value
-  if (!token) return false
-  const payload = await verifyJWT(token)
-  if (!payload) return false
-  
-  const user = await prisma.user.findUnique({
-    where: { id: payload.userId },
-    select: { role: true }
-  })
-  
-  return user?.role === 'master'
-}
-
-export async function GET(request: NextRequest) {
-  if (!await checkAdmin(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+export async function GET() {
+  const { error } = await requireAdmin()
+  if (error) return error
 
   const payments = await prisma.payment.findMany({
     orderBy: [
