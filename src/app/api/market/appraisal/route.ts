@@ -76,6 +76,7 @@ export async function POST(req: Request) {
       }
     }))
 
+    return NextResponse.json({ prices: results })
   } catch (error: any) {
     console.error('[Appraisal] Fatal Error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
