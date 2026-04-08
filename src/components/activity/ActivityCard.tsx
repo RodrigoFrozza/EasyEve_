@@ -580,497 +580,352 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
         </Dialog>
       </CardHeader>
       
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         {activity.type === 'ratting' ? (
-          <div className="grid grid-cols-12 gap-3">
-            {/* LEFT COLUMN: Fleet & Stats */}
-            <div className="col-span-12 lg:col-span-4 space-y-3">
-              {/* Fleet Section - RPG Style */}
-              <div className="bg-zinc-950/60 rounded-lg border border-zinc-800/60 p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-px flex-1 bg-zinc-800"></div>
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Fleet</span>
-                  <div className="h-px flex-1 bg-zinc-800"></div>
-                </div>
-                <div className="space-y-1.5">
-                  {activity.participants.map(p => (
-                    <div key={p.characterId} className="flex items-center gap-2 p-1.5 rounded bg-zinc-900/40 border border-zinc-800/30 hover:border-eve-accent/30 transition-colors group">
-                      <Avatar className="h-8 w-8 border border-zinc-800">
-                        <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
-                        <AvatarFallback className="bg-zinc-800 text-zinc-400 text-[10px]">
-                          {p.characterName?.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-medium text-zinc-200 truncate">{p.characterName}</p>
-                        <div className="flex items-center gap-1">
-                          {p.shipTypeId ? (
-                            <div className="flex items-center gap-1">
-                              <Image 
-                                src={`https://images.evetech.net/types/${p.shipTypeId}/icon?size=32`}
-                                alt="ship"
-                                width={14}
-                                height={14}
-                                className="object-contain"
-                              />
-                              <span className="text-[9px] text-zinc-500 truncate">{p.fit || 'Unknown Fit'}</span>
-                            </div>
-                          ) : (
-                            <span className="text-[9px] text-zinc-600">No ship data</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="w-1.5 h-6 bg-green-500/20 rounded-full group-hover:bg-green-500/50 transition-colors"></div>
-                    </div>
-                  ))}
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {/* FLEET COLUMN */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="h-px flex-1 bg-zinc-800"></div>
+                <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-bold">Fleet</span>
+                <div className="h-px flex-1 bg-zinc-800"></div>
               </div>
-
+              <div className="space-y-1">
+                {activity.participants.map(p => (
+                  <div key={p.characterId} className="flex items-center gap-2 p-1.5 rounded bg-zinc-900/40 border border-zinc-800/30 hover:border-eve-accent/30 transition-colors group">
+                    <Avatar className="h-7 w-7 border border-zinc-800">
+                      <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
+                      <AvatarFallback className="bg-zinc-800 text-zinc-400 text-[9px]">
+                        {p.characterName?.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-medium text-zinc-200 truncate">{p.characterName}</p>
+                      {p.shipTypeId && (
+                        <div className="flex items-center gap-1">
+                          <Image 
+                            src={`https://images.evetech.net/types/${p.shipTypeId}/icon?size=32`}
+                            alt="ship"
+                            width={12}
+                            height={12}
+                            className="object-contain"
+                          />
+                          <span className="text-[8px] text-zinc-500 truncate">{p.fit || 'Unknown'}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="w-1 h-5 bg-green-500/20 rounded-full group-hover:bg-green-500/50 transition-colors"></div>
+                  </div>
+                ))}
+              </div>
+              
               {/* Quick Stats */}
-              <div className="bg-zinc-950/60 rounded-lg border border-zinc-800/60 p-3 space-y-2">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="h-px flex-1 bg-zinc-800"></div>
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Stats</span>
-                  <div className="h-px flex-1 bg-zinc-800"></div>
+              <div className="grid grid-cols-3 gap-1.5 pt-1">
+                <div className="bg-zinc-900/40 rounded p-1.5 border border-zinc-800/30 text-center">
+                  <p className="text-[7px] text-zinc-600 uppercase">Duration</p>
+                  <p className="text-[10px] font-mono text-zinc-300">{elapsed}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-zinc-900/40 rounded p-2 border border-zinc-800/30">
-                    <p className="text-[9px] text-zinc-600 uppercase">Duration</p>
-                    <p className="text-sm font-mono text-zinc-300">{elapsed}</p>
-                  </div>
-                  <div className="bg-zinc-900/40 rounded p-2 border border-zinc-800/30">
-                    <p className="text-[9px] text-zinc-600 uppercase">Location</p>
-                    <p className="text-[11px] text-zinc-300 truncate">{activity.space || 'Unknown'}</p>
-                  </div>
+                <div className="bg-zinc-900/40 rounded p-1.5 border border-zinc-800/30 text-center">
+                  <p className="text-[7px] text-zinc-600 uppercase">Space</p>
+                  <p className="text-[9px] text-zinc-300 truncate">{activity.space?.slice(0, 6) || '—'}</p>
                 </div>
-                <div className="bg-zinc-900/40 rounded p-2 border border-zinc-800/30">
-                  <p className="text-[9px] text-zinc-600 uppercase">Site Type</p>
-                  <p className="text-[11px] text-zinc-300">{activity.data?.siteType || 'General'}</p>
+                <div className="bg-zinc-900/40 rounded p-1.5 border border-zinc-800/30 text-center">
+                  <p className="text-[7px] text-zinc-600 uppercase">Site</p>
+                  <p className="text-[9px] text-zinc-300 truncate">{activity.data?.siteType || '—'}</p>
                 </div>
               </div>
             </div>
 
-            {/* RIGHT COLUMN: Inventory */}
-            <div className="col-span-12 lg:col-span-8 space-y-3">
-              {/* MTU Inventory */}
-              <div className="bg-blue-950/20 rounded-lg border border-blue-900/40 p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Image 
-                      src="https://images.evetech.net/Render/33475_512.png"
-                      alt="MTU"
-                      width={16}
-                      height={16}
-                      className="object-contain"
-                    />
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-blue-400/70 font-bold">Loot Containers</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-zinc-500">{activity.data?.mtuContents?.length || 0} MTUs</span>
-                    {(isAppraising) && <Loader2 className="h-3 w-3 animate-spin text-blue-400" />}
-                  </div>
+            {/* MTU INVENTORY */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-1.5">
+                  <Image 
+                    src="https://images.evetech.net/Render/33475_512.png"
+                    alt="MTU"
+                    width={14}
+                    height={14}
+                    className="object-contain"
+                  />
+                  <span className="text-[9px] uppercase tracking-wider text-blue-400/70 font-bold">Loot</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                  {(activity.data?.mtuContents as any[])?.map((mtu: any, idx: number) => {
-                    const lines = (mtu.loot || '').split('\n').filter((l: string) => l.trim())
-                    const itemCount = lines.length
-                    const mtuValue = (activity.data?.mtuValues as number[])?.[idx] || 0
-                    return (
-                      <div 
-                        key={idx}
-                        className="relative bg-zinc-950/60 rounded border border-blue-900/30 hover:border-blue-500/50 transition-all cursor-pointer group"
-                      >
-                        <div className="p-2 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold text-blue-400">#{idx + 1}</span>
-                            <span className="text-[9px] text-zinc-600">{itemCount} items</span>
-                          </div>
-                          <div className="h-8 overflow-hidden">
-                            <p className="text-[8px] text-zinc-500 leading-relaxed line-clamp-2">
-                              {mtu.loot ? mtu.loot.substring(0, 60) + '...' : 'Empty'}
-                            </p>
-                          </div>
-                          <div className="text-[10px] font-mono text-blue-400/80 text-right">
-                            {mtuValue > 0 ? formatISK(mtuValue) : '—'}
-                          </div>
-                        </div>
-                        <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity rounded pointer-events-none"></div>
+                <span className="text-[9px] text-zinc-500">{(activity.data?.mtuContents as any[])?.length || 0}</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
+                {(activity.data?.mtuContents as any[])?.map((mtu: any, idx: number) => {
+                  const lines = (mtu.loot || '').split('\n').filter((l: string) => l.trim())
+                  const mtuValue = (activity.data?.mtuValues as number[])?.[idx] || 0
+                  return (
+                    <div key={idx} className="relative bg-zinc-950/60 rounded border border-blue-900/30 hover:border-blue-500/50 transition-all cursor-pointer group p-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-bold text-blue-400">#{idx + 1}</span>
+                        <span className="text-[8px] text-zinc-600">{lines.length}</span>
                       </div>
-                    )
-                  })}
-                  {/* Add MTU placeholder */}
-                  <div 
-                    className="bg-zinc-950/30 rounded border border-dashed border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer flex items-center justify-center min-h-[80px] group"
-                    onClick={() => {
-                      const newMTUs = [...((activity.data?.mtuContents as any[]) || []), { loot: '' }]
-                      handleMTUChange(newMTUs)
-                    }}
-                  >
-                    <div className="text-center">
-                      <Plus className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400 mx-auto mb-1" />
-                      <span className="text-[9px] text-zinc-600">Add MTU</span>
+                      <p className="text-[7px] text-zinc-500 truncate leading-tight mt-0.5">
+                        {mtu.loot ? mtu.loot.substring(0, 30) : 'Empty'}
+                      </p>
+                      <p className="text-[9px] font-mono text-blue-400/80 text-right mt-1">
+                        {mtuValue > 0 ? formatISK(mtuValue) : '—'}
+                      </p>
                     </div>
-                  </div>
+                  )
+                })}
+                <div 
+                  className="bg-zinc-950/30 rounded border border-dashed border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer flex items-center justify-center min-h-[50px] group"
+                  onClick={() => {
+                    const newMTUs = [...((activity.data?.mtuContents as any[]) || []), { loot: '' }]
+                    handleMTUChange(newMTUs)
+                  }}
+                >
+                  <Plus className="h-3 w-3 text-zinc-600 group-hover:text-zinc-400" />
                 </div>
-                {estimatedLootValue > 0 && (
-                  <div className="mt-2 pt-2 border-t border-blue-900/30 flex justify-end">
-                    <span className="text-xs font-bold text-blue-400 font-mono">
-                      Total: {formatISK(estimatedLootValue)}
-                    </span>
-                  </div>
-                )}
+              </div>
+              <div className="flex justify-between items-center pt-1 border-t border-blue-900/30">
+                <span className="text-[8px] text-zinc-500">Total Loot</span>
+                <span className="text-[11px] font-bold text-blue-400 font-mono">
+                  {isAppraising ? '...' : formatISK(estimatedLootValue)}
+                </span>
+              </div>
+            </div>
+
+            {/* SALVAGE INVENTORY + FINANCIAL FOOTER */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-1.5">
+                  <Wrench className="h-3.5 w-3.5 text-orange-400/70" />
+                  <span className="text-[9px] uppercase tracking-wider text-orange-400/70 font-bold">Salvage</span>
+                </div>
+                <span className="text-[9px] text-zinc-500">{(activity.data?.salvageContents as any[])?.length || 0}</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[100px] overflow-y-auto pr-1 custom-scrollbar">
+                {(activity.data?.salvageContents as any[])?.map((salvage: any, idx: number) => {
+                  const lines = (salvage.loot || '').split('\n').filter((l: string) => l.trim())
+                  return (
+                    <div key={idx} className="relative bg-zinc-950/60 rounded border border-orange-900/30 hover:border-orange-500/50 transition-all cursor-pointer group p-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-bold text-orange-400">#{idx + 1}</span>
+                        <span className="text-[8px] text-zinc-600">{lines.length}</span>
+                      </div>
+                      <p className="text-[7px] text-zinc-500 truncate leading-tight mt-0.5">
+                        {salvage.loot ? salvage.loot.substring(0, 30) : 'Empty'}
+                      </p>
+                    </div>
+                  )
+                })}
+                <div 
+                  className="bg-zinc-950/30 rounded border border-dashed border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer flex items-center justify-center min-h-[40px] group"
+                  onClick={() => {
+                    const newSalvage = [...((activity.data?.salvageContents as any[]) || []), { loot: '' }]
+                    handleSalvageChange(newSalvage)
+                  }}
+                >
+                  <Plus className="h-3 w-3 text-zinc-600 group-hover:text-zinc-400" />
+                </div>
+              </div>
+              <div className="flex justify-between items-center pt-1 border-t border-orange-900/30">
+                <span className="text-[8px] text-zinc-500">Total Salvage</span>
+                <span className="text-[11px] font-bold text-orange-400 font-mono">
+                  {isSalvageAppraising ? '...' : formatISK(estimatedSalvageValue)}
+                </span>
               </div>
 
-              {/* Salvage Inventory */}
-              <div className="bg-orange-950/20 rounded-lg border border-orange-900/40 p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Wrench className="h-4 w-4 text-orange-400/70" />
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-orange-400/70 font-bold">Salvage</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-zinc-500">{(activity.data?.salvageContents as any[])?.length || 0} units</span>
-                    {(isSalvageAppraising) && <Loader2 className="h-3 w-3 animate-spin text-orange-400" />}
-                  </div>
+              {/* FINANCIAL FOOTER */}
+              <div className="bg-zinc-950/60 rounded-lg border border-zinc-800/60 p-2 mt-2 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[8px] uppercase tracking-wider text-zinc-500 font-bold">Net Profit</span>
+                  <span className="text-sm font-bold text-green-400 font-mono">
+                    {formatISK(
+                      (activity.data?.automatedBounties || 0) + 
+                      (activity.data?.automatedEss || 0) + 
+                      (activity.data?.additionalBounties || 0) +
+                      estimatedLootValue +
+                      estimatedSalvageValue
+                    )}
+                  </span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                  {(activity.data?.salvageContents as any[])?.map((salvage: any, idx: number) => {
-                    const lines = (salvage.loot || '').split('\n').filter((l: string) => l.trim())
-                    const itemCount = lines.length
-                    return (
-                      <div 
-                        key={idx}
-                        className="relative bg-zinc-950/60 rounded border border-orange-900/30 hover:border-orange-500/50 transition-all cursor-pointer group"
-                      >
-                        <div className="p-2 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold text-orange-400">Unit #{idx + 1}</span>
-                            <span className="text-[9px] text-zinc-600">{itemCount} items</span>
-                          </div>
-                          <div className="h-8 overflow-hidden">
-                            <p className="text-[8px] text-zinc-500 leading-relaxed line-clamp-2">
-                              {salvage.loot ? salvage.loot.substring(0, 60) + '...' : 'Empty'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="absolute inset-0 bg-orange-500/10 opacity-0 group-hover:opacity-100 transition-opacity rounded pointer-events-none"></div>
-                      </div>
-                    )
-                  })}
-                  {/* Add Salvage placeholder */}
-                  <div 
-                    className="bg-zinc-950/30 rounded border border-dashed border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer flex items-center justify-center min-h-[60px] group"
-                    onClick={() => {
-                      const newSalvage = [...((activity.data?.salvageContents as any[]) || []), { loot: '' }]
-                      handleSalvageChange(newSalvage)
-                    }}
-                  >
-                    <div className="text-center">
-                      <Plus className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400 mx-auto mb-1" />
-                      <span className="text-[9px] text-zinc-600">Add Salvage</span>
-                    </div>
-                  </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[8px] uppercase tracking-wider text-zinc-500">ISK/hr</span>
+                  <span className="text-[11px] font-medium text-eve-accent font-mono">
+                    {(() => {
+                      const start = new Date(activity.startTime).getTime()
+                      const end = activity.endTime ? new Date(activity.endTime).getTime() : Date.now()
+                      const hours = (end - start) / 3600000;
+                      const total = 
+                        (activity.data?.automatedBounties || 0) + 
+                        (activity.data?.automatedEss || 0) + 
+                        (activity.data?.additionalBounties || 0) +
+                        estimatedLootValue +
+                        estimatedSalvageValue;
+                      return hours > 0.01 ? formatISK(total / hours) : '0';
+                    })()}
+                  </span>
                 </div>
-                {estimatedSalvageValue > 0 && (
-                  <div className="mt-2 pt-2 border-t border-orange-900/30 flex justify-end">
-                    <span className="text-xs font-bold text-orange-400 font-mono">
-                      Total: {formatISK(estimatedSalvageValue)}
-                    </span>
+                <div className="flex items-center justify-between pt-1 border-t border-zinc-800/50">
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-3 w-3 text-yellow-500/70" />
+                    <span className="text-[8px] text-zinc-500">ESS</span>
                   </div>
-                )}
+                  <span className="text-[10px] font-mono text-yellow-500">
+                    {(() => {
+                      const logs = activity.data?.logs || [];
+                      const essLogs = logs.filter((l: any) => l.type === 'ess');
+                      if (essLogs.length === 0) return '—';
+                      const lastPayout = new Date(essLogs[0].date).getTime();
+                      const nextPayout = lastPayout + (168 * 60 * 1000);
+                      const diff = nextPayout - Date.now();
+                      if (diff <= 0) return 'NOW';
+                      const h = Math.floor(diff / 3600000);
+                      const m = Math.floor((diff % 3600000) / 60000);
+                      return `${h}h ${m}m`;
+                    })()}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         ) : (
           /* Default layout for non-ratting */
-          <>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="space-y-1">
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Space Type</p>
-                <div className="flex items-center gap-2 text-white font-medium">
-                  <Box className="h-3 w-3 text-zinc-500" />
-                  {activity.space || 'Unknown'}
-                </div>
-              </div>
-              <div className="space-y-1 text-right">
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Detail</p>
-                <div className="text-white font-medium">
-                  {activity.data?.siteType || activity.data?.tier || activity.data?.miningType || 'General'}
-                </div>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="space-y-1">
+              <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Space Type</p>
+              <div className="flex items-center gap-2 text-white font-medium">
+                <Box className="h-3 w-3 text-zinc-500" />
+                {activity.space || 'Unknown'}
               </div>
             </div>
-
-            <div className="space-y-3">
+            <div className="space-y-1 text-right">
+              <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Detail</p>
+              <div className="text-white font-medium">
+                {activity.data?.siteType || activity.data?.tier || activity.data?.miningType || 'General'}
+              </div>
+            </div>
+            <div className="col-span-2 space-y-3">
               <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Active Fleet</p>
               <div className="flex flex-wrap gap-4">
                 {activity.participants.map(p => (
                   <div key={p.characterId} className="relative group/participant">
-                    <div className="relative">
-                      <Avatar className="h-12 w-12 border-2 border-zinc-900 group-hover/participant:border-eve-accent transition-all duration-300">
-                        <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
-                        <AvatarFallback className="bg-zinc-800 text-zinc-400 text-xs">
-                          {p.characterName?.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                    <Avatar className="h-12 w-12 border-2 border-zinc-900 group-hover/participant:border-eve-accent transition-all duration-300">
+                      <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
+                      <AvatarFallback className="bg-zinc-800 text-zinc-400 text-xs">
+                        {p.characterName?.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    {p.shipTypeId && (
                       <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-black border border-zinc-800 flex items-center justify-center overflow-hidden group-hover/participant:border-eve-accent transition-colors">
-                        {p.shipTypeId ? (
-                          <Image 
-                            src={`https://images.evetech.net/types/${p.shipTypeId}/icon?size=32`}
-                            alt="ship"
-                            fill
-                            className="object-cover p-0.5"
-                          />
-                        ) : (
-                          <HelpCircle className="h-3.5 w-3.5 text-zinc-500" />
-                        )}
+                        <Image 
+                          src={`https://images.evetech.net/types/${p.shipTypeId}/icon?size=32`}
+                          alt="ship"
+                          fill
+                          className="object-cover p-0.5"
+                        />
                       </div>
-                    </div>
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black/90 border border-eve-border rounded text-[10px] text-white whitespace-nowrap opacity-0 group-hover/participant:opacity-100 pointer-events-none transition-opacity z-50">
-                      <p className="font-bold text-eve-accent">{p.characterName}</p>
-                      <p className="text-zinc-500">{p.shipTypeId ? 'Click for fit info' : 'Unknown Ship'}</p>
-                    </div>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
-          </>
+          </div>
         )}
 
-        {/* Financial Highlights */}
+        {/* Actions for Ratting */}
         {activity.type === 'ratting' && (
-          <div className="space-y-3 pt-2 border-t border-eve-border/30">
-            <div className="flex justify-between items-end">
-              <div>
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Net ISK Profit</p>
-                <div className="text-lg font-bold text-green-400 font-mono leading-none">
-                  {formatISK(
-                    (activity.data?.automatedBounties || 0) + 
-                    (activity.data?.automatedEss || 0) + 
-                    (activity.data?.additionalBounties || 0) +
-                    estimatedLootValue +
-                    estimatedSalvageValue
-                  )}
-                </div>
-                <div className="flex flex-col gap-0.5 mt-1">
-                  {(isAppraising || isSalvageAppraising) ? (
-                    <div className="h-4 w-32 bg-zinc-800 animate-pulse rounded"></div>
-                  ) : (
-                    <>
-                      {estimatedLootValue > 0 && (
-                        <div className="text-xs font-bold text-blue-400 font-mono">
-                          + {formatISK(estimatedLootValue)} (Loot)
-                        </div>
-                      )}
-                      {estimatedSalvageValue > 0 && (
-                        <div className="text-xs font-bold text-orange-400 font-mono">
-                          + {formatISK(estimatedSalvageValue)} (Salvage)
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Est. ISK/hr</p>
-                <div className="text-sm font-medium text-eve-accent font-mono">
-                  {(() => {
-                    const start = new Date(activity.startTime).getTime()
-                    const end = activity.endTime ? new Date(activity.endTime).getTime() : Date.now()
-                    const hours = (end - start) / 3600000;
-                    const total = 
+          <div className="flex gap-2 pt-2 border-t border-eve-border/30">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              disabled={isSyncing}
+              className={cn(
+                "flex-1 text-[10px] h-8 transition-all duration-300 uppercase font-black tracking-tighter",
+                syncStatus === 'success' ? "bg-green-500/20 border-green-500/50 text-green-400" :
+                syncStatus === 'error' ? "bg-red-500/20 border-red-500/50 text-red-400" :
+                "bg-eve-accent/10 border-eve-accent/20 text-white hover:bg-eve-accent hover:text-black"
+              )}
+              onClick={handleSyncFinancials}
+            >
+              {isSyncing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> :
+               syncStatus === 'success' ? <CheckCircle className="h-3 w-3 mr-1" /> :
+               syncStatus === 'error' ? <XCircle className="h-3 w-3 mr-1" /> :
+               <RefreshCw className="h-3 w-3 mr-1" />}
+              {isSyncing ? 'Syncing...' : syncStatus === 'success' ? 'Updated' : syncStatus === 'error' ? 'Failed' : 'Sync ESI'}
+            </Button>
+          </div>
+        )}
+
+        {/* Non-ratting financial and loot sections */}
+        {activity.type !== 'ratting' && (
+          <>
+            <div className="space-y-3 pt-2 border-t border-eve-border/30">
+              <div className="flex justify-between items-end">
+                <div>
+                  <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Net ISK Profit</p>
+                  <div className="text-lg font-bold text-green-400 font-mono leading-none">
+                    {formatISK(
                       (activity.data?.automatedBounties || 0) + 
                       (activity.data?.automatedEss || 0) + 
                       (activity.data?.additionalBounties || 0) +
                       estimatedLootValue +
-                      estimatedSalvageValue;
-                    return hours > 0.01 ? formatISK(total / hours) : formatISK(0);
-                  })()}/hr
+                      estimatedSalvageValue
+                    )}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Est. ISK/hr</p>
+                  <div className="text-sm font-medium text-eve-accent font-mono">
+                    {(() => {
+                      const start = new Date(activity.startTime).getTime()
+                      const end = activity.endTime ? new Date(activity.endTime).getTime() : Date.now()
+                      const hours = (end - start) / 3600000;
+                      const total = 
+                        (activity.data?.automatedBounties || 0) + 
+                        (activity.data?.automatedEss || 0) + 
+                        (activity.data?.additionalBounties || 0) +
+                        estimatedLootValue +
+                        estimatedSalvageValue;
+                      return hours > 0.01 ? formatISK(total / hours) : formatISK(0);
+                    })()}/hr
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* ESS Payout Timer */}
-            <div className="bg-zinc-950/50 rounded p-2 flex items-center justify-between border border-eve-border/20">
-              <div className="flex items-center gap-2">
-                <Clock className="h-3.5 w-3.5 text-yellow-500/70" />
-                <span className="text-[10px] uppercase font-bold text-zinc-500">Next ESS Payout</span>
+            <div className="space-y-3 pt-4 border-t border-eve-border/30">
+              <div className="flex items-center justify-between">
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5">
+                  <Box className="h-3 w-3" /> Loot & Salvage
+                </p>
               </div>
-              {(() => {
-                const logs = activity.data?.logs || [];
-                const essLogs = logs.filter((l: any) => l.type === 'ess');
-                const manualHours = activity.data?.essManualHours;
-                
-                const getTimeRemaining = () => {
-                  // Se o usuário definiu manualmente, usar esse valor
-                  if (manualHours !== undefined && manualHours !== null) {
-                    const ms = manualHours * 60 * 60 * 1000 - (Date.now() - (activity.data?.essManualSetAt ? new Date(activity.data.essManualSetAt).getTime() : Date.now()));
-                    if (ms <= 0) return { text: 'PAYING NOW...', isManual: true };
-                    const h = Math.floor(ms / 3600000);
-                    const m = Math.floor((ms % 3600000) / 60000);
-                    return { text: `${h}h ${m}m`, isManual: true };
-                  }
-                  
-                  // Caso contrário, usar o cálculo automático do último payout
-                  if (essLogs.length === 0) return { text: 'WAITING SYNC...' };
-                  
-                  const lastPayout = new Date(essLogs[0].date).getTime();
-                  const nextPayout = lastPayout + (168 * 60 * 1000); // 2h 48m
-                  const diff = nextPayout - Date.now();
-                  
-                  if (diff <= 0) return { text: 'PAYING NOW...' };
-                  
-                  const h = Math.floor(diff / 3600000);
-                  const m = Math.floor((diff % 3600000) / 60000);
-                  return { text: `${h}h ${m}m`, isManual: false };
-                };
-                
-                const { text: timeText, isManual } = getTimeRemaining();
-                
-                return (
-                  <div className="flex items-center gap-2">
-                    <span className={cn(
-                      "text-[11px] font-mono font-bold",
-                      isManual ? "text-orange-400" : "text-yellow-500",
-                      timeText === 'PAYING NOW...' && "animate-pulse text-red-400"
-                    )}>
-                      {timeText}
-                    </span>
-                    <button
-                      onClick={async () => {
-                        const hours = window.prompt('Digite as horas faltantes para o próximo ESS payout (ex: 2.5):');
-                        if (hours && !isNaN(parseFloat(hours))) {
-                          const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
-                          store.updateActivity(activity.id, {
-                            data: { 
-                              ...activity.data, 
-                              essManualHours: parseFloat(hours),
-                              essManualSetAt: new Date().toISOString()
-                            }
-                          });
-                          // Salvar no backend
-                          await fetch(`/api/activities/${activity.id}`, {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                              data: { 
-                                ...activity.data, 
-                                essManualHours: parseFloat(hours),
-                                essManualSetAt: new Date().toISOString()
-                              } 
-                            })
-                          });
-                        }
-                      }}
-                      className="text-[10px] text-zinc-600 hover:text-zinc-400 underline"
-                    >
-                      {isManual ? '✎' : 'Set'}
-                    </button>
-                  </div>
-                );
-              })()}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <p className="text-[9px] text-blue-400/50 uppercase font-bold tracking-wider">MTU Loot</p>
+                  <MTULootField 
+                    value={activity.data?.mtuContents || []} 
+                    activityId={activity.id}
+                    mtuValues={activity.data?.mtuValues || []}
+                    onChange={async (mtus) => {
+                      const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
+                      store.updateActivity(activity.id, {
+                        data: { ...activity.data, mtuContents: mtus }
+                      });
+                    }} 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-[9px] text-orange-400/50 uppercase font-bold tracking-wider">Salvage</p>
+                  <SalvageField 
+                    value={activity.data?.salvageContents || []} 
+                    activityId={activity.id}
+                    onChange={async (salvage) => {
+                      const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
+                      store.updateActivity(activity.id, {
+                        data: { ...activity.data, salvageContents: salvage }
+                      });
+                    }} 
+                  />
+                </div>
+              </div>
             </div>
-
-            {/* Actions for Ratting */}
-            <div className="flex gap-2">
-              <Button 
-                size="sm" 
-                variant="outline" 
-                disabled={isSyncing}
-                className={cn(
-                  "flex-1 text-[10px] h-8 transition-all duration-300 uppercase font-black tracking-tighter",
-                  syncStatus === 'success' ? "bg-green-500/20 border-green-500/50 text-green-400" :
-                  syncStatus === 'error' ? "bg-red-500/20 border-red-500/50 text-red-400" :
-                  "bg-eve-accent/10 border-eve-accent/20 text-white hover:bg-eve-accent hover:text-black"
-                )}
-                onClick={handleSyncFinancials}
-              >
-                {isSyncing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> :
-                 syncStatus === 'success' ? <CheckCircle className="h-3 w-3 mr-1" /> :
-                 syncStatus === 'error' ? <XCircle className="h-3 w-3 mr-1" /> :
-                 <RefreshCw className="h-3 w-3 mr-1" />}
-                {isSyncing ? 'Syncing...' : syncStatus === 'success' ? 'Updated' : syncStatus === 'error' ? 'Failed' : 'Sync ESI'}
-              </Button>
-            </div>
-          </div>
+          </>
         )}
-
-        {/* Loot & Salvage Section */}
-        <div className="space-y-3 pt-4 border-t border-eve-border/30">
-          <div className="flex items-center justify-between">
-            <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5">
-              <Box className="h-3 w-3" /> Loot & Salvage
-            </p>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-[9px] h-4 bg-blue-950/30 border-blue-900/30 text-blue-400">
-                Loot: {activity.data?.mtuContents?.length || 0}
-              </Badge>
-              <Badge variant="outline" className="text-[9px] h-4 bg-orange-950/30 border-orange-900/30 text-orange-400">
-                Salvage: {activity.data?.salvageContents?.length || 0}
-              </Badge>
-            </div>
-          </div>
-
-          {/* Value Summary */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-blue-950/20 border border-blue-900/30 rounded p-2 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Box className="h-3 w-3 text-blue-400" />
-                <span className="text-[10px] text-blue-400/70 font-medium">Loot</span>
-              </div>
-              {isAppraising ? (
-                <div className="h-4 w-16 bg-blue-900/30 animate-pulse rounded"></div>
-              ) : (
-                <span className="text-xs font-bold text-blue-400 font-mono">
-                  {formatISK(estimatedLootValue)}
-                </span>
-              )}
-            </div>
-            <div className="bg-orange-950/20 border border-orange-900/30 rounded p-2 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Wrench className="h-3 w-3 text-orange-400" />
-                <span className="text-[10px] text-orange-400/70 font-medium">Salvage</span>
-              </div>
-              {isSalvageAppraising ? (
-                <div className="h-4 w-16 bg-orange-900/30 animate-pulse rounded"></div>
-              ) : (
-                <span className="text-xs font-bold text-orange-400 font-mono">
-                  {formatISK(estimatedSalvageValue)}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <p className="text-[9px] text-blue-400/50 uppercase font-bold tracking-wider">MTU Loot</p>
-              <MTULootField 
-                value={activity.data?.mtuContents || []} 
-                activityId={activity.id}
-                mtuValues={activity.data?.mtuValues || []}
-                onChange={async (mtus) => {
-                  const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
-                  store.updateActivity(activity.id, {
-                    data: { ...activity.data, mtuContents: mtus }
-                  });
-                }} 
-              />
-            </div>
-            <div className="space-y-2">
-              <p className="text-[9px] text-orange-400/50 uppercase font-bold tracking-wider">Salvage</p>
-              <SalvageField 
-                value={activity.data?.salvageContents || []} 
-                activityId={activity.id}
-                onChange={async (salvage) => {
-                  const store = (await import('@/lib/stores/activity-store')).useActivityStore.getState();
-                  store.updateActivity(activity.id, {
-                    data: { ...activity.data, salvageContents: salvage }
-                  });
-                }} 
-              />
-            </div>
-          </div>
-        </div>
       </CardContent>
     </Card>
   )
