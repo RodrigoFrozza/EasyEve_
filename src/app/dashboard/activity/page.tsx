@@ -250,7 +250,6 @@ function ActivityTrackerContent() {
   }
 
   const [anomalies, setAnomalies] = useState<any[]>([])
-  const [miningOptions, setMiningOptions] = useState<{ id: number; name: string }[]>([])
 
   // Fetch anomalies when faction changes
   useEffect(() => {
@@ -280,31 +279,6 @@ function ActivityTrackerContent() {
         })
     }
   }, [newActivity.data?.npcFaction, newActivity.data?.siteType, newActivity.type])
-
-  // Fetch mining types when miningType changes
-  useEffect(() => {
-    if (newActivity.type === 'mining' && newActivity.data?.miningType) {
-      const miningType = newActivity.data.miningType
-      console.log('[UI] Fetching mining types for:', miningType)
-      fetch(`/api/sde/mining-types?type=${miningType}`)
-        .then(res => res.json())
-        .then(data => {
-          console.log('[UI] Mining types response:', data)
-          if (Array.isArray(data)) {
-            setMiningOptions(data)
-          } else {
-            setMiningOptions([])
-          }
-        })
-        .catch(err => {
-          console.error('Failed to fetch mining types:', err)
-          setMiningOptions([])
-        })
-    } else {
-      console.log('[UI] No miningType selected, clearing options')
-      setMiningOptions([])
-    }
-  }, [newActivity.data?.miningType, newActivity.type])
 
   const toggleParticipant = (characterId: number, characterName: string) => {
     const current = newActivity.participants || []
@@ -443,35 +417,13 @@ function ActivityTrackerContent() {
                     </div>
                     <div className="space-y-2">
                       <Label>Mining Type</Label>
-                      <Select onValueChange={(v) => {
-                        console.log('[UI] Mining Type selected:', v)
-                        updateData({ miningType: v })
-                      }}>
+                      <Select onValueChange={(v) => updateData({ miningType: v })}>
                         <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Type" /></SelectTrigger>
                         <SelectContent><SelectContentList items={MINING_TYPES} /></SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label>
-                        {newActivity.data?.miningType === 'Ice' ? 'Ice Type' : 
-                         newActivity.data?.miningType === 'Gas' ? 'Gas Type' : 
-                         newActivity.data?.miningType === 'Moon' ? 'Moon Type' : 
-                         'Primary Ore'}
-                      </Label>
-                      <Select onValueChange={(v) => updateData({ oreType: v })}>
-                        <SelectTrigger className="bg-eve-dark border-eve-border">
-                          <SelectValue placeholder="Select Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {miningOptions.map(opt => (
-                            <SelectItem key={opt.id} value={opt.name}>{opt.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <div className="space-y-2 col-span-2">
-                      <Label>Melhores Minérios para Minerar</Label>
-                      <MiningValuableOres />
+                      <MiningValuableOres initialType={newActivity.data?.miningType} />
                     </div>
                   </>
                 )}
