@@ -886,6 +886,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                 onSync={handleSyncFinancials}
                 isSyncing={isSyncing}
                 syncStatus={syncStatus}
+                onEnd={onEnd}
               />
             ) : activity.type === 'ratting' ? (
               <RattingActivityContent 
