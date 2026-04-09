@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { ActivityCard } from '@/components/activity/ActivityCard'
 import { RattingHelpModal } from '@/components/activity/RattingHelpModal'
 import { MiningValuableOres } from '@/components/activity/MiningValuableOres'
+import { getMiningTypes } from '@/lib/sde'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -250,6 +251,7 @@ function ActivityTrackerContent() {
   }
 
   const [anomalies, setAnomalies] = useState<any[]>([])
+  const [miningOptions, setMiningOptions] = useState<{ id: number; name: string }[]>([])
 
   // Fetch anomalies when faction changes
   useEffect(() => {
@@ -279,6 +281,21 @@ function ActivityTrackerContent() {
         })
     }
   }, [newActivity.data?.npcFaction, newActivity.data?.siteType, newActivity.type])
+
+  // Fetch mining types when miningType changes
+  useEffect(() => {
+    if (newActivity.type === 'mining' && newActivity.data?.miningType) {
+      const miningType = newActivity.data.miningType as 'Ore' | 'Ice' | 'Gas' | 'Moon'
+      getMiningTypes(miningType)
+        .then(setMiningOptions)
+        .catch(err => {
+          console.error('Failed to fetch mining types:', err)
+          setMiningOptions([])
+        })
+    } else {
+      setMiningOptions([])
+    }
+  }, [newActivity.data?.miningType, newActivity.type])
 
   const toggleParticipant = (characterId: number, characterName: string) => {
     const current = newActivity.participants || []
@@ -423,29 +440,22 @@ function ActivityTrackerContent() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Primary Ore (Optional)</Label>
+                      <Label>
+                        {newActivity.data?.miningType === 'Ice' ? 'Ice Type' : 
+                         newActivity.data?.miningType === 'Gas' ? 'Gas Type' : 
+                         newActivity.data?.miningType === 'Moon' ? 'Moon Type' : 
+                         'Primary Ore'}
+                      </Label>
                       <Select onValueChange={(v) => updateData({ oreType: v })}>
-                        <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Ore" /></SelectTrigger>
+                        <SelectTrigger className="bg-eve-dark border-eve-border">
+                          <SelectValue placeholder="Select Type" />
+                        </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Veldspar">Veldspar</SelectItem>
-                          <SelectItem value="Scordite">Scordite</SelectItem>
-                          <SelectItem value="Pyroxeres">Pyroxeres</SelectItem>
-                          <SelectItem value="Plagioclase">Plagioclase</SelectItem>
-                          <SelectItem value="Omber">Omber</SelectItem>
-                          <SelectItem value="Kernite">Kernite</SelectItem>
-                          <SelectItem value="Gneiss">Gneiss</SelectItem>
-                          <SelectItem value="Mercoxit">Mercoxit</SelectItem>
+                          {miningOptions.map(opt => (
+                            <SelectItem key={opt.id} value={opt.name}>{opt.name}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Initial Quantity (m³)</Label>
-                      <Input 
-                        type="number"
-                        placeholder="0"
-                        onChange={(e) => updateData({ quantity: Number(e.target.value) })}
-                        className="bg-eve-dark border-eve-border"
-                      />
                     </div>
                     <div className="space-y-2 col-span-2">
                       <Label>Melhores Minérios para Minerar</Label>

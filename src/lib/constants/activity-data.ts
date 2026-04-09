@@ -20,7 +20,7 @@ export const ACTIVITY_TYPES = [
 
 export const REGIONS = ['Minmatar', 'Gallente', 'Caldari', 'Amarr', 'Jove', 'Wormhole']
 export const SPACE_TYPES = ['Highsec', 'Lowsec', 'Nullsec', 'Wormhole']
-export const MINING_TYPES = ['Ore (Minério)', 'Ice (Gelo)', 'Gas']
+export const MINING_TYPES = ['Ore', 'Ice', 'Gas', 'Moon']
 export const NPC_FACTIONS = ['Angel Cartel', 'Blood Raider', 'Guristas', 'Sansha', 'Serpentis', 'Rogue Drones']
 export const SITE_TYPES_RATTING = ['Combat Anomaly', 'Cosmic Signature', 'DED Complex', 'Belt Ratting']
 

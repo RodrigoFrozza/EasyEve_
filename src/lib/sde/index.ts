@@ -237,3 +237,70 @@ export async function getCategoryInfo(categoryId: number): Promise<CategoryInfo 
   }
   return null
 }
+
+// Mining type categories from ESI
+const MINING_CATEGORIES: Record<string, number> = {
+  'Ore': 25,      // Asteroid category
+  'Ice': 25,      // Same category (filtered by group)
+  'Gas': 25,       // Same category (filtered by group)
+  'Moon': 25,      // Same category (filtered by group)
+}
+
+// Mining type groups from ESI
+const MINING_GROUPS: Record<string, number[]> = {
+  'Ore': [455, 456, 457, 458, 459, 460, 461, 462, 463, 464, 466, 467, 468, 469, 470, 471, 472, 473, 474, 475, 476, 477, 478, 479, 480, 481, 482, 483, 484, 485, 486, 487, 488, 489, 490, 491, 492, 493, 494, 495, 496, 497, 498, 499, 500, 501, 502, 503, 504, 505, 506, 507, 508, 509],
+}
+
+/**
+ * Get mining types from the database based on mining category.
+ * 'Ore' - All asteroid ores (base + variants)
+ * 'Ice' - Ice products
+ * 'Gas' - Gas cloud materials  
+ * 'Moon' - Moon mining materials
+ */
+export async function getMiningTypes(miningType: 'Ore' | 'Ice' | 'Gas' | 'Moon'): Promise<{ id: number; name: string }[]> {
+  try {
+    let groupIds: number[] = []
+    
+    // Define groups per mining type based on ESI data
+    if (miningType === 'Ore') {
+      // All asteroid ore groups - Veldspar, Scordite, Pyroxeres, etc.
+      groupIds = [
+        455, 456, 457, 458, 459, 460, 461, 462, 463, 464,  // Common ores
+        466, 467, 468, 469, 470, 471, 472, 473, 474, 475,  // Uncommon ores
+        476, 477, 478, 479, 480, 481, 482, 483, 484, 485,  // Rare ores
+        486, 487, 488, 489, 490, 491, 492, 493, 494, 495,  // More rare
+        496, 497, 498, 499, 500, 501, 502, 503, 504, 505,  // Even more
+        506, 507, 508, 509                                   // Mercoxit and variants
+      ]
+    } else if (miningType === 'Ice') {
+      // Ice groups (465 is Ice)
+      groupIds = [465]
+    } else if (miningType === 'Gas') {
+      // Gas cloud groups
+      groupIds = [1060, 1061, 1062, 1063]
+    } else if (miningType === 'Moon') {
+      // Moon mining groups
+      groupIds = [1084, 1085, 1086, 1087, 1088, 1089, 1090, 1091, 1092, 1093, 1094, 1095, 1096, 1097, 1098, 1099, 1100]
+    }
+
+    const types = await prisma.eveType.findMany({
+      where: {
+        groupId: { in: groupIds },
+        published: true
+      },
+      select: {
+        id: true,
+        name: true
+      },
+      orderBy: {
+        name: 'asc'
+      }
+    })
+
+    return types
+  } catch (error) {
+    console.error(`Error fetching mining types for ${miningType}:`, error)
+    return []
+  }
+}
