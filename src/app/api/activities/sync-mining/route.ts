@@ -38,7 +38,9 @@ export async function POST(request: Request) {
 
     const startTimeManual = new Date(activity.startTime)
     const startTime = new Date(startTimeManual.getTime() - (60 * 60 * 1000))
-    const endTimeLimit = activity.endTime ? new Date(new Date(activity.endTime).getTime() + 4 * 60 * 60 * 1000) : new Date()
+    const endTimeLimit = activity.endTime 
+      ? new Date(new Date(activity.endTime).getTime() + 4 * 60 * 60 * 1000) 
+      : new Date(startTimeManual.getTime() + 4 * 60 * 60 * 1000)
 
     console.log(`[SYNC-MINING] --- START for Activity ID: ${activityId} ---`)
     console.log(`[SYNC-MINING] Activity start time: ${activity.startTime}`)
@@ -54,11 +56,11 @@ export async function POST(request: Request) {
     // Don't load old logs to avoid including data from previous activities
     const logMap = new Map<string, any>()
     
-    // Also filter existing logs by current activity period to prevent stale data
+    // Also filter existing logs by current activity date to prevent stale data
+    const activityDateOnly = startTimeManual.toISOString().split('T')[0]
     const existingFiltered = existingLogs.filter((log: any) => {
-      const logDate = new Date(log.date)
-      const isInPeriod = logDate >= startTime && logDate <= endTimeLimit
-      return isInPeriod
+      const logDateOnly = log.date?.split('T')[0] || new Date(log.date).toISOString().split('T')[0]
+      return logDateOnly >= activityDateOnly
     })
     
     console.log(`[SYNC-MINING] Existing logs in period: ${existingFiltered.length}`)
@@ -117,9 +119,11 @@ export async function POST(request: Request) {
 
         entries.forEach((entry: MiningLedgerEntry) => {
           const entryDate = new Date(entry.date)
+          const entryDateOnly = entry.date // ESI returns "YYYY-MM-DD"
+          const activityDateOnly = startTimeManual.toISOString().split('T')[0]
           
-          // Filter by activity period (startTime - 1h to now)
-          if (entryDate >= startTime && entryDate <= endTimeLimit) {
+          // Include all entries from the activity date onwards
+          if (entryDateOnly >= activityDateOnly) {
             console.log(`[SYNC-MINING] ${charName}: Entry - ${entry.date}, qty: ${entry.quantity}, type: ${entry.type_id}`)
             
             const compositeKey = `${charId}-${entry.type_id}-${entryDate.getTime()}`
