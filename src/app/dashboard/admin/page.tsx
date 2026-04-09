@@ -1,20 +1,17 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { 
-  Loader2, Users, Shield, Lock, Unlock, Gem, Crosshair, 
-  Zap, Compass, ShieldCheck, AlertTriangle, Target,
-  DollarSign, Wallet, History, Settings2, Ban, UserCheck, CheckCircle2, XCircle, Search, RefreshCw, Trash2
+  Loader2, Shield, DollarSign, Wallet, History, RefreshCw, XCircle, CheckCircle2
 } from 'lucide-react'
 import { useSession } from '@/lib/session-client'
-import { cn, formatISK } from '@/lib/utils'
+import { formatISK, cn } from '@/lib/utils'
 import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
@@ -35,13 +32,17 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+// New Modular Components
+import { StatsRow } from '@/components/admin/StatsRow'
+import { AccountList } from '@/components/admin/AccountList'
+import { AccountDetailDialog } from '@/components/admin/AccountDetailDialog'
+
 interface AccountData {
   id: string
   accountCode: string | null
   name: string | null
   role: string
   isBlocked: boolean
-  blockReason: string | null
   subscriptionEnd: string | null
   allowedActivities: string[]
   createdAt: string
@@ -102,11 +103,22 @@ function AdminContent() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('accounts')
 
-  // State for Payment Approval Dialog
+  // UI States
+  const [selectedAccount, setSelectedAccount] = useState<AccountData | null>(null)
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false)
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null)
   const [selectedModules, setSelectedModules] = useState<string[]>(['ratting'])
   const [isSyncing, setIsSyncing] = useState(false)
+
+  // Memoized Stats
+  const stats = useMemo(() => {
+    return {
+      totalAccounts: accounts.length,
+      activeSubscriptions: accounts.filter(a => a.subscriptionEnd && new Date(a.subscriptionEnd) > new Date()).length,
+      pendingIsk: payments.filter(p => p.status === 'pending').reduce((acc, p) => acc + p.amount, 0),
+      totalCharacters: accounts.reduce((acc, a) => acc + a.characters.length, 0)
+    }
+  }, [accounts, payments])
 
   useEffect(() => {
     if (sessionStatus === 'unauthenticated') {
@@ -134,6 +146,11 @@ function AdminContent() {
       if (accRes.ok) {
         const accData = await accRes.json()
         setAccounts(accData.accounts || [])
+        // Update selected account if it was open
+        if (selectedAccount) {
+          const updated = accData.accounts.find((a: AccountData) => a.id === selectedAccount.id)
+          if (updated) setSelectedAccount(updated)
+        }
       }
       if (priceRes.ok) setPrices(await priceRes.json())
       if (payRes.ok) setPayments(await payRes.json())
@@ -192,14 +209,6 @@ function AdminContent() {
     }
   }
 
-  const toggleModule = (moduleId: string) => {
-    setSelectedModules(prev => 
-      prev.includes(moduleId) 
-        ? prev.filter(m => m !== moduleId)
-        : [...prev, moduleId]
-    )
-  }
-
   const handleLinkPayment = async (paymentId: string, userId: string) => {
     try {
       const res = await fetch(`/api/admin/payments/${paymentId}/link`, {
@@ -226,7 +235,7 @@ function AdminContent() {
   }
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-8 pb-20">
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3">
@@ -241,56 +250,58 @@ function AdminContent() {
         </Badge>
       </div>
 
-      <Tabs defaultValue="accounts" className="space-y-4" onValueChange={setActiveTab}>
+      <StatsRow 
+        totalAccounts={stats.totalAccounts}
+        activeSubscriptions={stats.activeSubscriptions}
+        pendingIsk={stats.pendingIsk}
+        totalCharacters={stats.totalCharacters}
+      />
+
+      <Tabs defaultValue="accounts" className="space-y-6" onValueChange={setActiveTab}>
         <TabsList className="bg-eve-panel border-eve-border p-1 gap-1">
-          <TabsTrigger value="accounts" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black">
-            <Users className="h-4 w-4 mr-2" /> Contas
+          <TabsTrigger value="accounts" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black font-bold">
+            Gerenciar Contas
           </TabsTrigger>
-          <TabsTrigger value="prices" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black">
-            <DollarSign className="h-4 w-4 mr-2" /> Preços
+          <TabsTrigger value="prices" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black font-bold">
+            Módulos e Preços
           </TabsTrigger>
-          <TabsTrigger value="financial" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black">
-            <Wallet className="h-4 w-4 mr-2" /> Financeiro
+          <TabsTrigger value="financial" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black font-bold">
+            Conciliação ESI
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="accounts" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            {accounts.map((account) => (
-              <AccountCard
-                key={account.id}
-                account={account}
-                onRefresh={fetchAllData}
-              />
-            ))}
-          </div>
+        <TabsContent value="accounts">
+          <AccountList 
+            accounts={accounts} 
+            onSelectAccount={(acc) => setSelectedAccount(acc)} 
+          />
         </TabsContent>
 
         <TabsContent value="prices" className="space-y-4">
-          <Card className="bg-eve-panel border-eve-border shadow-xl">
-            <CardHeader>
+          <Card className="bg-eve-panel border-eve-border shadow-xl overflow-hidden">
+            <CardHeader className="bg-eve-dark/30 border-b border-eve-border/50">
               <CardTitle>Configuração de Módulos</CardTitle>
               <CardDescription>Defina o preço em ISK e a disponibilidade de cada funcionalidade</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
+            <CardContent className="p-6">
+              <div className="grid gap-3">
                 {ACTIVITY_TYPES.map(type => {
                   const dbPrice = prices.find(p => p.module === type.id)
                   return (
-                    <div key={type.id} className="flex items-center justify-between p-4 rounded-xl bg-eve-dark/40 border border-eve-border/50 hover:bg-eve-dark/60 transition-colors">
-                      <div className="flex items-center gap-4">
+                    <div key={type.id} className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-xl bg-eve-dark/40 border border-eve-border/50 hover:bg-eve-dark/60 transition-colors gap-4">
+                      <div className="flex items-center gap-4 flex-1">
                         <div className={cn("p-2 rounded-lg bg-eve-dark", type.color.replace('text-', 'bg-') + '/10')}>
                           <type.icon className={cn("h-6 w-6", type.color)} />
                         </div>
                         <div>
                            <p className="text-white font-bold">{type.label}</p>
-                           <p className="text-[10px] text-gray-500 uppercase tracking-widest">{type.id}</p>
+                           <p className="text-[10px] text-gray-500 uppercase tracking-widest leading-none mt-1">{type.id}</p>
                         </div>
                       </div>
                       
                       <div className="flex items-center gap-6">
                         <div className="flex items-center gap-2">
-                           <Label className="text-xs text-gray-400">Venda Ativa</Label>
+                           <Label className="text-xs text-gray-400">Status de Venda</Label>
                            <Switch 
                               checked={dbPrice?.isActive ?? true} 
                               onCheckedChange={async (checked) => {
@@ -315,7 +326,7 @@ function AdminContent() {
                               toast.success(`Preço de ${type.label} atualizado`)
                             }}
                           />
-                          <span className="text-xs text-gray-500 font-bold">ISK / Mês</span>
+                          <span className="text-xs text-gray-500 font-bold uppercase tracking-tighter">ISK/mês</span>
                         </div>
                       </div>
                     </div>
@@ -330,7 +341,7 @@ function AdminContent() {
           <div className="flex items-center justify-between">
              <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <History className="h-5 w-5 text-eve-accent" />
-                Conciliação de Pagamentos
+                Histórico de Transações
              </h2>
              <Button onClick={handleSyncWallet} disabled={isSyncing} className="bg-eve-accent text-black hover:bg-eve-accent/80 font-bold">
                 {isSyncing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
@@ -338,40 +349,43 @@ function AdminContent() {
              </Button>
           </div>
 
-          <Card className="bg-eve-panel border-eve-border shadow-xl overflow-hidden">
+          <Card className="bg-eve-panel border-eve-border shadow-2xl overflow-hidden">
              <CardContent className="p-0">
                 <div className="overflow-x-auto">
                    <table className="w-full text-left text-sm">
-                      <thead className="bg-eve-dark/50 border-b border-eve-border text-gray-400 uppercase text-[10px] font-bold tracking-widest">
+                      <thead className="bg-eve-dark/50 border-b border-eve-border/50 text-gray-400 uppercase text-[10px] font-bold tracking-widest">
                          <tr>
-                            <th className="px-6 py-4">Data</th>
-                            <th className="px-6 py-4">Payer / Conta</th>
+                            <th className="px-6 py-4">Data/Hora</th>
+                            <th className="px-6 py-4">Payer / Vinculação</th>
                             <th className="px-6 py-4 text-right">Valor</th>
                             <th className="px-6 py-4">Status</th>
                             <th className="px-6 py-4 text-right">Ação</th>
                          </tr>
                       </thead>
-                      <tbody className="divide-y divide-eve-border/50">
+                      <tbody className="divide-y divide-eve-border/30">
                          {payments.length === 0 ? (
                             <tr>
-                               <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                                  Nenhum registro de pagamento encontrado. Sincronize com a ESI.
+                               <td colSpan={5} className="px-6 py-12 text-center text-gray-500 italic">
+                                  Nenhum registro de pagamento encontrado.
                                </td>
                             </tr>
                          ) : (
                             payments.map(payment => (
-                               <tr key={payment.id} className="hover:bg-eve-dark/20 transition-colors">
+                               <tr key={payment.id} className="hover:bg-eve-dark/10 transition-colors">
                                   <td className="px-6 py-4 text-gray-400 text-xs">
-                                     {new Date(payment.createdAt).toLocaleDateString()}<br/>
-                                     {new Date(payment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                     <p className="font-bold text-gray-300">{new Date(payment.createdAt).toLocaleDateString()}</p>
+                                     <p className="opacity-60">{new Date(payment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                   </td>
                                   <td className="px-6 py-4">
-                                     <p className="text-white font-medium">{payment.payerCharacterName || 'Desconhecido'}</p>
+                                     <p className="text-white font-bold mb-1.5 flex items-center gap-2">
+                                        <Wallet className="h-3.5 w-3.5 text-eve-accent" />
+                                        {payment.payerCharacterName || 'Desconhecido'}
+                                     </p>
                                      <Select 
                                             defaultValue={payment.userId} 
                                             onValueChange={(val) => handleLinkPayment(payment.id, val)}
                                          >
-                                            <SelectTrigger className="h-7 w-[180px] text-[10px] bg-eve-dark/50 border-eve-border">
+                                            <SelectTrigger className="h-8 w-[220px] text-[10px] bg-eve-dark/40 border-eve-border/50 hover:border-eve-accent/50 transition-all">
                                                <SelectValue placeholder="Vincular à conta..." />
                                             </SelectTrigger>
                                             <SelectContent className="bg-eve-panel border-eve-border">
@@ -388,10 +402,10 @@ function AdminContent() {
                                   </td>
                                   <td className="px-6 py-4">
                                      <Badge variant="outline" className={cn(
-                                        "text-[10px] px-2 py-0",
-                                        payment.status === 'pending' ? "text-yellow-500 border-yellow-500/30 bg-yellow-500/5" :
-                                        payment.status === 'approved' ? "text-green-500 border-green-500/30 bg-green-500/5" :
-                                        "text-red-500 border-red-500/30 bg-red-500/5"
+                                        "text-[10px] px-2 py-0 border-none",
+                                        payment.status === 'pending' ? "text-yellow-500 bg-yellow-500/10" :
+                                        payment.status === 'approved' ? "text-green-500 bg-green-500/10" :
+                                        "text-red-500 bg-red-500/10"
                                      )}>
                                         {payment.status.toUpperCase()}
                                      </Badge>
@@ -401,15 +415,15 @@ function AdminContent() {
                                         <div className="flex items-center justify-end gap-2">
                                            <Button 
                                               size="sm" 
-                                              className="h-8 bg-green-600 hover:bg-green-500 text-white"
+                                              className="h-8 bg-green-600 hover:bg-green-500 text-white font-bold px-4"
                                               onClick={() => handleApprovePayment(payment.id)}
                                            >
                                               Aprovar
                                            </Button>
                                            <Button 
                                               size="sm" 
-                                              variant="destructive"
-                                              className="h-8"
+                                              variant="ghost"
+                                              className="h-8 w-8 p-0 text-red-500 hover:bg-red-500/10"
                                               onClick={async () => {
                                                  await fetch(`/api/admin/payments/${payment.id}/reject`, { method: 'POST' })
                                                  fetchAllData()
@@ -420,7 +434,10 @@ function AdminContent() {
                                         </div>
                                      )}
                                      {payment.status === 'approved' && (
-                                        <CheckCircle2 className="h-5 w-5 text-green-500 ml-auto" />
+                                        <div className="flex items-center justify-end gap-2 text-green-500">
+                                            <span className="text-[10px] font-bold uppercase tracking-widest">Conciliado</span>
+                                            <CheckCircle2 className="h-5 w-5" />
+                                        </div>
                                      )}
                                   </td>
                                </tr>
@@ -433,12 +450,21 @@ function AdminContent() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Account Detail Modal */}
+      <AccountDetailDialog 
+        account={selectedAccount}
+        isOpen={!!selectedAccount}
+        onClose={() => setSelectedAccount(null)}
+        onRefresh={fetchAllData}
+      />
+
       {/* Approve Payment Dialog */}
       <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] bg-eve-panel border-eve-border text-white">
           <DialogHeader>
             <DialogTitle>Aprovar Pagamento</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-gray-400">
               Selecione os módulos que o usuário terá acesso após a aprovação.
             </DialogDescription>
           </DialogHeader>
@@ -447,12 +473,18 @@ function AdminContent() {
               {ACTIVITY_TYPES.map((activity) => (
                 <div 
                   key={activity.id}
-                  onClick={() => toggleModule(activity.id)}
+                  onClick={() => {
+                    setSelectedModules(prev => 
+                      prev.includes(activity.id) 
+                        ? prev.filter(m => m !== activity.id)
+                        : [...prev, activity.id]
+                    )
+                  }}
                   className={cn(
                     "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
                     selectedModules.includes(activity.id) 
-                      ? "bg-accent border-primary ring-1 ring-primary" 
-                      : "bg-background border-border hover:border-muted-foreground/50"
+                      ? "bg-eve-accent/10 border-eve-accent text-eve-accent shadow-[0_0_15px_rgba(255,255,255,0.05)]" 
+                      : "bg-eve-dark border-eve-border hover:border-gray-500"
                   )}
                 >
                   <activity.icon className={cn("h-5 w-5", activity.color)} />
@@ -461,222 +493,23 @@ function AdminContent() {
               ))}
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsApproveDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={confirmApprovePayment} disabled={isSyncing || selectedModules.length === 0}>
+          <DialogFooter className="bg-eve-dark/30 p-4 -m-6 mt-4 border-t border-eve-border/50">
+            <Button variant="ghost" onClick={() => setIsApproveDialogOpen(false)} className="text-gray-400">Cancelar</Button>
+            <Button 
+                onClick={confirmApprovePayment} 
+                disabled={isSyncing || selectedModules.length === 0}
+                className="bg-eve-accent text-black font-bold hover:bg-eve-accent/80"
+            >
               {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Confirmar Aprovação
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   )
 }
-
-function AccountCard({
-  account,
-  onRefresh
-}: {
-  account: AccountData
-  onRefresh: () => void
-}) {
-  const [saving, setSaving] = useState<string | null>(null)
-  const [isBlocking, setIsBlocking] = useState(false)
-
-  const toggleActivity = async (activityId: string, currentlyAllowed: boolean) => {
-    setSaving(activityId)
-    const newAllowed = currentlyAllowed
-      ? account.allowedActivities.filter(a => a !== activityId)
-      : [...account.allowedActivities, activityId]
-
-    try {
-      const res = await fetch('/api/admin/accounts', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: account.id, allowedActivities: newAllowed })
-      })
-
-      if (res.ok) {
-        onRefresh()
-      }
-    } catch (err) {
-      console.error('Failed to update permissions:', err)
-    } finally {
-      setSaving(null)
-    }
-  }
-
-  const handleBlock = async () => {
-    setIsBlocking(true)
-    try {
-      const res = await fetch(`/api/admin/accounts/${account.id}/block`, {
-        method: 'PUT',
-        body: JSON.stringify({ isBlocked: !account.isBlocked, blockReason: 'Suspensão manual via painel admin' })
-      })
-      if (res.ok) {
-        toast.success(`Conta ${account.isBlocked ? 'desbloqueada' : 'bloqueada'}`)
-        onRefresh()
-      }
-    } catch (err) {
-      toast.error('Erro ao modificar status da conta')
-    } finally {
-      setIsBlocking(false)
-    }
-  }
-
-  const handleDelete = async () => {
-    if (!confirm(`TEM CERTEZA? Esta ação é IRREVERSÍVEL. Todos os dados da conta ${account.name || account.accountCode} serão deletados permanentemente.`)) return
-    
-    setSaving('deleting')
-    try {
-      const res = await fetch(`/api/admin/accounts?userId=${account.id}`, { method: 'DELETE' })
-      if (res.ok) {
-        toast.success(`Conta ${account.accountCode} deletada permanentemente`)
-        onRefresh()
-      } else {
-        const err = await res.json()
-        toast.error(`Erro: ${err.error || 'Falha ao deletar'}`)
-      }
-    } catch (err) {
-      toast.error('Erro de conexão ao deletar conta')
-    } finally {
-      setSaving(null)
-    }
-  }
-
-  const isExpired = account.subscriptionEnd && new Date(account.subscriptionEnd) < new Date()
-
-  return (
-    <Card className={cn(
-      "bg-eve-panel border-eve-border relative overflow-hidden transition-all duration-300",
-      account.role === 'master' && "ring-1 ring-eve-accent/30",
-      account.isBlocked && "opacity-70 grayscale border-red-500/50 shadow-inner"
-    )}>
-      {account.isBlocked && (
-        <div className="absolute top-0 left-0 w-full h-full bg-red-900/10 pointer-events-none flex items-center justify-center">
-           <Ban className="h-24 w-24 text-red-500/20 rotate-12" />
-        </div>
-      )}
-
-      <CardHeader className="pb-3 relative z-10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-12 w-12 border-2 border-eve-border shadow-lg">
-              <AvatarImage src={account.characters[0] ? `https://images.evetech.net/characters/${account.characters[0].id}/portrait?size=64` : ''} />
-              <AvatarFallback className="bg-eve-dark text-eve-accent font-bold">
-                {account.name?.[0] || '?'}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-lg text-white font-bold tracking-tight">
-                  {account.name || account.accountCode || 'S/N'}
-                </CardTitle>
-                {account.role === 'master' && (
-                  <Badge className="bg-eve-accent/10 border-eve-accent text-eve-accent hover:bg-eve-accent/20 text-[9px] h-4">ADMIN</Badge>
-                )}
-              </div>
-              <p className="text-xs text-gray-500 font-mono opacity-60">ID: {account.accountCode}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {account.role !== 'master' && (
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className={cn(
-                    "h-8 gap-2 border-none transition-all", 
-                    account.isBlocked ? "bg-green-500/10 text-green-500 hover:bg-green-500/20" : "bg-red-500/10 text-red-500 hover:bg-red-500/20"
-                  )}
-                  onClick={handleBlock}
-                  disabled={isBlocking || saving === 'deleting'}
-                >
-                  {isBlocking ? <Loader2 className="h-3 w-3 animate-spin" /> : (
-                    account.isBlocked ? <Unlock className="h-4 w-4" /> : <Ban className="h-4 w-4" />
-                  )}
-                  <span className="text-[10px] font-bold uppercase">{account.isBlocked ? 'Reativar' : 'Bloquear'}</span>
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  className="h-8 w-8 bg-red-950/20 text-red-500 border-none hover:bg-red-500 hover:text-white transition-all shadow-sm"
-                  onClick={handleDelete}
-                  disabled={saving === 'deleting' || isBlocking}
-                  title="Deletar Conta Permanentemente"
-                >
-                  {saving === 'deleting' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="space-y-4 relative z-10">
-        <div className="flex items-center justify-between p-3 rounded-xl bg-eve-dark/40 border border-eve-border/30">
-          <div className="flex items-center gap-3">
-             <div className={cn("p-2 rounded-lg bg-eve-dark", isExpired ? "text-red-500" : "text-eve-accent")}>
-                <Zap className="h-4 w-4" />
-             </div>
-             <div>
-                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Plano</p>
-                <p className={cn("text-xs font-bold", isExpired ? "text-red-400" : "text-green-400")}>
-                   {account.subscriptionEnd ? new Date(account.subscriptionEnd).toLocaleDateString() : 'VITALÍCIO'}
-                   {isExpired && " (EXPIRADO)"}
-                </p>
-             </div>
-          </div>
-          <Badge variant="outline" className="bg-eve-dark/50 border-eve-border text-[10px]">
-             {account.allowedActivities.length} Módulos
-          </Badge>
-        </div>
-
-        {account.role !== 'master' && (
-          <div className="space-y-3 pt-3 border-t border-eve-border/20">
-            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold px-1">Acessos Diretos</p>
-            <div className="grid grid-cols-2 gap-2">
-              {ACTIVITY_TYPES.map((activity) => {
-                const isAllowed = account.allowedActivities.includes(activity.id)
-                const isSaving = saving === activity.id
-                
-                return (
-                  <div key={activity.id} className="flex items-center justify-between p-2 rounded-lg bg-eve-dark/30 border border-transparent hover:border-eve-border/50 group transition-all">
-                    <div className="flex items-center gap-2">
-                      <activity.icon className={cn("h-3.5 w-3.5", isAllowed ? activity.color : "text-gray-600")} />
-                      <span className={cn("text-[11px] font-medium transition-colors", isAllowed ? "text-white" : "text-gray-600")}>
-                        {activity.label}
-                      </span>
-                    </div>
-                    <Switch
-                      checked={isAllowed}
-                      disabled={isSaving}
-                      onCheckedChange={() => toggleActivity(activity.id, isAllowed)}
-                      className="h-4 w-8 data-[state=checked]:bg-eve-accent scale-75"
-                    />
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-2 pt-2">
-           <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold px-1">Personagens ({account._count.characters})</p>
-           <div className="flex flex-wrap gap-1.5">
-              {account.characters.map(char => (
-                 <Avatar key={char.id} className="h-6 w-6 border border-eve-border/50">
-                    <AvatarImage src={`https://images.evetech.net/characters/${char.id}/portrait?size=32`} />
-                    <AvatarFallback className="text-[8px] bg-eve-dark">{char.name[0]}</AvatarFallback>
-                 </Avatar>
-              ))}
-           </div>
-        </div>
-      </CardContent>
+     </CardContent>
     </Card>
   )
 }
