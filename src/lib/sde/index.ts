@@ -260,45 +260,36 @@ const MINING_GROUPS: Record<string, number[]> = {
  */
 export async function getMiningTypes(miningType: 'Ore' | 'Ice' | 'Gas' | 'Moon'): Promise<{ id: number; name: string }[]> {
   try {
-    let groupIds: number[] = []
-    
-    // Define groups per mining type based on ESI data
-    if (miningType === 'Ore') {
-      // All asteroid ore groups - Veldspar, Scordite, Pyroxeres, etc.
-      groupIds = [
-        455, 456, 457, 458, 459, 460, 461, 462, 463, 464,  // Common ores
-        466, 467, 468, 469, 470, 471, 472, 473, 474, 475,  // Uncommon ores
-        476, 477, 478, 479, 480, 481, 482, 483, 484, 485,  // Rare ores
-        486, 487, 488, 489, 490, 491, 492, 493, 494, 495,  // More rare
-        496, 497, 498, 499, 500, 501, 502, 503, 504, 505,  // Even more
-        506, 507, 508, 509                                   // Mercoxit and variants
-      ]
-    } else if (miningType === 'Ice') {
-      // Ice groups (465 is Ice)
-      groupIds = [465]
-    } else if (miningType === 'Gas') {
-      // Gas cloud groups
-      groupIds = [1060, 1061, 1062, 1063]
-    } else if (miningType === 'Moon') {
-      // Moon mining groups
-      groupIds = [1084, 1085, 1086, 1087, 1088, 1089, 1090, 1091, 1092, 1093, 1094, 1095, 1096, 1097, 1098, 1099, 1100]
+    // Filter by group name patterns in category 25
+    const ORenamees = {
+      'Ore': ['Veldspar', 'Scordite', 'Pyroxeres', 'Plagioclase', 'Omber', 'Kernite', 'Jaspet', 'Hemorphite', 'Hedbergite', 'Gneiss', 'Dark Ochre', 'Crokite', 'Spodumain', 'Bistot', 'Arkonor', 'Mercoxit'],
+      'Ice': ['Ice', 'Glacial', 'Clear', 'White Glaze', 'Blue Ice', 'Gelidus', 'Krystallos', 'Pristine'],
+      'Gas': ['Mykoserocin', 'Cytoserocin', 'Fullerite'],
+      'Moon': ['Cobalt', 'Cadmium', 'Caesium', 'Chromium', 'Dysprosium', 'Hafnium', 'Mercury', 'Neodymium', 'Promethium', 'Thorium', 'Tungsten', 'Vanadium', 'Evaporite', 'Hydrocarbon', 'Silicates', 'Atmospheric']
     }
-
+    
+    const patterns = ORenamees[miningType]
+    if (!patterns) return []
+    
+    // Get all types in category 25 (Asteroid) and filter by name
     const types = await prisma.eveType.findMany({
       where: {
-        groupId: { in: groupIds },
-        published: true
+        published: true,
+        group: { categoryId: 25 }
       },
       select: {
         id: true,
         name: true
       },
-      orderBy: {
-        name: 'asc'
-      }
+      orderBy: { name: 'asc' }
     })
-
-    return types
+    
+    // Filter types that match the patterns
+    const filtered = types.filter(t => 
+      patterns.some(p => t.name.includes(p))
+    )
+    
+    return filtered
   } catch (error) {
     console.error(`Error fetching mining types for ${miningType}:`, error)
     return []
