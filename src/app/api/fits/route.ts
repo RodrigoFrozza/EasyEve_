@@ -1,45 +1,49 @@
 import { NextResponse } from 'next/server'
-
-export const dynamic = 'force-dynamic'
 import { getCurrentUser } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
     const user = await getCurrentUser()
-    
     if (!user) {
+      console.error('[API/Fits] Unauthorized access attempt')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    console.log(`[API/Fits] Fetching fits for user: ${user.id} at ${new Date().toISOString()}`)
     
-    const fits = await prisma.fit.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: 'desc' }
-    })
-    
-    // Safe transform - only use fields guaranteed to exist
-    const transformedFits = (fits || []).map(fit => ({
-      id: fit.id,
-      name: fit.name || 'Unnamed',
-      shipTypeId: fit.shipTypeId || 0,
-      shipName: fit.shipName || 'Unknown',
-      modules: fit.modules || [],
-      dps: fit.dps,
-      tank: fit.tank,
-      cost: fit.cost,
-      createdAt: fit.createdAt?.toISOString() || new Date().toISOString()
-    }))
-    
-    return NextResponse.json(transformedFits)
-  } catch (error) {
-    console.error('[API/FITS] GET error:', {
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
+    try {
+      const fits = await prisma.fit.findMany({
+        where: { userId: user.id },
+        orderBy: { updatedAt: 'desc' },
+      })
+      
+      console.log(`[API/Fits] Successfully fetched ${fits.length} fits for user ${user.id}`)
+      return NextResponse.json(fits)
+    } catch (dbError: any) {
+      console.error('[API/Fits] Prisma Database Error:', {
+        message: dbError.message,
+        code: dbError.code,
+        meta: dbError.meta,
+        stack: dbError.stack,
+        timestamp: new Date().toISOString()
+      })
+      return NextResponse.json({ 
+        error: 'Database connection error',
+        details: dbError.message 
+      }, { status: 500 })
+    }
+  } catch (error: any) {
+    console.error('[API/Fits] Unexpected GET Error:', {
+      message: error.message,
+      stack: error.stack,
       timestamp: new Date().toISOString()
     })
     return NextResponse.json({ 
-      error: 'Failed to fetch fits',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Unexpected server error',
+      details: error.message
     }, { status: 500 })
   }
 }
@@ -47,59 +51,48 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const user = await getCurrentUser()
-    
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const { name, shipId, fittingData, hullAnalysis } = await request.json()
     
-    const body = await request.json()
-    const { 
-      name, 
-      shipTypeId, 
-      shipName, 
-      modules,
-      dps,
-      tank,
-      cost
-    } = body
+    console.log(`[API/Fits] Creating fit for user ${user.id}: ${name}`)
     
-    if (!name || !shipTypeId || !shipName) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    try {
+      const fit = await prisma.fit.create({
+        data: {
+          name,
+          shipId,
+          fittingData,
+          hullAnalysis,
+          userId: user.id,
+        },
+      })
+      
+      console.log(`[API/Fits] Successfully created fit ID: ${fit.id}`)
+      return NextResponse.json(fit)
+    } catch (dbError: any) {
+      console.error('[API/Fits] Prisma Create Error:', {
+        message: dbError.message,
+        code: dbError.code,
+        stack: dbError.stack,
+        timestamp: new Date().toISOString()
+      })
+      return NextResponse.json({ 
+        error: 'Error saving fit to database',
+        details: dbError.message
+      }, { status: 500 })
     }
-    
-    const fit = await prisma.fit.create({
-      data: {
-        name,
-        shipTypeId,
-        shipName,
-        modules: modules || [],
-        dps: dps || null,
-        tank: tank || null,
-        cost: cost || null,
-        userId: user.id
-      }
-    })
-    
-    return NextResponse.json({
-      id: fit.id,
-      name: fit.name,
-      shipTypeId: fit.shipTypeId,
-      shipName: fit.shipName,
-      modules: fit.modules,
-      dps: fit.dps,
-      tank: fit.tank,
-      cost: fit.cost,
-      createdAt: fit.createdAt?.toISOString()
-    })
-  } catch (error) {
-    console.error('[API/FITS] POST error:', {
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
+  } catch (error: any) {
+    console.error('[API/Fits] Unexpected POST Error:', {
+      message: error.message,
+      stack: error.stack,
       timestamp: new Date().toISOString()
     })
     return NextResponse.json({ 
-      error: 'Failed to create fit',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Unexpected error processing request',
+      details: error.message
     }, { status: 500 })
   }
 }

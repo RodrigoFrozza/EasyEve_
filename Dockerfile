@@ -26,7 +26,7 @@ ARG EVE_CLIENT_SECRET
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-RUN NODE_OPTIONS="--max-old-space-size=1536" npm run build
+RUN NODE_OPTIONS="--max-old-space-size=3072" npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
