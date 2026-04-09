@@ -47,15 +47,28 @@ export async function POST(request: Request) {
 
     const activityData = (activity.data as any) || {}
     const existingLogs = activityData.logs || []
+    
+    console.log(`[SYNC-MINING] Existing logs in activity: ${existingLogs.length}`)
+    
+    // Start fresh - only process NEW data from ESI for this activity period
+    // Don't load old logs to avoid including data from previous activities
     const logMap = new Map<string, any>()
-
-    console.log(`[SYNC-MINING] Existing logs: ${existingLogs.length}`)
-
-    existingLogs.forEach((log: any) => {
+    
+    // Also filter existing logs by current activity period to prevent stale data
+    const existingFiltered = existingLogs.filter((log: any) => {
+      const logDate = new Date(log.date)
+      const isInPeriod = logDate >= startTime && logDate <= endTimeLimit
+      return isInPeriod
+    })
+    
+    console.log(`[SYNC-MINING] Existing logs in period: ${existingFiltered.length}`)
+    
+    // Add filtered existing logs to map
+    existingFiltered.forEach((log: any) => {
       const key = `${log.characterId}-${log.typeId}-${new Date(log.date).getTime()}`
       logMap.set(key, log)
-    })
-
+})
+    
     let totalFetched = 0
     let totalNew = 0
 
