@@ -1,0 +1,1063 @@
+1: 0 | 'use client'
+2: 0 | 
+3: 0 | import { useState, useEffect, useMemo } from 'react'
+4: 0 | import { toast } from 'sonner'
+5: 0 | import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+6: 0 | import { Button } from '@/components/ui/button'
+7: 0 | import { Badge } from '@/components/ui/badge'
+8: 0 | import Image from 'next/image'
+9: 1 | import { 
+10: 1 |   Box, 
+11: 1 |   Play, 
+12: 1 |   StopCircle, 
+13: 1 |   Trash2, 
+14: 1 |   RefreshCw, 
+15: 1 |   History, 
+16: 1 |   Clock, 
+17: 1 |   TrendingUp, 
+18: 1 |   Plus, 
+19: 1 |   X,
+20: 1 |   CheckCircle,
+21: 1 |   XCircle,
+22: 1 |   Loader2,
+23: 1 |   Wrench,
+24: 1 |   Wallet,
+25: 1 |   PiggyBank,
+26: 1 |   Package,
+27: 1 |   Receipt,
+28: 1 |   List,
+29: 1 |   Table2,
+30: 1 |   HelpCircle,
+31: 1 |   Download,
+32: 1 |   Filter,
+33: 1 |   LayoutGrid,
+34: 1 |   AlignJustify,
+35: 1 |   ChevronDown,
+36: 1 |   ChevronUp,
+37: 1 |   Activity as ActivityIcon
+38: 0 | } from 'lucide-react'
+39: 1 | import { 
+40: 1 |   Dialog, 
+41: 1 |   DialogContent, 
+42: 1 |   DialogHeader, 
+43: 1 |   DialogTitle, 
+44: 1 |   DialogTrigger,
+45: 1 |   DialogDescription
+46: 0 | } from '@/components/ui/dialog'
+47: 0 | import { cn, formatISK } from '@/lib/utils'
+48: 0 | import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
+49: 0 | import { type Activity, useActivityStore } from '@/lib/stores/activity-store'
+50: 0 | import { MTULootField } from './MTULootField'
+51: 0 | import { SalvageField } from './SalvageField'
+52: 0 | import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+53: 0 | 
+54: 0 | import { RattingHelpModal } from './RattingHelpModal'
+55: 0 | 
+56: 1 | export interface ActivityCardProps {
+57: 1 |   activity: Activity
+58: 1 |   onEnd: () => void
+59: 0 | }
+60: 0 | 
+61: 1 | export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
+62: 1 |   const [elapsed, setElapsed] = useState('')
+63: 1 |   const [isSyncing, setIsSyncing] = useState(false)
+64: 1 |   const [isAppraising, setIsAppraising] = useState(false)
+65: 1 |   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle')
+66: 1 |   const [viewMode, setViewMode] = useState<'list' | 'table'>('list')
+67: 1 |   const [esiSalvageTotal, setEsiSalvageTotal] = useState(0)
+68: 1 |   const [isSalvageAppraising, setIsSalvageAppraising] = useState(false)
+69: 1 |   
+70: 1 |   const [logFilterType, setLogFilterType] = useState('all')
+71: 1 |   const [logFilterChar, setLogFilterChar] = useState('all')
+72: 1 | 
+73: 1 |   // Toggle de visualização
+74: 1 |   const [displayMode, setDisplayMode] = useState<'compact' | 'tabs' | 'expanded'>('compact')
+75: 2 |   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+76: 2 |     fleet: true,
+77: 2 |     mtu: true,
+78: 2 |     salvage: true,
+79: 2 |     transactions: false
+80: 1 |   })
+81: 1 | 
+82: 2 |   const toggleSection = (section: string) => {
+83: 2 |     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
+84: 1 |   }
+85: 1 | 
+86: 1 |   const logs = (activity.data as any)?.logs || []
+87: 1 |   const [logsData, setLogsData] = useState<any[]>(logs)
+88: 1 | 
+89: 2 |   useEffect(() => {
+90: 3 |     const syncStore = () => {
+91: 3 |       const currentActivity = useActivityStore.getState().activities.find(a => a.id === activity.id);
+92: 4 |       if (currentActivity) {
+93: 4 |         setLogsData((currentActivity.data as any)?.logs || []);
+94: 3 |       }
+95: 2 |     };
+96: 2 |     syncStore();
+97: 1 |   }, [activity.id]);
+98: 1 | 
+99: 2 |   const uniqueChars = useMemo(() => {
+100: 2 |     const chars = new Set<string>()
+101: 2 |     logsData.forEach((l: any) => { if(l.charName) chars.add(l.charName) })
+102: 2 |     return Array.from(chars)
+103: 1 |   }, [logsData])
+104: 1 | 
+105: 2 |   const filteredLogs = useMemo(() => {
+106: 3 |     return logsData.filter((log: any) => {
+107: 3 |       const matchType = logFilterType === 'all' || log.type === logFilterType
+108: 3 |       const matchChar = logFilterChar === 'all' || log.charName === logFilterChar
+109: 3 |       return matchType && matchChar
+110: 2 |     })
+111: 1 |   }, [logsData, logFilterType, logFilterChar])
+112: 1 | 
+113: 2 |   const handleMTUChange = async (mtus: any[]) => {
+114: 2 |     // 1. Atualiza store local (feedback imediato)
+115: 3 |     useActivityStore.getState().updateActivity(activity.id, {
+116: 3 |       data: { ...activity.data, mtuContents: mtus }
+117: 2 |     });
+118: 2 |     
+119: 2 |     // 2. Persiste no banco
+120: 3 |     try {
+121: 4 |       const res = await fetch(`/api/activities/${activity.id}`, {
+122: 4 |         method: 'PATCH',
+123: 4 |         headers: { 'Content-Type': 'application/json' },
+124: 4 |         body: JSON.stringify({ data: { mtuContents: mtus } })
+125: 3 |       });
+126: 3 |       if (!res.ok) throw new Error('Failed to save MTU');
+127: 3 |     } catch (e) {
+128: 3 |       toast.error('Failed to save MTU changes. Please try again.');
+129: 2 |     }
+130: 1 |   }
+131: 1 | 
+132: 2 |   const handleSalvageChange = async (salvage: any[]) => {
+133: 2 |     // 1. Atualiza store local (feedback imediato)
+134: 3 |     useActivityStore.getState().updateActivity(activity.id, {
+135: 3 |       data: { ...activity.data, salvageContents: salvage }
+136: 2 |     });
+137: 2 |     
+138: 2 |     // 2. Persiste no banco
+139: 3 |     try {
+140: 4 |       const res = await fetch(`/api/activities/${activity.id}`, {
+141: 4 |         method: 'PATCH',
+142: 4 |         headers: { 'Content-Type': 'application/json' },
+143: 4 |         body: JSON.stringify({ data: { salvageContents: salvage } })
+144: 3 |       });
+145: 3 |       if (!res.ok) throw new Error('Failed to save Salvage');
+146: 3 |     } catch (e) {
+147: 3 |       toast.error('Failed to save Salvage changes. Please try again.');
+148: 2 |     }
+149: 1 |   }
+150: 1 | 
+151: 1 |   const [mtuPage, setMtuPage] = useState(0)
+152: 1 |   const [salvagePage, setSalvagePage] = useState(0)
+153: 1 |   const MTUS_PER_PAGE = 4
+154: 1 |   const SALVAGE_PER_PAGE = 4
+155: 1 | 
+156: 1 |   const mtuContents = (activity.data?.mtuContents as any[]) || []
+157: 1 |   const salvageContents = (activity.data?.salvageContents as any[]) || []
+158: 1 |   const mtuTotalPages = Math.ceil(mtuContents.length / MTUS_PER_PAGE) || 1
+159: 1 |   const salvageTotalPages = Math.ceil(salvageContents.length / SALVAGE_PER_PAGE) || 1
+160: 1 | 
+161: 1 |   const paginatedMtus = mtuContents.slice(mtuPage * MTUS_PER_PAGE, (mtuPage + 1) * MTUS_PER_PAGE)
+162: 1 |   const paginatedSalvage = salvageContents.slice(salvagePage * SALVAGE_PER_PAGE, (salvagePage + 1) * SALVAGE_PER_PAGE)
+163: 1 | 
+164: 1 |   const typeInfo = ACTIVITY_TYPES.find(t => t.id === activity.type)
+165: 1 | 
+166: 2 |   const handleExportCSV = () => {
+167: 3 |     if (filteredLogs.length === 0) {
+168: 3 |       toast.error('No data to export')
+169: 3 |       return;
+170: 2 |     }
+171: 2 |     
+172: 2 |     // Sort array by date so older is at the top or bottom depending on user preference, we export newest first (as displayed).
+173: 2 |     const headers = ['Date', 'Character', 'Type', 'Amount (ISK)']
+174: 2 |     const csvContent = [
+175: 2 |       headers.join(','),
+176: 2 |       ...filteredLogs.map((log: any) => `${new Date(log.date).toISOString().replace(',', '')},${log.charName},${log.type.toUpperCase()},${log.amount}`)
+177: 2 |     ].join('\n')
+178: 2 |     
+179: 2 |     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+180: 2 |     const link = document.createElement('a')
+181: 2 |     const url = URL.createObjectURL(blob)
+182: 2 |     link.setAttribute('href', url)
+183: 2 |     link.setAttribute('download', `financial_history_${activity.id}.csv`)
+184: 2 |     link.style.visibility = 'hidden'
+185: 2 |     document.body.appendChild(link)
+186: 2 |     link.click()
+187: 2 |     document.body.removeChild(link)
+188: 2 |     toast.success('Export Complete', { description: 'CSV file generated successfully.' })
+189: 1 |   }
+190: 1 | 
+191: 1 |   // Combined Totals from Activity Data (Appraised on Server)
+192: 2 |   const { 
+193: 2 |     automatedBounties = 0, 
+194: 2 |     automatedEss = 0, 
+195: 2 |     automatedTaxes = 0,
+196: 2 |     estimatedLootValue = 0,
+197: 2 |     estimatedSalvageValue = 0,
+198: 2 |     lootAppraisedAt = null
+199: 1 |   } = (activity.data as any) || {}
+200: 1 | 
+201: 1 |   const totalIsk = automatedBounties + automatedEss + estimatedLootValue + estimatedSalvageValue
+202: 1 | 
+203: 1 |   // Elapsed Time Timer
+204: 2 |   useEffect(() => {
+205: 3 |     const timer = setInterval(() => {
+206: 3 |       const start = new Date(activity.startTime).getTime()
+207: 3 |       const end = activity.endTime ? new Date(activity.endTime).getTime() : Date.now()
+208: 3 |       const diff = end - start
+209: 3 |       
+210: 3 |       const hours = Math.floor(diff / (1000 * 60 * 60))
+211: 3 |       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+212: 3 |       const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+213: 3 |       
+214: 3 |       setElapsed(`${hours > 0 ? `${hours}h ` : ''}${minutes}m ${seconds}s`)
+215: 2 |     }, 1000)
+216: 2 |     return () => clearInterval(timer)
+217: 1 |   }, [activity.startTime, activity.endTime])
+218: 1 | 
+219: 2 |   const handleSyncFinancials = async () => {
+220: 2 |     setIsSyncing(true)
+221: 2 |     setSyncStatus('idle')
+222: 2 |     const toastId = toast.loading("Syncing with ESI...", { description: "Fetching latest wallet journal entries." })
+223: 3 |     try {
+224: 3 |       const res = await fetch(`/api/activities/sync?id=${activity.id}`, { method: 'POST' })
+225: 4 |       if (res.ok) {
+226: 4 |         const updated = await res.json()
+227: 4 |         useActivityStore.getState().updateActivity(activity.id, updated)
+228: 4 |         setSyncStatus('success')
+229: 4 |         const newLogsCount = updated.data?.logs?.length || 0
+230: 4 |         toast.success("ESI Sync Complete", { id: toastId, description: `Found ${newLogsCount} recent transactions.` })
+231: 4 |         
+232: 4 |         // Also refresh appraisal automatically on sync if needed - use UPDATED data, not old activity.data
+233: 5 |         if (updated.data?.mtuContents?.length > 0) {
+234: 5 |           handleRefreshAppraisal(false, updated.data)
+235: 4 |         }
+236: 4 |       } else {
+237: 4 |         setSyncStatus('error')
+238: 4 |         toast.error("Sync Failed", { id: toastId, description: "Could not retrieve wallet data from ESI." })
+239: 3 |       }
+240: 3 |     } catch (error) {
+241: 3 |       setSyncStatus('error')
+242: 3 |       toast.error("Sync Error", { id: toastId, description: "A network error occurred." })
+243: 3 |     } finally {
+244: 4 |       setTimeout(() => {
+245: 4 |         setIsSyncing(false)
+246: 4 |         setTimeout(() => setSyncStatus('idle'), 3000)
+247: 3 |       }, 500)
+248: 2 |     }
+249: 1 |   }
+250: 1 | 
+251: 2 |   const handleRefreshAppraisal = async (showToast = true, appraisalData?: any) => {
+252: 2 |     if (isAppraising) return
+253: 2 |     setIsAppraising(true)
+254: 2 |     let toastId;
+255: 2 |     if (showToast) toastId = toast.loading("Appraising Loot...", { description: "Fetching live prices from Jita 4-4." })
+256: 3 |     try {
+257: 3 |       const dataToSend = appraisalData || (activity.data as any)
+258: 4 |       const res = await fetch(`/api/activities/${activity.id}`, {
+259: 4 |         method: 'PATCH',
+260: 4 |         headers: { 'Content-Type': 'application/json' },
+261: 5 |         body: JSON.stringify({ 
+262: 5 |           data: dataToSend
+263: 4 |         })
+264: 3 |       })
+265: 4 |       if (res.ok) {
+266: 4 |         const updated = await res.json()
+267: 4 |         useActivityStore.getState().updateActivity(activity.id, updated)
+268: 4 |         if (showToast) toast.success("Appraisal Complete", { id: toastId, description: "Loot values have been updated." })
+269: 4 |       } else {
+270: 4 |          if (showToast) toast.error("Appraisal Failed", { id: toastId, description: "Could not reach market endpoints." })
+271: 3 |       }
+272: 3 |     } catch (e) {
+273: 3 |       console.error('Appraisal failed:', e)
+274: 3 |       if (showToast) toast.error("Appraisal Error", { id: toastId, description: "Failed to estimate market values." })
+275: 3 |     } finally {
+276: 3 |       setIsAppraising(false)
+277: 2 |     }
+278: 1 |   }
+279: 1 | 
+280: 1 |   return (
+281: 1 |     <Card className="bg-[#0a0a0f] border-zinc-800/50 rounded-xl overflow-hidden shadow-2xl transition-all hover:border-zinc-700/50 group/card">
+282: 1 |       <CardHeader className="py-3 px-4 bg-zinc-950/50 border-b border-zinc-900/50">
+283: 1 |         <div className="flex items-center justify-between">
+284: 1 |           <div className="flex items-center gap-3">
+285: 1 |             <div className="h-6 w-1 bg-eve-accent rounded-full shadow-[0_0_8px_rgba(0,255,255,0.4)]" />
+286: 1 |             <div className="flex flex-col">
+287: 1 |               <span className="text-[10px] items-center gap-2 flex text-zinc-500 font-bold uppercase tracking-widest leading-none mb-1">
+288: 1 |                 <ActivityIcon className="h-3 w-3" />
+289: 1 |                 {activity.type}
+290: 1 |               </span>
+291: 1 |               <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
+292: 1 |                 <span className="truncate">{(activity as any).item?.name || activity.data?.siteName || 'Active Operations'}</span>
+293: 1 |               </h3>
+294: 1 |             </div>
+295: 1 |           </div>
+296: 1 |           <div className="flex items-center gap-2">
+297: 1 |             <div className="flex items-center gap-1 bg-zinc-950 rounded-full p-1 border border-zinc-900 shadow-inner">
+298: 1 |               <button
+299: 1 |                 onClick={() => setDisplayMode('compact')}
+300: 2 |                 className={cn(
+301: 2 |                   "p-1.5 rounded-full transition-all duration-300",
+302: 2 |                   displayMode === 'compact' ? "bg-cyan-500/20 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.1)]" : "text-zinc-600 hover:text-zinc-400"
+303: 1 |                 )}
+304: 1 |                 title="Compact Mode"
+305: 1 |               >
+306: 1 |                 <LayoutGrid className="w-3.5 h-3.5" />
+307: 1 |               </button>
+308: 1 |               <button
+309: 1 |                 onClick={() => setDisplayMode('tabs')}
+310: 2 |                 className={cn(
+311: 2 |                   "p-1.5 rounded-full transition-all duration-300",
+312: 2 |                   displayMode === 'tabs' ? "bg-cyan-500/20 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.1)]" : "text-zinc-600 hover:text-zinc-400"
+313: 1 |                 )}
+314: 1 |                 title="Tabs Mode"
+315: 1 |               >
+316: 1 |                 <AlignJustify className="w-3.5 h-3.5" />
+317: 1 |               </button>
+318: 1 |             </div>
+319: 1 |             <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-zinc-400 bg-zinc-950 px-2.5 py-1 rounded-full border border-zinc-900 shadow-inner">
+320: 1 |               <Clock className="h-3 w-3 text-cyan-500" />
+321: 1 |               {elapsed}
+322: 1 |             </div>
+323: 1 |           </div>
+324: 1 |         </div>
+325: 1 |       </CardHeader>
+326: 1 |       <CardContent className="p-4">
+327: 1 |         <div className="flex items-center justify-between mb-4 -mt-1 px-1">
+328: 1 |           <div className="flex items-center gap-2">
+329: 1 |             <Badge variant="outline" className={cn("text-[8px] uppercase font-black tracking-widest border-zinc-800", typeInfo?.color)}>
+330: 1 |               {activity.status}
+331: 1 |             </Badge>
+332: 1 |           </div>
+333: 1 |           <div className="flex items-center gap-1">
+334: 1 |             <Dialog>
+335: 1 |               <DialogTrigger asChild>
+336: 1 |                 <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] font-bold text-zinc-500 hover:text-cyan-400 uppercase tracking-widest">
+337: 1 |                   <History className="h-3.5 w-3.5 mr-1.5" /> Log
+338: 1 |                 </Button>
+339: 1 |               </DialogTrigger>
+340: 1 |             <DialogContent className="bg-eve-panel border-eve-border sm:max-w-[600px] max-h-[85vh] overflow-hidden flex flex-col">
+341: 1 |               <DialogHeader className="border-b border-eve-border/50 pb-3">
+342: 1 |               <div className="flex items-center justify-between">
+343: 1 |                 <DialogTitle className="font-mono uppercase tracking-[0.15em] text-gray-300 text-sm">
+344: 1 |                   Financial History
+345: 1 |                 </DialogTitle>
+346: 1 |                 <div className="flex items-center gap-1 bg-zinc-900/50 rounded p-0.5">
+347: 1 |                   <button
+348: 1 |                     onClick={handleExportCSV}
+349: 1 |                     className="p-1.5 rounded transition-colors text-gray-500 hover:text-green-400"
+350: 1 |                     title="Export CSV"
+351: 1 |                   >
+352: 1 |                     <Download className="h-3.5 w-3.5" />
+353: 1 |                   </button>
+354: 1 |                   <div className="w-px h-4 bg-zinc-800 mx-1"></div>
+355: 1 |                   <button
+356: 1 |                     onClick={() => setViewMode('list')}
+357: 2 |                     className={cn(
+358: 2 |                       "p-1.5 rounded transition-colors",
+359: 2 |                       viewMode === 'list' ? "bg-eve-accent text-black" : "text-gray-500 hover:text-gray-300"
+360: 1 |                     )}
+361: 1 |                   >
+362: 1 |                     <List className="h-3.5 w-3.5" />
+363: 1 |                   </button>
+364: 1 |                   <button
+365: 1 |                     onClick={() => setViewMode('table')}
+366: 2 |                     className={cn(
+367: 2 |                       "p-1.5 rounded transition-colors",
+368: 2 |                       viewMode === 'table' ? "bg-eve-accent text-black" : "text-gray-500 hover:text-gray-300"
+369: 1 |                     )}
+370: 1 |                   >
+371: 1 |                     <Table2 className="h-3.5 w-3.5" />
+372: 1 |                   </button>
+373: 1 |                 </div>
+374: 1 |               </div>
+375: 1 |               <DialogDescription className="text-[10px] text-gray-500">
+376: 1 |                 Session: {new Date(activity.startTime).toLocaleTimeString()} - {activity.endTime ? new Date(activity.endTime).toLocaleTimeString() : 'Active'}
+377: 1 |               </DialogDescription>
+378: 1 |             </DialogHeader>
+379: 1 |             
+380: 1 |             <div className="py-4 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
+381: 1 |               {/* Statistics Cards */}
+382: 1 |               <div className="grid grid-cols-3 gap-2">
+383: 1 |                 <div className="bg-green-950/20 border border-green-900/30 rounded-lg p-2.5">
+384: 1 |                   <div className="flex items-center gap-1.5 mb-1">
+385: 1 |                     <Wallet className="h-3 w-3 text-green-400" />
+386: 1 |                     <span className="text-[9px] text-green-400/70 uppercase font-bold tracking-wider">Bounty</span>
+387: 1 |                   </div>
+388: 1 |                   <div className="text-sm font-bold text-green-400 font-mono">
+389: 1 |                     {formatISK(activity.data?.grossBounties || (activity.data?.automatedBounties || 0) + (activity.data?.additionalBounties || 0))}
+390: 1 |                   </div>
+391: 1 |                 </div>
+392: 1 |                 <div className="bg-zinc-800/30 border border-zinc-700/30 rounded-lg p-2.5">
+393: 1 |                   <div className="flex items-center gap-1.5 mb-1">
+394: 1 |                     <PiggyBank className="h-3 w-3 text-zinc-400" />
+395: 1 |                     <span className="text-[9px] text-zinc-400/70 uppercase font-bold tracking-wider">ESS</span>
+396: 1 |                   </div>
+397: 1 |                   <div className="text-sm font-bold text-zinc-300 font-mono">
+398: 1 |                     {formatISK(activity.data?.automatedEss || 0)}
+399: 1 |                   </div>
+400: 1 |                 </div>
+401: 1 |                 <div className="bg-blue-950/20 border border-blue-900/30 rounded-lg p-2.5">
+402: 1 |                   <div className="flex items-center gap-1.5 mb-1">
+403: 1 |                     <Package className="h-3 w-3 text-blue-400" />
+404: 1 |                     <span className="text-[9px] text-blue-400/70 uppercase font-bold tracking-wider">Loot</span>
+405: 1 |                   </div>
+406: 1 |                   <div className="text-sm font-bold text-blue-400 font-mono">
+407: 1 |                     {formatISK(estimatedLootValue)}
+408: 1 |                   </div>
+409: 1 |                 </div>
+410: 1 |                 <div className="bg-orange-950/20 border border-orange-900/30 rounded-lg p-2.5">
+411: 1 |                   <div className="flex items-center gap-1.5 mb-1">
+412: 1 |                     <Wrench className="h-3 w-3 text-orange-400" />
+413: 1 |                     <span className="text-[9px] text-orange-400/70 uppercase font-bold tracking-wider">Salvage</span>
+414: 1 |                   </div>
+415: 1 |                   <div className="text-sm font-bold text-orange-400 font-mono">
+416: 1 |                     {formatISK(estimatedSalvageValue)}
+417: 1 |                   </div>
+418: 1 |                 </div>
+419: 1 |                 <div className="bg-red-950/20 border border-red-900/30 rounded-lg p-2.5">
+420: 1 |                   <div className="flex items-center gap-1.5 mb-1">
+421: 1 |                     <Receipt className="h-3 w-3 text-red-400" />
+422: 1 |                     <span className="text-[9px] text-red-400/70 uppercase font-bold tracking-wider">Tax</span>
+423: 1 |                   </div>
+424: 1 |                   <div className="text-sm font-bold text-red-400 font-mono">
+425: 1 |                     -{formatISK(activity.data?.automatedTaxes || 0)}
+426: 1 |                   </div>
+427: 1 |                 </div>
+428: 1 |                 <div className="bg-eve-accent/10 border border-eve-accent/20 rounded-lg p-2.5">
+429: 1 |                   <div className="flex items-center gap-1.5 mb-1">
+430: 1 |                     <TrendingUp className="h-3 w-3 text-eve-accent" />
+431: 1 |                     <span className="text-[9px] text-eve-accent/70 uppercase font-bold tracking-wider">ISK/hr</span>
+432: 1 |                   </div>
+433: 1 |                   <div className="text-sm font-bold text-eve-accent font-mono tabular-nums">
+434: 3 |                     {(() => {
+435: 3 |                       const start = new Date(activity.startTime).getTime()
+436: 3 |                       const end = activity.endTime ? new Date(activity.endTime).getTime() : Date.now()
+437: 3 |                       const hours = (end - start) / 3600000
+438: 3 |                       const total = 
+439: 3 |                         (activity.data?.automatedBounties || 0) + 
+440: 3 |                         (activity.data?.automatedEss || 0) + 
+441: 3 |                         (activity.data?.additionalBounties || 0) +
+442: 3 |                         estimatedLootValue +
+443: 3 |                         estimatedSalvageValue
+444: 3 |                       return hours > 0.01 ? formatISK(total / hours) : formatISK(0)
+445: 1 |                     })()}
+446: 1 |                   </div>
+447: 1 |                 </div>
+448: 1 |               </div>
+449: 1 | 
+450: 1 |               {/* Metrics Summary & Filters */}
+451: 1 |               <div className="flex flex-col gap-2">
+452: 1 |                 <div className="flex items-center justify-between gap-2">
+453: 1 |                   <select 
+454: 1 |                     value={logFilterType} 
+455: 1 |                     onChange={e => setLogFilterType(e.target.value)}
+456: 1 |                     className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-gray-300 outline-none focus:border-zinc-500 flex-1"
+457: 1 |                   >
+458: 1 |                     <option value="all">All Types</option>
+459: 1 |                     <option value="bounty">Bounty</option>
+460: 1 |                     <option value="ess">ESS</option>
+461: 1 |                     <option value="tax">Corp Tax</option>
+462: 1 |                   </select>
+463: 1 |                   <select 
+464: 1 |                     value={logFilterChar} 
+465: 1 |                     onChange={e => setLogFilterChar(e.target.value)}
+466: 1 |                     className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-gray-300 outline-none focus:border-zinc-500 flex-1"
+467: 1 |                   >
+468: 1 |                     <option value="all">All Characters</option>
+469: 2 |                     {uniqueChars.map(char => (
+470: 2 |                       <option key={char} value={char}>{char}</option>
+471: 1 |                     ))}
+472: 1 |                   </select>
+473: 1 |                 </div>
+474: 1 |                 <div className="flex items-center justify-between text-[10px] text-gray-500 bg-zinc-900/30 rounded px-2 py-1.5">
+475: 1 |                   <div className="flex gap-2 items-center">
+476: 1 |                     <Filter className="h-3 w-3" />
+477: 1 |                     <span>{filteredLogs.length} transactions</span>
+478: 1 |                   </div>
+479: 1 |                   <span className="text-gray-400">
+480: 1 |                     Avg: {formatISK((filteredLogs.reduce((sum: number, l: any) => sum + l.amount, 0)) / Math.max(filteredLogs.length, 1))}
+481: 1 |                   </span>
+482: 1 |                 </div>
+483: 1 |               </div>
+484: 1 | 
+485: 1 |               {/* Transaction Logs - List View */}
+486: 2 |               {viewMode === 'list' && (
+487: 2 |                 <div className="space-y-1.5 max-h-[250px] overflow-y-auto px-1 custom-scrollbar">
+488: 3 |                   {filteredLogs.length === 0 ? (
+489: 3 |                     <p className="text-center text-[10px] text-gray-600 italic py-8 border border-dashed border-eve-border/30 rounded">
+490: 3 |                       No transactions match the current filters or none recorded.
+491: 3 |                     </p>
+492: 3 |                   ) : (
+493: 4 |                     filteredLogs.map((log: any, idx: number) => {
+494: 5 |                       const typeColors: Record<string, string> = {
+495: 5 |                         bounty: 'border-l-green-500 bg-green-950/10',
+496: 5 |                         ess: 'border-l-zinc-400 bg-zinc-800/20',
+497: 5 |                         tax: 'border-l-red-500 bg-red-950/10'
+498: 4 |                       }
+499: 5 |                       const typeIcons: Record<string, any> = {
+500: 5 |                         bounty: Wallet,
+501: 5 |                         ess: PiggyBank,
+502: 5 |                         tax: Receipt
+503: 4 |                       }
+504: 4 |                       const IconComponent = typeIcons[log.type] || Wallet
+505: 4 |                       
+506: 4 |                       return (
+507: 5 |                         <div key={idx} className={cn(
+508: 5 |                           "flex items-center justify-between text-[11px] font-mono py-2 px-3 rounded border-l-2",
+509: 5 |                           typeColors[log.type] || 'border-l-green-500 bg-green-950/10'
+510: 4 |                         )}>
+511: 4 |                           <div className="flex items-center gap-2.5">
+512: 4 |                             <Avatar className="h-6 w-6">
+513: 4 |                               <AvatarImage src={`https://images.evetech.net/characters/${log.charId}/portrait?size=64`} />
+514: 4 |                               <AvatarFallback className="text-[8px] bg-zinc-800 text-zinc-400">
+515: 4 |                                 {log.charName?.slice(0, 2).toUpperCase()}
+516: 4 |                               </AvatarFallback>
+517: 4 |                             </Avatar>
+518: 4 |                             <div className="flex flex-col">
+519: 4 |                               <span className="text-gray-300 text-[10px] font-medium">{log.charName}</span>
+520: 4 |                               <div className="flex items-center gap-1">
+521: 5 |                                 <IconComponent className={cn(
+522: 5 |                                   "h-2.5 w-2.5",
+523: 5 |                                   log.type === 'bounty' ? 'text-green-400' : 
+524: 5 |                                   log.type === 'ess' ? 'text-zinc-400' : 'text-red-400'
+525: 4 |                                 )} />
+526: 5 |                                 <span className={cn(
+527: 5 |                                   "text-[8px] uppercase font-bold",
+528: 5 |                                   log.type === 'bounty' ? 'text-green-400/70' : 
+529: 5 |                                   log.type === 'ess' ? 'text-zinc-500' : 'text-red-400/70'
+530: 4 |                                 )}>
+531: 4 |                                   {log.type}
+532: 4 |                                 </span>
+533: 4 |                               </div>
+534: 4 |                             </div>
+535: 4 |                           </div>
+536: 4 |                           <div className="text-right">
+537: 5 |                             <span className={cn(
+538: 5 |                               "font-bold text-[11px]",
+539: 5 |                               log.type === 'tax' ? 'text-red-400' : 'text-green-400'
+540: 4 |                             )}>
+541: 4 |                               {log.type === 'tax' ? '-' : '+'}{formatISK(log.amount)}
+542: 4 |                             </span>
+543: 4 |                             <p className="text-[8px] text-gray-600">
+544: 4 |                               {new Date(log.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+545: 4 |                             </p>
+546: 4 |                           </div>
+547: 4 |                         </div>
+548: 4 |                       )
+549: 3 |                     })
+550: 2 |                   )}
+551: 2 |                 </div>
+552: 1 |               )}
+553: 1 | 
+554: 1 |               {/* Transaction Logs - Table View */}
+555: 2 |               {viewMode === 'table' && (
+556: 2 |                 <div className="max-h-[250px] overflow-y-auto custom-scrollbar">
+557: 2 |                   <table className="w-full text-[10px] font-mono">
+558: 2 |                     <thead className="sticky top-0 bg-zinc-900/90 backdrop-blur">
+559: 2 |                       <tr className="text-gray-500 uppercase text-[9px] tracking-wider">
+560: 2 |                         <th className="text-left py-2 px-2 font-medium">Time</th>
+561: 2 |                         <th className="text-left py-2 px-2 font-medium">Character</th>
+562: 2 |                         <th className="text-left py-2 px-2 font-medium">Type</th>
+563: 2 |                         <th className="text-right py-2 px-2 font-medium">Amount</th>
+564: 2 |                       </tr>
+565: 2 |                     </thead>
+566: 2 |                     <tbody>
+567: 3 |                       {filteredLogs.length === 0 ? (
+568: 3 |                         <tr>
+569: 3 |                           <td colSpan={4} className="text-center text-gray-600 italic py-8">
+570: 3 |                             No transactions match the current filters.
+571: 3 |                           </td>
+572: 3 |                         </tr>
+573: 3 |                       ) : (
+574: 3 |                         filteredLogs.map((log: any, idx: number) => (
+575: 4 |                           <tr key={idx} className={cn(
+576: 4 |                             "border-b border-eve-border/10",
+577: 4 |                             idx % 2 === 0 ? "bg-zinc-900/20" : "bg-zinc-900/40"
+578: 3 |                           )}>
+579: 3 |                             <td className="py-2 px-2 text-gray-400">
+580: 3 |                               {new Date(log.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+581: 3 |                             </td>
+582: 3 |                             <td className="py-2 px-2">
+583: 3 |                               <div className="flex items-center gap-2">
+584: 3 |                                 <Avatar className="h-5 w-5">
+585: 3 |                                   <AvatarImage src={`https://images.evetech.net/characters/${log.charId}/portrait?size=64`} />
+586: 3 |                                   <AvatarFallback className="text-[7px] bg-zinc-800 text-zinc-400">
+587: 3 |                                     {log.charName?.slice(0, 2).toUpperCase()}
+588: 3 |                                   </AvatarFallback>
+589: 3 |                                 </Avatar>
+590: 3 |                                 <span className="text-gray-300">{log.charName}</span>
+591: 3 |                               </div>
+592: 3 |                             </td>
+593: 3 |                             <td className="py-2 px-2">
+594: 4 |                               <span className={cn(
+595: 4 |                                 "px-1.5 py-0.5 rounded text-[8px] uppercase font-bold",
+596: 4 |                                 log.type === 'bounty' ? 'bg-green-950/50 text-green-400' :
+597: 4 |                                 log.type === 'ess' ? 'bg-zinc-800/50 text-zinc-400' :
+598: 4 |                                 'bg-red-950/50 text-red-400'
+599: 3 |                               )}>
+600: 3 |                                 {log.type}
+601: 3 |                               </span>
+602: 3 |                             </td>
+603: 4 |                             <td className={cn(
+604: 4 |                               "py-2 px-2 text-right font-bold",
+605: 4 |                               log.type === 'tax' ? 'text-red-400' : 'text-green-400'
+606: 3 |                             )}>
+607: 3 |                               {log.type === 'tax' ? '-' : '+'}{formatISK(log.amount)}
+608: 3 |                             </td>
+609: 3 |                           </tr>
+610: 3 |                         ))
+611: 2 |                       )}
+612: 2 |                     </tbody>
+613: 2 |                   </table>
+614: 2 |                 </div>
+615: 1 |               )}
+616: 1 | 
+617: 1 |               {/* Totals Section */}
+618: 1 |               <div className="border-t border-eve-border/50 pt-4 space-y-2 font-mono">
+619: 1 |                 <div className="flex justify-between text-xs items-center">
+620: 1 |                   <span className="text-gray-500 uppercase tracking-tighter">Bounty</span>
+621: 1 |                   <span className="text-green-400 font-bold">+{formatISK((activity.data?.automatedBounties || 0) + (activity.data?.additionalBounties || 0))}</span>
+622: 1 |                 </div>
+623: 1 |                 <div className="flex justify-between text-xs items-center">
+624: 1 |                   <span className="text-gray-500 uppercase tracking-tighter">ESS</span>
+625: 1 |                   <span className="text-zinc-300 font-bold">+{formatISK(activity.data?.automatedEss || 0)}</span>
+626: 1 |                 </div>
+627: 1 |                 <div className="flex justify-between text-xs items-center">
+628: 1 |                   <span className="text-gray-500 uppercase tracking-tighter">Loot</span>
+629: 1 |                   <span className="text-blue-400 font-bold">+{formatISK(estimatedLootValue)}</span>
+630: 1 |                 </div>
+631: 1 |                 <div className="flex justify-between text-xs items-center">
+632: 1 |                   <span className="text-gray-500 uppercase tracking-tighter">Salvage</span>
+633: 1 |                   <span className="text-orange-400 font-bold">+{formatISK(estimatedSalvageValue)}</span>
+634: 1 |                 </div>
+635: 1 |                 <div className="flex justify-between text-xs items-center">
+636: 1 |                   <span className="text-gray-500 uppercase tracking-tighter">Corp Tax</span>
+637: 1 |                   <span className="text-red-400 font-bold">-{formatISK(activity.data?.automatedTaxes || 0)}</span>
+638: 1 |                 </div>
+639: 1 | 
+640: 1 |                 <div className="mt-4 pt-3 border-t border-eve-border/30 flex justify-between items-baseline">
+641: 1 |                   <span className="text-[10px] uppercase font-black text-gray-500">NET RUN PROFIT</span>
+642: 1 |                   <span className="text-xl font-mono font-black text-eve-accent tracking-tighter">
+643: 2 |                     {formatISK(
+644: 2 |                       (activity.data?.grossBounties || 0) + 
+645: 2 |                       (activity.data?.automatedEss || 0) + 
+646: 2 |                       estimatedLootValue +
+647: 2 |                       estimatedSalvageValue - 
+648: 2 |                       (activity.data?.automatedTaxes || 0)
+649: 1 |                     )}
+650: 1 |                   </span>
+651: 1 |                 </div>
+652: 1 |               </div>
+653: 1 |             </div>
+654: 1 |           </DialogContent>
+655: 1 |         </Dialog>
+656: 1 |       </CardHeader>
+657: 1 |       
+658: 1 |       <CardContent className="space-y-3 p-4">
+659: 2 |         {displayMode === 'compact' ? (
+660: 2 |           <>
+661: 2 |             {/* Compact Stats Grid */}
+662: 2 |             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+663: 2 |               <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-green-500/30">
+664: 2 |                 <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Bounty</p>
+665: 2 |                 <p className="text-sm font-bold text-green-400 font-mono">{formatISK(activity.data?.grossBounties || activity.data?.automatedBounties || 0)}</p>
+666: 2 |               </div>
+667: 2 |               <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-yellow-500/30">
+668: 2 |                 <p className="text-[10px] text-gray-500 uppercase tracking-tighter">ESS</p>
+669: 2 |                 <p className="text-sm font-bold text-yellow-400 font-mono">{formatISK(activity.data?.automatedEss || 0)}</p>
+670: 2 |               </div>
+671: 2 |               <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-blue-500/30">
+672: 2 |                 <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Loot</p>
+673: 2 |                 <p className="text-sm font-bold text-blue-400 font-mono">{formatISK(estimatedLootValue)}</p>
+674: 2 |               </div>
+675: 2 |               <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-orange-500/30">
+676: 2 |                 <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Salvage</p>
+677: 2 |                 <p className="text-sm font-bold text-orange-400 font-mono">{formatISK(estimatedSalvageValue)}</p>
+678: 2 |               </div>
+679: 2 |             </div>
+680: 2 | 
+681: 2 |             {/* Summary Bar */}
+682: 2 |             <div className="flex items-center justify-between bg-[#12121a]/80 backdrop-blur-md border border-zinc-800/50 rounded-xl p-3 shadow-lg">
+683: 2 |               <div>
+684: 2 |                 <p className="text-[10px] text-gray-500 uppercase font-black">Total</p>
+685: 2 |                 <p className="text-xl font-black text-green-400 font-mono leading-tight tracking-tighter">{formatISK(totalIsk)}</p>
+686: 2 |               </div>
+687: 2 |               <div className="text-right flex items-center gap-4">
+688: 2 |                 <div>
+689: 2 |                   <p className="text-[10px] text-gray-500 uppercase font-black">Rate</p>
+690: 2 |                   <p className="text-sm font-bold text-cyan-400 font-mono leading-tight">{formatISK(totalIsk / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000))}/h</p>
+691: 2 |                 </div>
+692: 3 |               {activity.type === 'ratting' && (
+693: 3 |                 <Button 
+694: 3 |                   size="sm" 
+695: 3 |                   variant="outline"
+696: 3 |                   disabled={isSyncing}
+697: 3 |                   onClick={handleSyncFinancials}
+698: 3 |                   className="h-8"
+699: 3 |                 >
+700: 3 |                   {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+701: 3 |                 </Button>
+702: 2 |               )}
+703: 2 |             </div>
+704: 2 |             </div>
+705: 2 | 
+706: 2 |             {/* Quick Fleet Preview */}
+707: 2 |             <div className="flex items-center justify-between">
+708: 2 |               <div className="flex -space-x-2">
+709: 3 |                 {activity.participants.slice(0, 4).map(p => (
+710: 3 |                   <Avatar key={p.characterId} className="h-8 w-8 border-2 border-[#0a0a0f]">
+711: 3 |                     <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
+712: 3 |                     <AvatarFallback className="bg-[#12121a] text-[10px]">
+713: 3 |                       {p.characterName?.slice(0, 2).toUpperCase()}
+714: 3 |                     </AvatarFallback>
+715: 3 |                   </Avatar>
+716: 2 |                 ))}
+717: 3 |                 {activity.participants.length > 4 && (
+718: 3 |                   <div className="h-8 w-8 rounded-full bg-[#12121a] border-2 border-[#0a0a0f] flex items-center justify-center text-[10px] text-gray-400">
+719: 3 |                     +{activity.participants.length - 4}
+720: 3 |                   </div>
+721: 2 |                 )}
+722: 2 |               </div>
+723: 2 |               <div className="flex items-center gap-2">
+724: 2 |                 <Button 
+725: 2 |                   variant="ghost" 
+726: 2 |                   size="sm"
+727: 4 |                   onClick={() => {
+728: 4 |                     const newMTUs = [...mtuContents, { loot: '' }]
+729: 4 |                     handleMTUChange(newMTUs)
+730: 4 |                     setDisplayMode('tabs')
+731: 4 |                     setExpandedSections(prev => ({ ...prev, mtu: true }))
+732: 2 |                   }}
+733: 2 |                   className="text-xs text-blue-400 font-bold hover:text-blue-300 hover:bg-blue-400/10 rounded-full px-3"
+734: 2 |                 >
+735: 2 |                   <Plus className="h-3 w-3 mr-1" />
+736: 2 |                   MTU
+737: 2 |                 </Button>
+738: 2 |                 <Button 
+739: 2 |                   variant="ghost" 
+740: 2 |                   size="sm"
+741: 4 |                   onClick={() => {
+742: 4 |                     const newSalvage = [...salvageContents, { loot: '' }]
+743: 4 |                     handleSalvageChange(newSalvage)
+744: 4 |                     setDisplayMode('tabs')
+745: 4 |                     setExpandedSections(prev => ({ ...prev, salvage: true }))
+746: 2 |                   }}
+747: 2 |                   className="text-xs text-orange-400 font-bold hover:text-orange-300 hover:bg-orange-400/10 rounded-full px-3"
+748: 2 |                 >
+749: 2 |                   <Plus className="h-3 w-3 mr-1" />
+750: 2 |                   Salvage
+751: 2 |                 </Button>
+752: 2 |                 <Button 
+753: 2 |                   variant="outline" 
+754: 2 |                    size="sm"
+755: 2 |                   onClick={() => setDisplayMode('tabs')}
+756: 2 |                   className="text-xs border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-full px-4"
+757: 2 |                 >
+758: 2 |                   View Details
+759: 2 |                 </Button>
+760: 2 |               </div>
+761: 2 |             </div>
+762: 2 |           </>
+763: 2 |         ) : displayMode === 'tabs' ? (
+764: 2 |           <>
+765: 2 |             {/* Tabs Mode - Stats + Unified Metrics */}
+766: 2 |             <div className="grid grid-cols-2 gap-2 mb-3">
+767: 2 |               <div className="bg-green-500/5 border border-green-500/10 rounded-lg p-2.5 backdrop-blur-sm shadow-inner group/stat">
+768: 2 |                 <p className="text-[9px] text-green-400/50 uppercase font-bold tracking-widest mb-1">Bounty</p>
+769: 2 |                 <p className="text-lg font-bold text-green-400 font-mono tracking-tight">{formatISK(activity.data?.grossBounties || 0)}</p>
+770: 2 |               </div>
+771: 2 |               <div className="bg-yellow-500/5 border border-yellow-500/10 rounded-lg p-2.5 backdrop-blur-sm shadow-inner group/stat">
+772: 2 |                 <p className="text-[9px] text-yellow-400/50 uppercase font-bold tracking-widest mb-1">ESS</p>
+773: 2 |                 <p className="text-lg font-bold text-yellow-400 font-mono tracking-tight">{formatISK(activity.data?.automatedEss || 0)}</p>
+774: 2 |               </div>
+775: 2 |             </div>
+776: 2 | 
+777: 2 |             {/* Financial Status Bar */}
+778: 2 |             <div className="mb-3 p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/10 backdrop-blur-md flex items-center justify-between shadow-lg">
+779: 2 |               <div className="space-y-0.5">
+780: 2 |                 <p className="text-[8px] text-cyan-400/50 uppercase font-black tracking-[0.2em]">Net ISK Profit</p>
+781: 2 |                 <p className="text-sm font-bold text-white font-mono leading-none">
+782: 3 |                   {formatISK(
+783: 3 |                     (activity.data?.automatedBounties || 0) + 
+784: 3 |                     (activity.data?.automatedEss || 0) + 
+785: 3 |                     (activity.data?.additionalBounties || 0) +
+786: 3 |                     estimatedLootValue +
+787: 3 |                     estimatedSalvageValue
+788: 2 |                   )}
+789: 2 |                 </p>
+790: 2 |               </div>
+791: 2 |               <div className="h-8 w-[1px] bg-cyan-500/10" />
+792: 2 |               <div className="space-y-0.5 text-right">
+793: 2 |                 <p className="text-[8px] text-zinc-500 uppercase font-black tracking-[0.2em]">Efficiency</p>
+794: 2 |                 <p className="text-xs font-bold text-cyan-400 font-mono leading-none">
+795: 4 |                   {(() => {
+796: 4 |                     const start = new Date(activity.startTime).getTime()
+797: 4 |                     const end = activity.endTime ? new Date(activity.endTime).getTime() : Date.now()
+798: 4 |                     const hours = (end - start) / 3600000;
+799: 4 |                     const total = 
+800: 4 |                       (activity.data?.automatedBounties || 0) + 
+801: 4 |                       (activity.data?.automatedEss || 0) + 
+802: 4 |                       (activity.data?.additionalBounties || 0) +
+803: 4 |                       estimatedLootValue +
+804: 4 |                       estimatedSalvageValue;
+805: 4 |                     return hours > 0.01 ? formatISK(total / hours) : formatISK(0);
+806: 2 |                   })()}/h
+807: 2 |                 </p>
+808: 2 |               </div>
+809: 2 |             </div>
+810: 2 | 
+811: 2 |             {/* Tabs Navigation */}
+812: 2 |             <div className="flex gap-1.5 p-1 rounded-full bg-zinc-950/80 border border-zinc-900/50 mb-4 backdrop-blur-xl">
+813: 2 |               <button
+814: 2 |                 onClick={() => toggleSection('fleet')}
+815: 3 |                 className={cn(
+816: 3 |                   "flex-1 px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all duration-300",
+817: 3 |                   expandedSections.fleet 
+818: 3 |                     ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-[0_0_12px_rgba(6,182,212,0.1)]" 
+819: 3 |                     : "text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50"
+820: 2 |                 )}
+821: 2 |               >
+822: 2 |                 Fleet
+823: 2 |               </button>
+824: 2 |               <button
+825: 2 |                 onClick={() => toggleSection('mtu')}
+826: 3 |                 className={cn(
+827: 3 |                   "flex-1 px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all duration-300",
+828: 3 |                   expandedSections.mtu 
+829: 3 |                     ? "bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_12px_rgba(59,130,246,0.1)]" 
+830: 3 |                     : "text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50"
+831: 2 |                 )}
+832: 2 |               >
+833: 2 |                 MTU
+834: 2 |               </button>
+835: 2 |               <button
+836: 2 |                 onClick={() => toggleSection('salvage')}
+837: 3 |                 className={cn(
+838: 3 |                   "flex-1 px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all duration-300",
+839: 3 |                   expandedSections.salvage 
+840: 3 |                     ? "bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-[0_0_12px_rgba(249,115,22,0.1)]" 
+841: 3 |                     : "text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50"
+842: 2 |                 )}
+843: 2 |               >
+844: 2 |                 Salvage
+845: 2 |               </button>
+846: 2 |             </div>
+847: 2 | 
+848: 2 |             {/* Tab Content */}
+849: 2 |             <div className="min-h-[220px]">
+850: 3 |               {expandedSections.fleet && (
+851: 3 |                 <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+852: 4 |                   {activity.participants.map(p => (
+853: 4 |                     <div key={p.characterId} className="flex items-center gap-3 p-2.5 bg-zinc-950/40 border border-zinc-900/50 rounded-lg backdrop-blur-sm group/p">
+854: 4 |                       <Avatar className="h-10 w-10 border border-zinc-800 group-hover/p:border-cyan-500/50 transition-colors">
+855: 4 |                         <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
+856: 4 |                         <AvatarFallback className="bg-zinc-900 text-[10px] tracking-tighter">{p.characterName?.slice(0, 2)}</AvatarFallback>
+857: 4 |                       </Avatar>
+858: 4 |                       <div className="flex-1 min-w-0">
+859: 4 |                         <p className="text-xs font-bold text-zinc-200 truncate tracking-tight">{p.characterName}</p>
+860: 4 |                         <p className="text-[10px] text-zinc-600 truncate uppercase font-bold tracking-widest">{p.fit || 'No fit recorded'}</p>
+861: 4 |                       </div>
+862: 4 |                       <div className="h-2 w-2 rounded-full bg-green-500/50 animate-pulse" />
+863: 4 |                     </div>
+864: 3 |                   ))}
+865: 3 |                 </div>
+866: 2 |               )}
+867: 2 | 
+868: 3 |               {expandedSections.mtu && (
+869: 3 |                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+870: 3 |                   <MTULootField 
+871: 3 |                     value={activity.data?.mtuContents || []} 
+872: 3 |                     activityId={activity.id}
+873: 3 |                     mtuValues={activity.data?.mtuValues || []}
+874: 5 |                     onChange={async (mtus) => {
+875: 6 |                       useActivityStore.getState().updateActivity(activity.id, {
+876: 6 |                         data: { ...activity.data, mtuContents: mtus }
+877: 5 |                       });
+878: 3 |                     }} 
+879: 3 |                   />
+880: 3 |                 </div>
+881: 2 |               )}
+882: 2 | 
+883: 3 |               {expandedSections.salvage && (
+884: 3 |                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+885: 3 |                   <SalvageField 
+886: 3 |                     value={activity.data?.salvageContents || []} 
+887: 3 |                     activityId={activity.id}
+888: 5 |                     onChange={async (salvage) => {
+889: 6 |                       useActivityStore.getState().updateActivity(activity.id, {
+890: 6 |                         data: { ...activity.data, salvageContents: salvage }
+891: 5 |                       });
+892: 3 |                     }} 
+893: 3 |                   />
+894: 3 |                 </div>
+895: 2 |               )}
+896: 2 |             </div>
+897: 2 |             
+898: 2 |             <div className="pt-4 mt-2 border-t border-zinc-900/50">
+899: 2 |               <Button 
+900: 2 |                 size="sm" 
+901: 2 |                 variant="ghost" 
+902: 2 |                 disabled={isSyncing}
+903: 2 |                 onClick={handleSyncFinancials}
+904: 2 |                 className="w-full h-10 text-[10px] uppercase font-black tracking-[0.2em] rounded-xl bg-zinc-900/50 hover:bg-zinc-800 text-zinc-500 hover:text-white border border-zinc-800/50"
+905: 2 |               >
+906: 3 |                 {isSyncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> :
+907: 3 |                  syncStatus === 'success' ? <CheckCircle className="h-4 w-4 mr-2 text-green-500" /> :
+908: 3 |                  syncStatus === 'error' ? <XCircle className="h-4 w-4 mr-2 text-red-500" /> :
+909: 2 |                  <RefreshCw className="h-4 w-4 mr-2" />}
+910: 2 |                 {isSyncing ? 'Synchronizing with ESI...' : syncStatus === 'success' ? 'Synchronized' : syncStatus === 'error' ? 'Sync Failed' : 'Sync ESI Data'}
+911: 2 |               </Button>
+912: 2 |             </div>
+913: 2 |           </>
+914: 2 |         ) : (
+915: 2 |           /* Expanded Mode - Full layout */
+916: 2 |           <div className="space-y-6 animate-in fade-in duration-500">
+917: 2 |             {/* Top Grid - Fleet & Basics */}
+918: 2 |             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+919: 2 |               <div className="space-y-3 bg-zinc-950/30 p-4 rounded-xl border border-zinc-900/50 backdrop-blur-sm">
+920: 2 |                 <div className="flex items-center justify-between mb-2">
+921: 2 |                   <div className="flex items-center gap-2">
+922: 2 |                     <div className="h-3 w-1 bg-eve-accent rounded-full shadow-[0_0_8px_rgba(0,255,255,0.4)]" />
+923: 2 |                     <span className="text-[10px] uppercase font-black tracking-[0.2em] text-cyan-400">Fleet Operations</span>
+924: 2 |                   </div>
+925: 2 |                   <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 text-[9px] font-bold border border-cyan-500/20">
+926: 2 |                     {activity.participants.length} Members
+927: 2 |                   </span>
+928: 2 |                 </div>
+929: 2 |                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
+930: 3 |                   {activity.participants.map(p => (
+931: 3 |                     <div key={p.characterId} className="flex items-center gap-3 p-2 bg-zinc-950/60 border border-zinc-900/50 rounded-lg group transition-all hover:bg-zinc-900/80 hover:border-zinc-800">
+932: 3 |                       <Avatar className="h-9 w-9 border border-zinc-800 transition-transform group-hover:scale-105">
+933: 3 |                         <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
+934: 3 |                         <AvatarFallback className="bg-zinc-900 text-[10px]">{p.characterName?.slice(0, 2)}</AvatarFallback>
+935: 3 |                       </Avatar>
+936: 3 |                       <div className="flex-1 min-w-0">
+937: 3 |                         <p className="text-xs font-bold text-zinc-100 truncate tracking-tight">{p.characterName}</p>
+938: 3 |                         <p className="text-[9px] text-zinc-600 truncate uppercase font-bold tracking-widest leading-none mt-1 group-hover:text-zinc-400 transition-colors">{p.fit || 'No fit recorded'}</p>
+939: 3 |                       </div>
+940: 3 |                     </div>
+941: 2 |                   ))}
+942: 2 |                 </div>
+943: 2 |               </div>
+944: 2 | 
+945: 2 |               {/* Financial Dashboard - Expanded */}
+946: 2 |               <div className="bg-zinc-950/30 p-4 rounded-xl border border-zinc-900/50 space-y-4 backdrop-blur-sm relative overflow-hidden group/fin">
+947: 2 |                 <div className="absolute top-0 right-0 p-8 bg-green-500/5 blur-3xl rounded-full -mr-10 -mt-10" />
+948: 2 |                 <div className="flex items-center justify-between relative z-10">
+949: 2 |                   <div className="flex items-center gap-2">
+950: 2 |                     <div className="h-3 w-1 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+951: 2 |                     <span className="text-[10px] uppercase font-black tracking-[0.2em] text-green-400">Yield Analytics</span>
+952: 2 |                   </div>
+953: 2 |                   <Wallet className="h-4 w-4 text-zinc-800 group-hover/fin:text-green-500/50 transition-colors duration-500" />
+954: 2 |                 </div>
+955: 2 |                 
+956: 2 |                 <div className="grid grid-cols-2 gap-4 relative z-10">
+957: 2 |                   <div className="space-y-1">
+958: 2 |                     <p className="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Net Profit</p>
+959: 2 |                     <p className="text-2xl font-bold text-green-400 font-mono tracking-tighter leading-none">
+960: 3 |                       {formatISK(
+961: 3 |                         (activity.data?.automatedBounties || 0) + 
+962: 3 |                         (activity.data?.automatedEss || 0) + 
+963: 3 |                         (activity.data?.additionalBounties || 0) +
+964: 3 |                         estimatedLootValue +
+965: 3 |                         estimatedSalvageValue
+966: 2 |                       )}
+967: 2 |                     </p>
+968: 2 |                   </div>
+969: 2 |                   <div className="space-y-1 text-right">
+970: 2 |                     <p className="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Efficiency</p>
+971: 2 |                     <p className="text-2xl font-bold text-cyan-400 font-mono tracking-tighter leading-none">
+972: 4 |                       {(() => {
+973: 4 |                         const start = new Date(activity.startTime).getTime()
+974: 4 |                         const end = activity.endTime ? new Date(activity.endTime).getTime() : Date.now()
+975: 4 |                         const hours = (end - start) / 3600000;
+976: 4 |                         const total = 
+977: 4 |                           (activity.data?.automatedBounties || 0) + 
+978: 4 |                           (activity.data?.automatedEss || 0) + 
+979: 4 |                           (activity.data?.additionalBounties || 0) +
+980: 4 |                           estimatedLootValue +
+981: 4 |                           estimatedSalvageValue;
+982: 4 |                         return hours > 0.01 ? formatISK(total / hours) : formatISK(0);
+983: 2 |                       })()}/h
+984: 2 |                     </p>
+985: 2 |                   </div>
+986: 2 |                 </div>
+987: 2 | 
+988: 2 |                 <div className="grid grid-cols-2 gap-2 pt-2 relative z-10">
+989: 2 |                   <div className="p-3 rounded-xl bg-zinc-900/40 border border-zinc-900/50 group-hover/fin:border-zinc-800 transition-colors">
+990: 2 |                     <p className="text-[8px] text-zinc-600 uppercase font-black tracking-widest mb-1 leading-none">Space Tier</p>
+991: 2 |                     <p className="text-[11px] font-bold text-zinc-300 truncate">{activity.space || '—'}</p>
+992: 2 |                   </div>
+993: 2 |                   <div className="p-3 rounded-xl bg-zinc-900/40 border border-zinc-900/50 group-hover/fin:border-zinc-800 transition-colors">
+994: 2 |                     <p className="text-[8px] text-zinc-600 uppercase font-black tracking-widest mb-1 leading-none">Activity Focus</p>
+995: 2 |                     <p className="text-[11px] font-bold text-zinc-300 truncate tracking-tight">{activity.data?.siteType ||'Combat Operations'}</p>
+996: 2 |                   </div>
+997: 2 |                 </div>
+998: 2 |               </div>
+999: 2 |             </div>
+1000: 2 | 
+1001: 2 |             {/* Bottom Grid - Inventory Systems */}
+1002: 2 |             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+1003: 2 |               <div className="space-y-3">
+1004: 2 |                 <div className="flex items-center gap-3 px-2 mb-1">
+1005: 2 |                   <div className="h-4 w-1 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.4)]" />
+1006: 2 |                   <span className="text-[10px] uppercase font-black tracking-[0.2em] text-blue-400">Inventory Management</span>
+1007: 2 |                 </div>
+1008: 2 |                 <div className="bg-zinc-950/20 p-2 rounded-2xl border border-zinc-900/30 backdrop-blur-md">
+1009: 2 |                   <MTULootField 
+1010: 2 |                     value={activity.data?.mtuContents || []} 
+1011: 2 |                     activityId={activity.id}
+1012: 2 |                     mtuValues={activity.data?.mtuValues || []}
+1013: 4 |                     onChange={async (mtus) => {
+1014: 5 |                       useActivityStore.getState().updateActivity(activity.id, {
+1015: 5 |                         data: { ...activity.data, mtuContents: mtus }
+1016: 4 |                       });
+1017: 2 |                     }} 
+1018: 2 |                   />
+1019: 2 |                 </div>
+1020: 2 |               </div>
+1021: 2 | 
+1022: 2 |               <div className="space-y-3">
+1023: 2 |                 <div className="flex items-center gap-3 px-2 mb-1">
+1024: 2 |                   <div className="h-4 w-1 bg-orange-500 rounded-full shadow-[0_0_8px_rgba(249,115,22,0.4)]" />
+1025: 2 |                   <span className="text-[10px] uppercase font-black tracking-[0.2em] text-orange-400">Reclamation Systems</span>
+1026: 2 |                 </div>
+1027: 2 |                 <div className="bg-zinc-950/20 p-2 rounded-2xl border border-zinc-900/30 backdrop-blur-md">
+1028: 2 |                   <SalvageField 
+1029: 2 |                     value={activity.data?.salvageContents || []} 
+1030: 2 |                     activityId={activity.id}
+1031: 4 |                     onChange={async (salvage) => {
+1032: 5 |                       useActivityStore.getState().updateActivity(activity.id, {
+1033: 5 |                         data: { ...activity.data, salvageContents: salvage }
+1034: 4 |                       });
+1035: 2 |                     }} 
+1036: 2 |                   />
+1037: 2 |                 </div>
+1038: 2 |               </div>
+1039: 2 |             </div>
+1040: 2 | 
+1041: 2 |             <div className="pt-2">
+1042: 2 |               <Button 
+1043: 2 |                 size="sm" 
+1044: 2 |                 variant="ghost" 
+1045: 2 |                 disabled={isSyncing}
+1046: 2 |                 onClick={handleSyncFinancials}
+1047: 2 |                 className="w-full h-12 text-[11px] uppercase font-black tracking-[0.2em] rounded-2xl bg-gradient-to-br from-zinc-950 via-zinc-950 to-zinc-900 hover:from-zinc-900 hover:to-zinc-800 text-zinc-500 hover:text-white border border-zinc-800/50 shadow-2xl transition-all duration-500 group relative overflow-hidden"
+1048: 2 |               >
+1049: 2 |                 <div className="absolute inset-0 bg-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+1050: 3 |                 {isSyncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> :
+1051: 3 |                  syncStatus === 'success' ? <CheckCircle className="h-4 w-4 mr-2 text-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" /> :
+1052: 3 |                  syncStatus === 'error' ? <XCircle className="h-4 w-4 mr-2 text-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]" /> :
+1053: 2 |                  <RefreshCw className="h-4 w-4 mr-3 group-hover:rotate-180 transition-transform duration-700" />}
+1054: 2 |                 <span className="relative z-10">{isSyncing ? 'Synchronizing Intelligence Data...' : syncStatus === 'success' ? 'Systems Synchronized' : syncStatus === 'error' ? 'Sync Failure' : 'Synchronize ESI Assets'}</span>
+1055: 2 |               </Button>
+1056: 2 |             </div>
+1057: 2 |           </div>
+1058: 1 |         )}
+1059: 1 |       </CardContent>
+1060: 1 |     </Card>
+1061: 1 |   )
+1062: 0 | }
+1063: 0 | 

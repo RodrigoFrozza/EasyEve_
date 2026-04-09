@@ -759,6 +759,15 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                 >
                   View Details
                 </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={onEnd}
+                  className="text-xs border-red-500/30 text-red-500/70 hover:text-red-400 hover:bg-red-500/10 rounded-full px-3"
+                  title="Finalizar Atividade"
+                >
+                  <StopCircle className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </div>
           </>
@@ -897,19 +906,28 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
               )}
             </div>
             
-            <div className="pt-4 mt-2 border-t border-zinc-900/50">
+            <div className="pt-4 mt-2 border-t border-zinc-900/50 flex gap-2">
               <Button 
                 size="sm" 
                 variant="ghost" 
                 disabled={isSyncing}
                 onClick={handleSyncFinancials}
-                className="w-full h-10 text-[10px] uppercase font-black tracking-[0.2em] rounded-xl bg-zinc-900/50 hover:bg-zinc-800 text-zinc-500 hover:text-white border border-zinc-800/50"
+                className="flex-1 h-10 text-[10px] uppercase font-black tracking-[0.2em] rounded-xl bg-zinc-900/50 hover:bg-zinc-800 text-zinc-500 hover:text-white border border-zinc-800/50"
               >
                 {isSyncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> :
                  syncStatus === 'success' ? <CheckCircle className="h-4 w-4 mr-2 text-green-500" /> :
                  syncStatus === 'error' ? <XCircle className="h-4 w-4 mr-2 text-red-500" /> :
                  <RefreshCw className="h-4 w-4 mr-2" />}
-                {isSyncing ? 'Synchronizing with ESI...' : syncStatus === 'success' ? 'Synchronized' : syncStatus === 'error' ? 'Sync Failed' : 'Sync ESI Data'}
+                {isSyncing ? 'Synchronizing...' : 'Sync ESI'}
+              </Button>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={onEnd}
+                className="flex-1 h-10 text-[10px] uppercase font-black tracking-[0.2em] rounded-xl bg-red-950/10 hover:bg-red-950/30 text-red-500/70 hover:text-red-400 border border-red-900/20"
+              >
+                <StopCircle className="h-4 w-4 mr-2" />
+                Finalizar
               </Button>
             </div>
           </>
@@ -1040,20 +1058,30 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
               </div>
             </div>
 
-            <div className="pt-2">
+            <div className="pt-2 flex gap-3">
               <Button 
                 size="sm" 
                 variant="ghost" 
                 disabled={isSyncing}
                 onClick={handleSyncFinancials}
-                className="w-full h-12 text-[11px] uppercase font-black tracking-[0.2em] rounded-2xl bg-gradient-to-br from-zinc-950 via-zinc-950 to-zinc-900 hover:from-zinc-900 hover:to-zinc-800 text-zinc-500 hover:text-white border border-zinc-800/50 shadow-2xl transition-all duration-500 group relative overflow-hidden"
+                className="flex-1 h-12 text-[11px] uppercase font-black tracking-[0.2em] rounded-2xl bg-gradient-to-br from-zinc-950 via-zinc-950 to-zinc-900 hover:from-zinc-900 hover:to-zinc-800 text-zinc-500 hover:text-white border border-zinc-800/50 shadow-2xl transition-all duration-500 group relative overflow-hidden"
               >
                 <div className="absolute inset-0 bg-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 {isSyncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> :
                  syncStatus === 'success' ? <CheckCircle className="h-4 w-4 mr-2 text-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" /> :
                  syncStatus === 'error' ? <XCircle className="h-4 w-4 mr-2 text-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]" /> :
                  <RefreshCw className="h-4 w-4 mr-3 group-hover:rotate-180 transition-transform duration-700" />}
-                <span className="relative z-10">{isSyncing ? 'Synchronizing Intelligence Data...' : syncStatus === 'success' ? 'Systems Synchronized' : syncStatus === 'error' ? 'Sync Failure' : 'Synchronize ESI Assets'}</span>
+                <span className="relative z-10">{isSyncing ? 'Synchronizing...' : 'Synchronize ESI Assets'}</span>
+              </Button>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={onEnd}
+                className="flex-1 h-12 text-[11px] uppercase font-black tracking-[0.2em] rounded-2xl bg-gradient-to-br from-zinc-950 via-zinc-950 to-red-950/10 hover:from-red-950/20 hover:to-red-950/30 text-red-500/70 hover:text-red-400 border border-red-900/20 shadow-2xl transition-all duration-500 group relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <StopCircle className="h-4 w-4 mr-3 group-hover:scale-110 transition-transform duration-500" />
+                <span className="relative z-10">Finalizar Operação</span>
               </Button>
             </div>
           </div>
