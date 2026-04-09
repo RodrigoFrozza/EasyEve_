@@ -137,6 +137,8 @@ model Fit {
   source        String?   // "manual", "esi", "eft_import"
   fitId        String?  // ID do fitting no jogo (ESI)
   
+  modules      Json     @default("[]")   // Flat list for simple UI display
+  
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
