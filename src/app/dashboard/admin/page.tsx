@@ -509,7 +509,3 @@ function AdminContent() {
     </div>
   )
 }
-     </CardContent>
-    </Card>
-  )
-}
