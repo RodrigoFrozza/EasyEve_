@@ -58,8 +58,10 @@ export default async function DashboardPage() {
 
   const now = new Date()
 
-  const getLeaderboard = async (period: 'daily' | 'weekly' | 'monthly') => {
-    const startDate = period === 'daily' 
+  const getLeaderboard = async (period: 'daily' | 'weekly' | 'monthly' | 'alltime') => {
+    const startDate = period === 'alltime' 
+      ? new Date('2024-01-01') 
+      : period === 'daily' 
       ? startOfDay(now) 
       : period === 'weekly' 
       ? startOfWeek(now, { weekStartsOn: 1 }) 
@@ -86,29 +88,35 @@ export default async function DashboardPage() {
         }
       })
 
-      const grouped: Record<string, { userId: string; total: number; characterName: string; characterId: number }> = {}
+      const grouped: Record<string, { userId: string; bounty: number; ess: number; total: number; characterName: string; characterId: number }> = {}
       for (const a of activities) {
         const userId = a.user.id
         const mainChar = a.user.characters[0]
         if (!grouped[userId]) {
           grouped[userId] = {
             userId,
+            bounty: 0,
+            ess: 0,
             total: 0,
             characterName: mainChar?.name || 'Unknown Capsuleer',
             characterId: mainChar?.id || 0
           }
         }
-        const bounty = (a.data as any)?.totalBounty || (a.data as any)?.automatedBounties || 0
-        grouped[userId].total += Number(bounty)
+        const actBounty = Number((a.data as any)?.automatedBounties || 0)
+        const actEss = Number((a.data as any)?.automatedEss || 0)
+        grouped[userId].bounty += actBounty
+        grouped[userId].ess += actEss
+        grouped[userId].total += actBounty + actEss
       }
       return Object.values(grouped).sort((a, b) => b.total - a.total).slice(0, 5)
     }, 15 * 60 * 1000) // 15 min cache
   }
 
-  const [dailyStats, weeklyStats, monthlyStats] = await Promise.all([
+  const [dailyStats, weeklyStats, monthlyStats, allTimeStats] = await Promise.all([
     getLeaderboard('daily'),
     getLeaderboard('weekly'),
-    getLeaderboard('monthly')
+    getLeaderboard('monthly'),
+    getLeaderboard('alltime')
   ])
 
   const characters: Array<{ id: number; name: string; totalSp: number; walletBalance: number; location: string | null; ship: string | null }> = user?.characters || []
@@ -248,20 +256,24 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="pt-0">
             <Tabs defaultValue="daily" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 bg-eve-dark h-8">
+              <TabsList className="grid w-full grid-cols-4 bg-eve-dark h-8">
                 <TabsTrigger value="daily" className="text-[10px] h-6">D</TabsTrigger>
                 <TabsTrigger value="weekly" className="text-[10px] h-6">W</TabsTrigger>
                 <TabsTrigger value="monthly" className="text-[10px] h-6">M</TabsTrigger>
+                <TabsTrigger value="alltime" className="text-[10px] h-6">ALL</TabsTrigger>
               </TabsList>
               
               <TabsContent value="daily">
-                <LeaderboardList data={dailyStats} />
+                <LeaderboardList data={dailyStats} currentUserId={session?.user?.id} />
               </TabsContent>
               <TabsContent value="weekly">
-                <LeaderboardList data={weeklyStats} />
+                <LeaderboardList data={weeklyStats} currentUserId={session?.user?.id} />
               </TabsContent>
               <TabsContent value="monthly">
-                <LeaderboardList data={monthlyStats} />
+                <LeaderboardList data={monthlyStats} currentUserId={session?.user?.id} />
+              </TabsContent>
+              <TabsContent value="alltime">
+                <LeaderboardList data={allTimeStats} currentUserId={session?.user?.id} />
               </TabsContent>
             </Tabs>
           </CardContent>
