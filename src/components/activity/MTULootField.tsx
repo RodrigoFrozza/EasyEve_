@@ -113,7 +113,7 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
           const mtuValue = mtuValues?.[actualIndex] || 0
 
           return (
-            <div key={actualIndex} className="space-y-1.5 p-2 rounded bg-zinc-950/50 border border-zinc-800/50 group">
+            <div key={actualIndex} className="space-y-1.5 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20 border-l-2 border-l-blue-500/50 backdrop-blur-sm group transition-all hover:bg-blue-500/10 hover:border-blue-500/30">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="relative h-4 w-4">
@@ -121,16 +121,16 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
                       src="https://images.evetech.net/Render/33475_512.png"
                       alt="MTU" 
                       fill
-                      className="object-contain rounded bg-zinc-900"
+                      className="object-contain rounded-sm bg-zinc-900/50"
                     />
                   </div>
-                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tighter">
-                    MTU #{actualIndex + 1} {!isEditing && `(${lineCount} items)`}
+                  <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
+                    MTU #{actualIndex + 1} {!isEditing && <span className="text-zinc-500 text-[9px] ml-1">({lineCount} items)</span>}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   {mtuValue > 0 && (
-                    <span className="text-[10px] font-bold text-blue-400 font-mono">
+                    <span className="text-[10px] font-bold text-blue-400 font-mono tabular-nums bg-blue-500/10 px-1.5 py-0.5 rounded">
                       {formatISK(mtuValue)}
                     </span>
                   )}
@@ -143,7 +143,7 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
                           setEditingIndex(actualIndex);
                           setTempLoot(mtu.loot);
                         }}
-                        className="h-5 w-5 text-zinc-500 hover:text-zinc-100"
+                        className="h-5 w-5 text-zinc-500 hover:text-zinc-100 rounded-full"
                       >
                         <Edit2 className="h-3 w-3" />
                       </Button>
@@ -152,7 +152,7 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
                       variant="ghost"
                       size="icon"
                       onClick={() => removeMTU(actualIndex)}
-                      className="h-5 w-5 text-zinc-500 hover:text-red-400"
+                      className="h-5 w-5 text-zinc-500 hover:text-red-400 rounded-full"
                     >
                       <Minus className="h-3 w-3" />
                     </Button>
@@ -166,13 +166,13 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
                     value={tempLoot}
                     onChange={(e) => setTempLoot(e.target.value)}
                     placeholder="Paste MTU inventory here..."
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-[11px] text-zinc-300 min-h-[80px] font-mono resize-none focus:ring-1 focus:ring-zinc-700 outline-none"
+                    className="w-full bg-zinc-950/80 border border-blue-500/20 rounded-lg p-2 text-[11px] text-zinc-300 min-h-[80px] font-mono resize-none focus:ring-1 focus:ring-blue-500/30 outline-none backdrop-blur-sm"
                     rows={4}
                   />
                   <div className="flex gap-2">
                     <Button 
                       size="sm" 
-                      className="h-7 text-[10px] flex-1 bg-zinc-100 text-zinc-950 hover:bg-white"
+                      className="h-7 text-[10px] flex-1 bg-blue-600 text-white hover:bg-blue-500 rounded-full shadow-lg shadow-blue-500/10"
                       onClick={() => saveMTU(actualIndex)}
                     >
                       Save Loot Content
@@ -180,7 +180,7 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
                     <Button 
                       size="sm" 
                       variant="ghost" 
-                      className="h-7 text-[10px] text-zinc-500"
+                      className="h-7 text-[10px] text-zinc-500 hover:text-white rounded-full"
                       onClick={() => setEditingIndex(null)}
                     >
                       Cancel
@@ -189,7 +189,7 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
                 </div>
               ) : (
                 <div 
-                  className="text-[10px] text-zinc-500 italic truncate cursor-pointer hover:text-zinc-400 group-hover:text-zinc-400"
+                  className="text-[10px] text-zinc-500 italic truncate cursor-pointer hover:text-blue-400/70 group-hover:text-zinc-400 transition-colors pl-6"
                   onClick={() => {
                     if (!mtu.loot) {
                       setEditingIndex(actualIndex);
@@ -209,23 +209,23 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-[10px] text-zinc-500">
+        <div className="flex items-center justify-between px-1 text-[10px] text-zinc-600 font-bold uppercase tracking-widest">
           <Button
             variant="ghost"
             size="icon"
             disabled={currentPage === 0}
             onClick={() => setCurrentPage(p => p - 1)}
-            className="h-6 w-6"
+            className="h-6 w-6 rounded-full"
           >
             <ChevronLeft className="h-3 w-3" />
           </Button>
-          <span>{currentPage + 1} / {totalPages}</span>
+          <span className="bg-zinc-900/50 px-2 py-0.5 rounded-full border border-zinc-800/50">{currentPage + 1} <span className="text-zinc-700 mx-1">/</span> {totalPages}</span>
           <Button
             variant="ghost"
             size="icon"
             disabled={currentPage >= totalPages - 1}
             onClick={() => setCurrentPage(p => p + 1)}
-            className="h-6 w-6"
+            className="h-6 w-6 rounded-full"
           >
             <ChevronRight className="h-3 w-3" />
           </Button>
@@ -258,7 +258,7 @@ export function MTULootField({ value, activityId, onChange, mtuValues }: MTULoot
             toast.error('Failed to add MTU');
           }
         }}
-        className="w-full h-8 border border-dashed border-zinc-800 hover:border-zinc-700 text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
+        className="w-full h-8 bg-blue-500/5 border border-dashed border-blue-500/20 hover:bg-blue-500/10 hover:border-blue-500/40 text-[10px] text-blue-400/70 hover:text-blue-400 transition-all rounded-lg"
       >
         <Plus className="h-3 w-3 mr-2" />
         Add MTU & Paste Content

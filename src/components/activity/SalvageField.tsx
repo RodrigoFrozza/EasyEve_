@@ -110,11 +110,11 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
           const lineCount = lines.length
 
           return (
-            <div key={actualIndex} className="space-y-1.5 p-2 rounded bg-orange-950/20 border border-orange-900/30 group">
+            <div key={actualIndex} className="space-y-1.5 p-3 rounded-lg bg-orange-500/5 border border-orange-500/20 border-l-2 border-l-orange-500/50 backdrop-blur-sm group transition-all hover:bg-orange-500/10 hover:border-orange-500/30">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-orange-500/70 font-bold uppercase tracking-tighter flex items-center gap-1.5">
-                  <Wrench className="h-3 w-3 text-orange-400" />
-                  Salvage Unit #{actualIndex + 1} {!isEditing && `(${lineCount} items)`}
+                <span className="text-[10px] text-orange-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <Wrench className="h-3 w-3 text-orange-400 drop-shadow-[0_0_3px_rgba(249,115,22,0.4)]" />
+                  Salvage Unit #{actualIndex + 1} {!isEditing && <span className="text-orange-500/50 text-[9px] ml-1">({lineCount} items)</span>}
                 </span>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   {!isEditing && (
@@ -125,7 +125,7 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
                         setEditingIndex(actualIndex);
                         setTempLoot(item.loot);
                       }}
-                      className="h-5 w-5 text-orange-500/50 hover:text-orange-400"
+                      className="h-5 w-5 text-zinc-500 hover:text-orange-400 rounded-full"
                     >
                       <Edit2 className="h-3 w-3" />
                     </Button>
@@ -134,7 +134,7 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
                     variant="ghost"
                     size="icon"
                     onClick={() => removeSalvage(actualIndex)}
-                    className="h-5 w-5 text-orange-500/50 hover:text-red-400"
+                    className="h-5 w-5 text-zinc-500 hover:text-red-400 rounded-full"
                   >
                     <Minus className="h-3 w-3" />
                   </Button>
@@ -147,21 +147,21 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
                     value={tempLoot}
                     onChange={(e) => setTempLoot(e.target.value)}
                     placeholder="Paste salvage inventory here..."
-                    className="w-full bg-zinc-950 border border-orange-900/50 rounded p-2 text-[11px] text-orange-100/80 min-h-[80px] font-mono resize-none focus:ring-1 focus:ring-orange-500/50 outline-none placeholder:text-orange-500/30"
+                    className="w-full bg-zinc-950/80 border border-orange-500/20 rounded-lg p-2 text-[11px] text-orange-100/80 min-h-[80px] font-mono resize-none focus:ring-1 focus:ring-orange-500/30 outline-none backdrop-blur-sm placeholder:text-orange-900/40"
                     rows={4}
                   />
                   <div className="flex gap-2">
                     <Button 
                       size="sm" 
-                      className="h-7 text-[10px] flex-1 bg-orange-600 text-white hover:bg-orange-500"
-                      onClick={() => saveSalvage(actualIndex)}
+                      className="h-7 text-[10px] flex-1 bg-orange-600 text-white hover:bg-orange-500 rounded-full shadow-lg shadow-orange-500/10"
+                      onClick={() => saveSalvage(index)}
                     >
                       Save Salvage
                     </Button>
                     <Button 
                       size="sm" 
                       variant="ghost" 
-                      className="h-7 text-[10px] text-orange-500/70"
+                      className="h-7 text-[10px] text-zinc-500 hover:text-white rounded-full"
                       onClick={() => setEditingIndex(null)}
                     >
                       Cancel
@@ -170,7 +170,7 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
                 </div>
               ) : (
                 <div 
-                  className="text-[10px] text-orange-500/50 italic truncate cursor-pointer hover:text-orange-400/70 group-hover:text-orange-400/70"
+                  className="text-[10px] text-orange-500/50 italic truncate cursor-pointer hover:text-orange-400/70 group-hover:text-orange-400/70 transition-colors pl-6"
                   onClick={() => {
                     if (!item.loot) {
                       setEditingIndex(actualIndex);
@@ -190,23 +190,23 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-[10px] text-orange-500/70">
+        <div className="flex items-center justify-between px-1 text-[10px] text-orange-600 font-bold uppercase tracking-widest">
           <Button
             variant="ghost"
             size="icon"
             disabled={currentPage === 0}
             onClick={() => setCurrentPage(p => p - 1)}
-            className="h-6 w-6"
+            className="h-6 w-6 rounded-full"
           >
             <ChevronLeft className="h-3 w-3" />
           </Button>
-          <span>{currentPage + 1} / {totalPages}</span>
+          <span className="bg-zinc-900/50 px-2 py-0.5 rounded-full border border-zinc-800/50">{currentPage + 1} <span className="text-zinc-700 mx-1">/</span> {totalPages}</span>
           <Button
             variant="ghost"
             size="icon"
             disabled={currentPage >= totalPages - 1}
             onClick={() => setCurrentPage(p => p + 1)}
-            className="h-6 w-6"
+            className="h-6 w-6 rounded-full"
           >
             <ChevronRight className="h-3 w-3" />
           </Button>
@@ -236,7 +236,7 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
             toast.error('Failed to add Salvage');
           }
         }}
-        className="w-full h-8 border border-dashed border-orange-900/50 hover:border-orange-700/50 text-[10px] text-orange-500/70 hover:text-orange-400 transition-colors"
+        className="w-full h-8 bg-orange-500/5 border border-dashed border-orange-500/20 hover:bg-orange-500/10 hover:border-orange-500/40 text-[10px] text-orange-400/70 hover:text-orange-400 transition-all rounded-lg"
       >
         <Plus className="h-3 w-3 mr-2" />
         Register New Salvage
