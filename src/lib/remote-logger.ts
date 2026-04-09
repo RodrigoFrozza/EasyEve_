@@ -37,11 +37,26 @@ class RemoteLogger {
   }
 
   error(message: string, error?: Error | any, context?: any) {
+    let finalMessage = message
+    let stack = undefined
+
+    if (error instanceof Error) {
+      if (!finalMessage) finalMessage = error.message
+      stack = error.stack
+    } else if (typeof error === 'string') {
+      stack = new Error(error).stack
+    } else if (error) {
+      stack = JSON.stringify(error)
+    }
+
     this.sendLog({
       level: 'error',
-      message: message || (error instanceof Error ? error.message : String(error)),
-      stack: error instanceof Error ? error.stack : undefined,
-      context,
+      message: finalMessage || 'Unknown error',
+      stack,
+      context: {
+        ...context,
+        timestamp: new Date().toISOString(),
+      },
     })
   }
 }

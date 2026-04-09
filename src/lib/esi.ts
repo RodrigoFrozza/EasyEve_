@@ -32,58 +32,21 @@ export {
 
 export * from './sde'
 
+import { 
+  EsiCharacter, 
+  CharacterPublicInfo, 
+  CharacterSkills, 
+  CharacterLocationSchema,
+  CharacterShipSchema,
+  WalletJournalSchema,
+  EsiCharacterSchema
+} from '../types/esi'
+
 const EVE_SSO_BASE_URL = 'https://login.eveonline.com/v2/oauth'
 const ESI_BASE_URL = 'https://esi.evetech.net/latest'
 const USER_AGENT = 'EasyEve/1.0.0 (https://github.com/RodrigoFrozza/EasyEve_)'
 
-export interface EveCharacter {
-  character_id: number
-  character_name: string
-  expires_on: string
-  scopes: string
-  token_type: string
-  character_owner_hash: string
-  intellectual_property: string
-}
-
-export interface CharacterInfo {
-  character_id: number
-  name: string
-  corporation_id: number
-  corporation_name: string
-  alliance_id?: number
-  alliance_name?: string
-  birthday: string
-  gender: string
-  race_id: number
-  ancestry_id?: number
-  bloodline_id: number
-  description?: string
-  security_status?: number
-}
-
-export interface CharacterSkills {
-  total_sp: number
-  free_sp: number
-  skills: Skill[]
-  queues: SkillQueueItem[]
-}
-
-export interface Skill {
-  skill_id: number
-  skillpoints_in_skill: number
-  trained_skill_level: number
-  active_skill_level: number
-  skill_type_name?: string
-}
-
-export interface SkillQueueItem {
-  skill_id: number
-  finish_date: string
-  level: number
-  queue_position: number
-  skill_type_name?: string
-}
+export type { EveCharacter as EveCharacterLegacy } from '../types/esi'
 
 export async function getAccessToken(code: string) {
   const response = await fetch(`${EVE_SSO_BASE_URL}/token`, {
@@ -138,7 +101,7 @@ export async function getCharacterInfo(accessToken: string): Promise<EveCharacte
 
     console.log('[ESI] Character verified via JWT:', characterName, '(ID:', characterId, ')')
 
-    return {
+    const charData = {
       character_id: characterId,
       character_name: characterName,
       expires_on: payload.exp ? new Date(payload.exp * 1000).toISOString() : '',
@@ -149,6 +112,8 @@ export async function getCharacterInfo(accessToken: string): Promise<EveCharacte
       character_owner_hash: payload.owner as string || '',
       intellectual_property: payload.kid as string || '',
     }
+
+    return EsiCharacterSchema.parse(charData)
   } catch (error) {
     console.error('[ESI] JWT decode failed:', error)
     throw new Error(`Failed to verify token: ${error instanceof Error ? error.message : String(error)}`)

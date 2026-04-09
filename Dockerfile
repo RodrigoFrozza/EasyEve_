@@ -1,14 +1,19 @@
-FROM node:20 AS base
+FROM node:20-slim AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssl \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-
-# Install dependencies based on the preferred package manager
 COPY package.json package-lock.json* ./
-RUN npm config set maxsockets 1 && \
-    npm install --legacy-peer-deps
+# Optimizing for production install
+RUN npm ci --only=production --legacy-peer-deps && \
+    npm cache clean --force
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -16,45 +21,36 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Environment variables for build time
-ARG DATABASE_URL
-ARG NEXTAUTH_SECRET
-ARG NEXTAUTH_URL
-ARG EVE_CLIENT_ID
-ARG EVE_CLIENT_SECRET
+# Generate Prisma Client
+RUN npx prisma generate
 
+# Build Next.js with memory limits for KVM1
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+RUN NODE_OPTIONS="--max-old-space-size=2048" npm run build
 
-RUN NODE_OPTIONS="--max-old-space-size=3072" npm run build
-
-# Production image, copy all the files and run next
+# Production image
 FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=80
+ENV HOSTNAME="0.0.0.0"
 
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
-
-# Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
+# Standalone output optimizes memory and size
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Setup shared permissions
+RUN mkdir -p /app/.next && chown -R nextjs:nodejs /app
 
 USER nextjs
 
 EXPOSE 80
-ENV PORT=80
-ENV HOSTNAME="0.0.0.0"
 
-# server.js is created by next build from the standalone output
-# https://nextjs.org/docs/pages/api-reference/next-config-js/output
 CMD ["node", "server.js"]

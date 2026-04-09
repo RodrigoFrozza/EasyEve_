@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { formatSP, formatISK } from '@/lib/utils'
+import { formatSP, formatISK, timeAgo } from '@/lib/utils'
 import { 
   Users, 
   Wallet, 
@@ -22,9 +22,14 @@ import {
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { getSession } from '@/lib/session'
-import { getCharacterWalletJournal } from '@/lib/esi'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LeaderboardList } from '@/components/dashboard/LeaderboardList'
+import { withCache } from '@/lib/cache'
+import { 
+  startOfDay, 
+  startOfWeek, 
+  startOfMonth 
+} from 'date-fns'
 
 async function getCharacterDetails(charId: number) {
   const response = await fetch(`https://esi.evetech.net/latest/characters/${charId}/`, {
@@ -51,133 +56,60 @@ export default async function DashboardPage() {
     }
   })
 
-  const getStartOfDay = (date: Date) => {
-    const d = new Date(date)
-    d.setUTCHours(0, 0, 0, 0)
-    return d
-  }
-
-  const getStartOfWeek = (date: Date) => {
-    const d = new Date(date)
-    const day = d.getUTCDay()
-    const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1)
-    d.setUTCDate(diff)
-    d.setUTCHours(0, 0, 0, 0)
-    return d
-  }
-
-  const getStartOfMonth = (date: Date) => {
-    const d = new Date(date)
-    d.setUTCDate(1)
-    d.setUTCHours(0, 0, 0, 0)
-    return d
-  }
-
   const now = new Date()
 
-  console.log('[DEBUG] now:', now)
-  console.log('[DEBUG] getStartOfDay:', getStartOfDay(now))
-  console.log('[DEBUG] getStartOfWeek:', getStartOfWeek(now))
-  console.log('[DEBUG] getStartOfMonth:', getStartOfMonth(now))
+  const getLeaderboard = async (period: 'daily' | 'weekly' | 'monthly') => {
+    const startDate = period === 'daily' 
+      ? startOfDay(now) 
+      : period === 'weekly' 
+      ? startOfWeek(now, { weekStartsOn: 1 }) 
+      : startOfMonth(now)
 
-  const [dailyLeaderboard, weeklyLeaderboard, monthlyLeaderboard] = await Promise.all([
-    prisma.activity.findMany({
-      where: {
-        type: 'ratting',
-        startTime: { gte: getStartOfDay(now) }
-      },
-      select: {
-        id: true,
-        data: true,
-        startTime: true,
-        user: {
-          select: {
-            id: true,
-            characters: {
-              where: { isMain: true },
-              select: { id: true, name: true }
+    return withCache(`leaderboard_${period}`, async () => {
+      const activities = await prisma.activity.findMany({
+        where: {
+          type: 'ratting',
+          startTime: { gte: startDate }
+        },
+        select: {
+          id: true,
+          data: true,
+          user: {
+            select: {
+              id: true,
+              characters: {
+                where: { isMain: true },
+                select: { id: true, name: true }
+              }
             }
           }
         }
-      }
-    }),
-    prisma.activity.findMany({
-      where: {
-        type: 'ratting',
-        startTime: { gte: getStartOfWeek(now) }
-      },
-      select: {
-        id: true,
-        data: true,
-        startTime: true,
-        user: {
-          select: {
-            id: true,
-            characters: {
-              where: { isMain: true },
-              select: { id: true, name: true }
-            }
+      })
+
+      const grouped: Record<string, { userId: string; total: number; characterName: string; characterId: number }> = {}
+      for (const a of activities) {
+        const userId = a.user.id
+        const mainChar = a.user.characters[0]
+        if (!grouped[userId]) {
+          grouped[userId] = {
+            userId,
+            total: 0,
+            characterName: mainChar?.name || 'Unknown Capsuleer',
+            characterId: mainChar?.id || 0
           }
         }
+        const bounty = (a.data as any)?.totalBounty || (a.data as any)?.automatedBounties || 0
+        grouped[userId].total += Number(bounty)
       }
-    }),
-    prisma.activity.findMany({
-      where: {
-        type: 'ratting',
-        startTime: { gte: getStartOfMonth(now) }
-      },
-      select: {
-        id: true,
-        data: true,
-        startTime: true,
-        user: {
-          select: {
-            id: true,
-            characters: {
-              where: { isMain: true },
-              select: { id: true, name: true }
-            }
-          }
-        }
-      }
-    })
+      return Object.values(grouped).sort((a, b) => b.total - a.total).slice(0, 5)
+    }, 15 * 60 * 1000) // 15 min cache
+  }
+
+  const [dailyStats, weeklyStats, monthlyStats] = await Promise.all([
+    getLeaderboard('daily'),
+    getLeaderboard('weekly'),
+    getLeaderboard('monthly')
   ])
-
-  const calculateTotalTracking = (activities: any[]) => {
-    return activities.reduce((sum: number, a: any) => {
-      const bounty = a.data?.totalBounty || a.data?.automatedBounties || 0
-      return sum + Number(bounty)
-    }, 0)
-  }
-
-  const aggregateByUser = (activities: any[]) => {
-    const grouped: Record<string, { userId: string; total: number; characterName: string; characterId: number }> = {}
-    for (const a of activities) {
-      const userId = a.user.id
-      const mainChar = a.user.characters[0]
-      if (!grouped[userId]) {
-        grouped[userId] = {
-          userId,
-          total: 0,
-          characterName: mainChar?.name || 'Unknown',
-          characterId: mainChar?.id || 0
-        }
-      }
-      const bounty = a.data?.totalBounty || a.data?.automatedBounties || 0
-      grouped[userId].total += Number(bounty)
-    }
-    return Object.values(grouped).sort((a, b) => b.total - a.total).slice(0, 5)
-  }
-
-  const dailyStats = aggregateByUser(dailyLeaderboard)
-  const weeklyStats = aggregateByUser(weeklyLeaderboard)
-  const monthlyStats = aggregateByUser(monthlyLeaderboard)
-
-  console.log('[DEBUG] dailyLeaderboard count:', dailyLeaderboard.length)
-  console.log('[DEBUG] dailyLeaderboard sample:', dailyLeaderboard[0])
-  console.log('[DEBUG] dailyStats:', dailyStats)
-  console.log('[DEBUG] weeklyStats:', weeklyStats)
-  console.log('[DEBUG] monthlyStats:', monthlyStats)
 
   const characters: Array<{ id: number; name: string; totalSp: number; walletBalance: number; location: string | null; ship: string | null }> = user?.characters || []
   const mainCharacter = characters[0]
@@ -190,21 +122,6 @@ export default async function DashboardPage() {
   
   const getActivityTitle = (activity: any) => {
     return 'Transaction'
-  }
-  
-  const timeAgo = (dateString: string) => {
-    const now = new Date();
-    const date = new Date(dateString);
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
-    if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
-    const diffInMinutes = Math.floor(diffInSeconds / 60);
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 30) return `${diffInDays}d ${diffInHours % 24}h ago`;
-    return date.toLocaleDateString();
   }
 
   const stats = [
