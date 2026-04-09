@@ -375,7 +375,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
               <DialogHeader className="border-b border-eve-border/50 pb-3">
               <div className="flex items-center justify-between">
                 <DialogTitle className="font-mono uppercase tracking-[0.15em] text-gray-300 text-sm">
-                  Financial History
+                  {isMiningActivity ? 'Mining Ledger' : 'Financial History'}
                 </DialogTitle>
                 <div className="flex items-center gap-1 bg-zinc-900/50 rounded p-0.5">
                   <button
@@ -413,6 +413,29 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
             
             <div className="py-4 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
               {/* Statistics Cards */}
+              {isMiningActivity ? (
+                /* Mining Stats */
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-blue-950/20 border border-blue-900/30 rounded-lg p-2.5 col-span-2">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Wallet className="h-3 w-3 text-blue-400" />
+                      <span className="text-[9px] text-blue-400/70 uppercase font-bold tracking-wider">Total Minerado</span>
+                    </div>
+                    <div className="text-sm font-bold text-blue-400 font-mono">
+                      {formatNumber(miningTotalQuantity)} m³
+                    </div>
+                  </div>
+                  <div className="bg-green-950/20 border border-green-900/30 rounded-lg p-2.5">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <TrendingUp className="h-3 w-3 text-green-400" />
+                      <span className="text-[9px] text-green-400/70 uppercase font-bold tracking-wider">Valor</span>
+                    </div>
+                    <div className="text-sm font-bold text-green-400 font-mono">
+                      {formatISK(miningTotalValue)}
+                    </div>
+                  </div>
+                </div>
+              ) : (
               <div className="grid grid-cols-3 gap-2">
                 <div className="bg-green-950/20 border border-green-900/30 rounded-lg p-2.5">
                   <div className="flex items-center gap-1.5 mb-1">
@@ -483,22 +506,14 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                       return hours > 0.01 ? formatISK(total / hours) : formatISK(0)
                     })()}
                   </div>
-                </div>
-              </div>
+                 </div>
+               </div>
+              )}
 
               {/* Metrics Summary & Filters */}
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between gap-2">
-                  <select 
-                    value={logFilterType} 
-                    onChange={e => setLogFilterType(e.target.value)}
-                    className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-gray-300 outline-none focus:border-zinc-500 flex-1"
-                  >
-                    <option value="all">All Types</option>
-                    <option value="bounty">Bounty</option>
-                    <option value="ess">ESS</option>
-                    <option value="tax">Corp Tax</option>
-                  </select>
+                  {isMiningActivity ? (
                   <select 
                     value={logFilterChar} 
                     onChange={e => setLogFilterChar(e.target.value)}
@@ -509,14 +524,38 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                       <option key={char} value={char}>{char}</option>
                     ))}
                   </select>
+                ) : (
+                  <>
+                    <select 
+                      value={logFilterType} 
+                      onChange={e => setLogFilterType(e.target.value)}
+                      className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-gray-300 outline-none focus:border-zinc-500 flex-1"
+                    >
+                      <option value="all">All Types</option>
+                      <option value="bounty">Bounty</option>
+                      <option value="ess">ESS</option>
+                      <option value="tax">Corp Tax</option>
+                    </select>
+                    <select 
+                      value={logFilterChar} 
+                      onChange={e => setLogFilterChar(e.target.value)}
+                      className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-gray-300 outline-none focus:border-zinc-500 flex-1"
+                    >
+                      <option value="all">All Characters</option>
+                      {uniqueChars.map(char => (
+                        <option key={char} value={char}>{char}</option>
+                      ))}
+                    </select>
+                  </>
+                )}
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-gray-500 bg-zinc-900/30 rounded px-2 py-1.5">
                   <div className="flex gap-2 items-center">
                     <Filter className="h-3 w-3" />
-                    <span>{filteredLogs.length} transactions</span>
+                    <span>{filteredLogs.length} {isMiningActivity ? 'registros' : 'transactions'}</span>
                   </div>
                   <span className="text-gray-400">
-                    Avg: {formatISK((filteredLogs.reduce((sum: number, l: any) => sum + l.amount, 0)) / Math.max(filteredLogs.length, 1))}
+                    {isMiningActivity ? 'Média: ' + formatNumber(Math.round((filteredLogs.reduce((sum: number, l: any) => sum + l.quantity, 0)) / Math.max(filteredLogs.length, 1))) + ' m³' : 'Avg: ' + formatISK((filteredLogs.reduce((sum: number, l: any) => sum + l.amount, 0)) / Math.max(filteredLogs.length, 1))}
                   </span>
                 </div>
               </div>
