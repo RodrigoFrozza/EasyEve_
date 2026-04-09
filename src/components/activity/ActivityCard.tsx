@@ -33,7 +33,8 @@ import {
   LayoutGrid,
   AlignJustify,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Activity as ActivityIcon
 } from 'lucide-react'
 import { 
   Dialog, 
@@ -284,7 +285,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
             <div className="h-6 w-1 bg-eve-accent rounded-full shadow-[0_0_8px_rgba(0,255,255,0.4)]" />
             <div className="flex flex-col">
               <span className="text-[10px] items-center gap-2 flex text-zinc-500 font-bold uppercase tracking-widest leading-none mb-1">
-                <Activity className="h-3 w-3" />
+                <ActivityIcon className="h-3 w-3" />
                 {activity.type}
               </span>
               <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
@@ -336,10 +337,8 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                   <History className="h-3.5 w-3.5 mr-1.5" /> Log
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-4xl bg-[#0a0a0f] border-zinc-800 text-white">
-                {/* ... Dialog content remains same ... */}
-          <DialogContent className="bg-eve-panel border-eve-border sm:max-w-[600px] max-h-[85vh] overflow-hidden flex flex-col">
-            <DialogHeader className="border-b border-eve-border/50 pb-3">
+            <DialogContent className="bg-eve-panel border-eve-border sm:max-w-[600px] max-h-[85vh] overflow-hidden flex flex-col">
+              <DialogHeader className="border-b border-eve-border/50 pb-3">
               <div className="flex items-center justify-between">
                 <DialogTitle className="font-mono uppercase tracking-[0.15em] text-gray-300 text-sm">
                   Financial History
@@ -1056,7 +1055,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
               </Button>
             </div>
           </div>
-        
+        )}
       </CardContent>
     </Card>
   )
