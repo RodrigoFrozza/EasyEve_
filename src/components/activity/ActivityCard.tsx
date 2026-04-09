@@ -86,20 +86,27 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   }
 
   const logsData = (activity.data as any)?.logs || []
+  const isMining = activity.type === 'mining'
+  const miningLogs = isMining ? (activity.data?.logs || []) : []
 
   const uniqueChars = useMemo(() => {
     const chars = new Set<string>()
-    logsData.forEach((l: any) => { if(l.charName) chars.add(l.charName) })
+    const logsToUse = isMining ? miningLogs : logsData
+    logsToUse.forEach((l: any) => { 
+      const name = isMining ? l.characterName : l.charName
+      if(name) chars.add(name) 
+    })
     return Array.from(chars)
-  }, [logsData])
+  }, [logsData, miningLogs, isMining])
 
   const filteredLogs = useMemo(() => {
-    return logsData.filter((log: any) => {
+    const logsToFilter = isMining ? miningLogs : logsData
+    return logsToFilter.filter((log: any) => {
       const matchType = logFilterType === 'all' || log.type === logFilterType
-      const matchChar = logFilterChar === 'all' || log.charName === logFilterChar
+      const matchChar = logFilterChar === 'all' || (isMining ? log.characterName : log.charName) === logFilterChar
       return matchType && matchChar
     })
-  }, [logsData, logFilterType, logFilterChar])
+  }, [logsData, miningLogs, logFilterType, logFilterChar, isMining])
 
   const handleMTUChange = async (mtus: any[]) => {
     // 1. Atualiza store local (feedback imediato)
@@ -193,7 +200,6 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   
   const miningTotalQuantity = isMiningActivity ? (activity.data?.totalQuantity || 0) : 0
   const miningTotalValue = isMiningActivity ? (activity.data?.totalEstimatedValue || 0) : 0
-  const miningLogs = isMiningActivity ? (activity.data?.logs || []) : []
   const oreBreakdown = isMiningActivity ? (activity.data?.oreBreakdown || {}) : {}
   
   const totalIsk = isMiningActivity 
