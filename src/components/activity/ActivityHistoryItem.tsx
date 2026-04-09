@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { formatISK, cn } from '@/lib/utils'
+import { formatISK, formatNumber, cn } from '@/lib/utils'
 import { 
   Clock, 
   Users, 
