@@ -653,7 +653,9 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
             </div>
           </DialogContent>
         </Dialog>
-      </CardHeader>
+      </div>
+    </div>
+  </CardContent>
       
       <CardContent className="space-y-3 p-4">
         {displayMode === 'compact' ? (
