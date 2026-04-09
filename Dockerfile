@@ -11,8 +11,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-# Optimizing for production install
-RUN npm ci --only=production --legacy-peer-deps && \
+# We need devDependencies to build (Next.js, Prisma CLI)
+RUN npm install --legacy-peer-deps && \
     npm cache clean --force
 
 # Rebuild the source code only when needed
@@ -21,8 +21,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma Client
-RUN npx prisma generate
+# Generate Prisma Client using local version
+RUN npm run db:generate
 
 # Build Next.js with memory limits for KVM1
 ENV NEXT_TELEMETRY_DISABLED=1
