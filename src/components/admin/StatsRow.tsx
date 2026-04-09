@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Users, Zap, Wallet, Fingerprint } from "lucide-react"
-import { formatISK } from "@/lib/utils"
+import { formatISK, cn } from "@/lib/utils"
 
 interface StatsRowProps {
   totalAccounts: number
