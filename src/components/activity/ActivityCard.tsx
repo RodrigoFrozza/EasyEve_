@@ -214,6 +214,38 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
     return () => clearInterval(timer)
   }, [activity.startTime, activity.endTime])
 
+  const [essCountdown, setEssCountdown] = useState<string>('')
+  
+  // ESS Payout Timer (Every 2 hours UTC on even hours)
+  useEffect(() => {
+    if (activity.type !== 'ratting') return;
+
+    const updateTimer = () => {
+      const now = new Date();
+      const currentUTCHour = now.getUTCHours();
+      const nextPayoutHour = currentUTCHour % 2 === 0 ? currentUTCHour + 2 : currentUTCHour + 1;
+      
+      const nextPayout = new Date(Date.UTC(
+         now.getUTCFullYear(),
+         now.getUTCMonth(),
+         now.getUTCDate(),
+         nextPayoutHour,
+         0, 0
+      ));
+
+      const diff = nextPayout.getTime() - now.getTime();
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+
+      setEssCountdown(`${hours > 0 ? `${hours}h ` : ''}${minutes}m ${seconds}s`);
+    };
+
+    const timer = setInterval(updateTimer, 1000);
+    updateTimer();
+    return () => clearInterval(timer);
+  }, [activity.type]);
+
   const handleSyncFinancials = async () => {
     setIsSyncing(true)
     setSyncStatus('idle')
@@ -392,9 +424,14 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                   </div>
                 </div>
                 <div className="bg-zinc-800/30 border border-zinc-700/30 rounded-lg p-2.5">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <PiggyBank className="h-3 w-3 text-zinc-400" />
-                    <span className="text-[9px] text-zinc-400/70 uppercase font-bold tracking-wider">ESS</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <PiggyBank className="h-3 w-3 text-zinc-400" />
+                      <span className="text-[9px] text-zinc-400/70 uppercase font-bold tracking-wider">ESS</span>
+                    </div>
+                    {essCountdown && activity.status === 'active' && (
+                      <span className="text-[8px] font-mono text-cyan-500/70">{essCountdown}</span>
+                    )}
                   </div>
                   <div className="text-sm font-bold text-zinc-300 font-mono">
                     {formatISK(activity.data?.automatedEss || 0)}
@@ -687,9 +724,12 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                 <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Bounty</p>
                 <p className="text-sm font-bold text-green-400 font-mono">{formatISK(activity.data?.grossBounties || (activity.data?.automatedBounties || 0) + (activity.data?.automatedEss || 0) + (activity.data?.additionalBounties || 0))}</p>
               </div>
-              <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-yellow-500/30">
+              <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-yellow-500/30 relative overflow-hidden">
                 <p className="text-[10px] text-gray-500 uppercase tracking-tighter">ESS</p>
                 <p className="text-sm font-bold text-yellow-400 font-mono">{formatISK(activity.data?.automatedEss || 0)}</p>
+                {essCountdown && activity.status === 'active' && (
+                  <p className="text-[8px] text-cyan-500/40 font-mono mt-0.5">{essCountdown}</p>
+                )}
               </div>
               <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-blue-500/30">
                 <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Loot</p>
@@ -805,9 +845,14 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                 <p className="text-[9px] text-green-400/50 uppercase font-bold tracking-widest mb-1">Bounties</p>
                 <p className="text-lg font-bold text-green-400 font-mono tracking-tight">{formatISK(activity.data?.grossBounties || (activity.data?.automatedBounties || 0) + (activity.data?.automatedEss || 0) + (activity.data?.additionalBounties || 0))}</p>
               </div>
-              <div className="bg-yellow-500/5 border border-yellow-500/10 rounded-lg p-2.5 backdrop-blur-sm shadow-inner group/stat">
-                <p className="text-[9px] text-yellow-400/50 uppercase font-bold tracking-widest mb-1">ESS</p>
-                <p className="text-lg font-bold text-yellow-400 font-mono tracking-tight">{formatISK(activity.data?.automatedEss || 0)}</p>
+              <div className="bg-yellow-500/5 border border-yellow-500/10 rounded-lg p-2.5 backdrop-blur-sm shadow-inner group/stat flex flex-col justify-between">
+                <div>
+                  <p className="text-[9px] text-yellow-400/50 uppercase font-bold tracking-widest mb-1">ESS</p>
+                  <p className="text-lg font-bold text-green-400 font-mono tracking-tight">{formatISK(activity.data?.automatedEss || 0)}</p>
+                </div>
+                {essCountdown && activity.status === 'active' && (
+                  <p className="text-[9px] font-mono text-cyan-400/40 mt-1">{essCountdown} left</p>
+                )}
               </div>
             </div>
 
