@@ -269,13 +269,7 @@ export default function FitEditorPage() {
           name: fitName,
           shipTypeId: selectedShip.typeId,
           shipName: selectedShip.name,
-          highSlots: fit.high,
-          medSlots: fit.med,
-          lowSlots: fit.low,
-          rigSlots: fit.rig,
-          droneBay: fit.drone,
-          cargo: fit.cargo,
-          source: 'manual'
+          modules: [...fit.high, ...fit.med, ...fit.low, ...fit.rig]
         })
       })
       

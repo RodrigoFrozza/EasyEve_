@@ -17,8 +17,20 @@ export async function GET() {
       orderBy: { createdAt: 'desc' }
     })
     
-    // Always return an array
-    return NextResponse.json(fits || [])
+    // Safe transform - only use fields guaranteed to exist
+    const transformedFits = (fits || []).map(fit => ({
+      id: fit.id,
+      name: fit.name || 'Unnamed',
+      shipTypeId: fit.shipTypeId || 0,
+      shipName: fit.shipName || 'Unknown',
+      modules: fit.modules || [],
+      dps: fit.dps,
+      tank: fit.tank,
+      cost: fit.cost,
+      createdAt: fit.createdAt?.toISOString() || new Date().toISOString()
+    }))
+    
+    return NextResponse.json(transformedFits)
   } catch (error) {
     console.error('GET fits error:', error)
     return NextResponse.json({ error: 'Failed to fetch fits' }, { status: 500 })
@@ -38,13 +50,10 @@ export async function POST(request: Request) {
       name, 
       shipTypeId, 
       shipName, 
-      highSlots, 
-      medSlots, 
-      lowSlots, 
-      rigSlots,
-      droneBay,
-      cargo,
-      source
+      modules,
+      dps,
+      tank,
+      cost
     } = body
     
     if (!name || !shipTypeId || !shipName) {
@@ -56,18 +65,25 @@ export async function POST(request: Request) {
         name,
         shipTypeId,
         shipName,
-        highSlots: highSlots || [],
-        medSlots: medSlots || [],
-        lowSlots: lowSlots || [],
-        rigSlots: rigSlots || [],
-        droneBay: droneBay || [],
-        cargo: cargo || [],
-        source: source || 'manual',
+        modules: modules || [],
+        dps: dps || null,
+        tank: tank || null,
+        cost: cost || null,
         userId: user.id
       }
     })
     
-    return NextResponse.json(fit)
+    return NextResponse.json({
+      id: fit.id,
+      name: fit.name,
+      shipTypeId: fit.shipTypeId,
+      shipName: fit.shipName,
+      modules: fit.modules,
+      dps: fit.dps,
+      tank: fit.tank,
+      cost: fit.cost,
+      createdAt: fit.createdAt?.toISOString()
+    })
   } catch (error) {
     console.error('POST fit error:', error)
     return NextResponse.json({ error: 'Failed to create fit' }, { status: 500 })
