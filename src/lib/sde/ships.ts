@@ -42,6 +42,19 @@ export interface ShipBaseStats {
 
 const ESI_BASE = 'https://esi.evetech.net/latest'
 
+// === PERFORMANCE: In-memory cache ===
+const shipStatsCache = new Map<string, { stats: ShipBaseStats | null; timestamp: number }>()
+const SHIP_CACHE_TTL = 15 * 60 * 1000 // 15 minutes
+
+// Cache for dogma attributes (typeId -> attrs)
+const dogmaAttrsCache = new Map<number, { attrs: Record<string, number>; timestamp: number }>()
+const DOGMA_CACHE_TTL = 60 * 60 * 1000 // 1 hour
+
+// Cache for ship names list
+let shipNamesCache: string[] = []
+let shipNamesCacheTime = 0
+const NAMES_CACHE_TTL = 60 * 60 * 1000 // 1 hour
+
 const SHIP_DOGMA_ATTRS = {
   CPU: 19,
   POWER: 21,
@@ -78,6 +91,14 @@ const DEFAULT_DRONE = 50
 const DEFAULT_CARGO = 300
 
 export async function getShipStats(shipName: string): Promise<ShipBaseStats | null> {
+  const now = Date.now()
+  
+  // Check cache
+  const cached = shipStatsCache.get(shipName)
+  if (cached && (now - cached.timestamp < SHIP_CACHE_TTL)) {
+    return cached.stats
+  }
+  
   try {
     // First try to get from database
     const shipType = await prisma.eveType.findFirst({
@@ -88,7 +109,7 @@ export async function getShipStats(shipName: string): Promise<ShipBaseStats | nu
     if (shipType) {
       // Get additional stats from ESI
       const attrs = await getShipDogmaAttributes(shipType.id)
-      return {
+      const stats: ShipBaseStats = {
         typeId: shipType.id,
         name: shipType.name,
         cpu: attrs.cpu || DEFAULT_CPU,
@@ -123,13 +144,21 @@ export async function getShipStats(shipName: string): Promise<ShipBaseStats | nu
         scanRange: 0,
         scanStrength: 0
       }
+      
+      // Cache result
+      shipStatsCache.set(shipName, { stats, timestamp: now })
+      return stats
     }
   } catch (error) {
     console.error('Error fetching ship from DB:', error)
   }
   
   // Fallback to ESI
-  return getShipFromESI(shipName)
+  const esiStats = await getShipFromESI(shipName)
+  
+  // Cache result (even if null)
+  shipStatsCache.set(shipName, { stats: esiStats, timestamp: now })
+  return esiStats
 }
 
 export async function getShipFromESI(shipName: string): Promise<ShipBaseStats | null> {
@@ -189,6 +218,14 @@ export async function getShipFromESI(shipName: string): Promise<ShipBaseStats | 
 }
 
 async function getShipDogmaAttributes(typeId: number): Promise<Record<string, number>> {
+  const now = Date.now()
+  
+  // Check cache first
+  const cached = dogmaAttrsCache.get(typeId)
+  if (cached && (now - cached.timestamp < DOGMA_CACHE_TTL)) {
+    return cached.attrs
+  }
+  
   const attrs: Record<string, number> = {}
   
   try {
@@ -218,10 +255,20 @@ async function getShipDogmaAttributes(typeId: number): Promise<Record<string, nu
     // Ignore errors, return what's available
   }
   
+  // Cache result
+  dogmaAttrsCache.set(typeId, { attrs, timestamp: now })
+  
   return attrs
 }
 
 export async function getAllShipNames(): Promise<string[]> {
+  const now = Date.now()
+  
+  // Check cache
+  if (shipNamesCache.length > 0 && (now - shipNamesCacheTime < NAMES_CACHE_TTL)) {
+    return shipNamesCache
+  }
+  
   try {
     const ships = await prisma.eveType.findMany({
       where: {
@@ -232,7 +279,9 @@ export async function getAllShipNames(): Promise<string[]> {
       orderBy: { name: 'asc' },
       take: 500
     })
-    return ships.map(s => s.name)
+    shipNamesCache = ships.map(s => s.name)
+    shipNamesCacheTime = now
+    return shipNamesCache
   } catch {
     return []
   }

@@ -37,6 +37,7 @@ import { StatsRow } from '@/components/admin/StatsRow'
 import { AccountList } from '@/components/admin/AccountList'
 import { AccountDetailDialog } from '@/components/admin/AccountDetailDialog'
 import { GlobalLogs } from '@/components/admin/GlobalLogs'
+import { AdminDashboardSkeleton } from '@/components/admin/AdminSkeleton'
 
 interface AccountData {
   id: string
@@ -112,15 +113,17 @@ function AdminContent() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [paymentSearch, setPaymentSearch] = useState('')
 
+  const [serverStats, setServerStats] = useState({
+    totalAccounts: 0,
+    activeSubscriptions: 0,
+    pendingIsk: 0,
+    totalCharacters: 0
+  })
+
   // Memoized Stats
   const stats = useMemo(() => {
-    return {
-      totalAccounts: accounts.length,
-      activeSubscriptions: accounts.filter(a => a.subscriptionEnd && new Date(a.subscriptionEnd) > new Date()).length,
-      pendingIsk: payments.filter(p => p.status === 'pending').reduce((acc, p) => acc + p.amount, 0),
-      totalCharacters: accounts.reduce((acc, a) => acc + a.characters.length, 0)
-    }
-  }, [accounts, payments])
+    return serverStats
+  }, [serverStats])
 
   useEffect(() => {
     if (sessionStatus === 'unauthenticated') {
@@ -148,7 +151,10 @@ function AdminContent() {
   const fetchPayments = async () => {
     try {
       const payRes = await fetch(`/api/admin/payments?search=${encodeURIComponent(paymentSearch)}`)
-      if (payRes.ok) setPayments(await payRes.json())
+      if (payRes.ok) {
+        const data = await payRes.json()
+        setPayments(data.items || [])
+      }
     } catch (err) {
       console.error('Failed to fetch payments:', err)
     }
@@ -157,9 +163,10 @@ function AdminContent() {
   const fetchAllData = async () => {
     setLoading(true)
     try {
-      const [accRes, priceRes] = await Promise.all([
+      const [accRes, priceRes, statsRes] = await Promise.all([
         fetch('/api/admin/accounts'),
-        fetch('/api/admin/module-prices')
+        fetch('/api/admin/module-prices'),
+        fetch('/api/admin/stats')
       ])
       
       if (accRes.ok) {
@@ -167,6 +174,7 @@ function AdminContent() {
         setAccounts(accData.accounts || [])
       }
       if (priceRes.ok) setPrices(await priceRes.json())
+      if (statsRes.ok) setServerStats(await statsRes.json())
       
       await fetchPayments()
     } catch (err) {
@@ -241,12 +249,7 @@ function AdminContent() {
   }
 
   if (loading && sessionStatus !== 'unauthenticated') {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <p className="text-muted-foreground animate-pulse">Carregando dados do servidor...</p>
-      </div>
-    )
+    return <AdminDashboardSkeleton />
   }
 
   return (

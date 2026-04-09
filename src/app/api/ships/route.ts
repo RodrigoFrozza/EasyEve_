@@ -5,6 +5,10 @@ export const dynamic = 'force-dynamic'
 
 const ESI_BASE = 'https://esi.evetech.net/latest'
 
+// === CACHE ===
+let shipsCache: { data: any; timestamp: number } | null = null
+const CACHE_TTL = 5 * 60 * 1000 // 5 min
+
 // Ship categories for filtering
 const SHIP_CATEGORIES = {
   FRIGATE: 5,
@@ -35,6 +39,16 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100)
     const offset = (page - 1) * limit
+    
+    // Check cache for first page without search
+    const now = Date.now()
+    if (!search && page === 1 && shipsCache && (now - shipsCache.timestamp < CACHE_TTL)) {
+      const cached = shipsCache.data
+      return NextResponse.json({
+        ships: cached.ships.slice(offset, offset + limit),
+        pagination: cached.pagination
+      })
+    }
 
     // Build where clause
     const where: any = {
@@ -100,7 +114,7 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({
+    const response = {
       ships: shipsWithGroups,
       pagination: {
         page,
@@ -108,7 +122,14 @@ export async function GET(request: Request) {
         total,
         pages: Math.ceil(total / limit)
       }
-    })
+    }
+    
+    // Update cache for first page without search
+    if (!search && page === 1) {
+      shipsCache = { data: response, timestamp: now }
+    }
+
+    return NextResponse.json(response)
   } catch (error) {
     console.error('GET /api/ships error:', error)
     return NextResponse.json({ error: 'Failed to fetch ships' }, { status: 500 })

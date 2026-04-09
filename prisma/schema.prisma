@@ -28,6 +28,10 @@ model User {
   debugLogs        DebugLog[]
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
+
+  @@index([role])
+  @@index([subscriptionEnd])
+  @@index([isBlocked])
 }
 
 model Character {
@@ -55,6 +59,8 @@ model Character {
   updatedAt       DateTime  @updatedAt
 
   @@index([userId])
+  @@index([name])
+  @@index([ship])
 }
 
 model Payment {
@@ -76,6 +82,8 @@ model Payment {
 
   @@index([userId])
   @@index([journalId])
+  @@index([payerCharacterName])
+  @@index([status])
 }
 
 model ModulePrice {
@@ -173,6 +181,7 @@ model Activity {
 
   @@index([userId])
   @@index([status])
+  @@index([type])
 }
 
 // --- NEW UNIFIED SDE INFRASTRUCTURE ---

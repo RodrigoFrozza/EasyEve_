@@ -23,6 +23,8 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { getSession } from '@/lib/session'
 import { getCharacterWalletJournal } from '@/lib/esi'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { LeaderboardList } from '@/components/dashboard/LeaderboardList'
 
 async function getCharacterDetails(charId: number) {
   const response = await fetch(`https://esi.evetech.net/latest/characters/${charId}/`, {
@@ -49,6 +51,122 @@ export default async function DashboardPage() {
     }
   })
 
+  const getStartOfDay = (date: Date) => {
+    const d = new Date(date)
+    d.setUTCHours(0, 0, 0, 0)
+    return d
+  }
+
+  const getStartOfWeek = (date: Date) => {
+    const d = new Date(date)
+    const day = d.getUTCDay()
+    const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1)
+    d.setUTCDate(diff)
+    d.setUTCHours(0, 0, 0, 0)
+    return d
+  }
+
+  const getStartOfMonth = (date: Date) => {
+    const d = new Date(date)
+    d.setUTCDate(1)
+    d.setUTCHours(0, 0, 0, 0)
+    return d
+  }
+
+  const now = new Date()
+
+  const [dailyLeaderboard, weeklyLeaderboard, monthlyLeaderboard] = await Promise.all([
+    prisma.activity.findMany({
+      where: {
+        type: 'RATTING',
+        startTime: { gte: getStartOfDay(now) }
+      },
+      select: {
+        id: true,
+        data: true,
+        startTime: true,
+        user: {
+          select: {
+            id: true,
+            characters: {
+              where: { isMain: true },
+              select: { id: true, name: true }
+            }
+          }
+        }
+      }
+    }),
+    prisma.activity.findMany({
+      where: {
+        type: 'RATTING',
+        startTime: { gte: getStartOfWeek(now) }
+      },
+      select: {
+        id: true,
+        data: true,
+        startTime: true,
+        user: {
+          select: {
+            id: true,
+            characters: {
+              where: { isMain: true },
+              select: { id: true, name: true }
+            }
+          }
+        }
+      }
+    }),
+    prisma.activity.findMany({
+      where: {
+        type: 'RATTING',
+        startTime: { gte: getStartOfMonth(now) }
+      },
+      select: {
+        id: true,
+        data: true,
+        startTime: true,
+        user: {
+          select: {
+            id: true,
+            characters: {
+              where: { isMain: true },
+              select: { id: true, name: true }
+            }
+          }
+        }
+      }
+    })
+  ])
+
+  const calculateTotalTracking = (activities: any[]) => {
+    return activities.reduce((sum: number, a: any) => {
+      const bounty = a.data?.totalBounty || a.data?.automatedBounties || 0
+      return sum + Number(bounty)
+    }, 0)
+  }
+
+  const aggregateByUser = (activities: any[]) => {
+    const grouped: Record<string, { userId: string; total: number; characterName: string }> = {}
+    for (const a of activities) {
+      const userId = a.user.id
+      const mainChar = a.user.characters[0]
+      if (!grouped[userId]) {
+        grouped[userId] = {
+          userId,
+          total: 0,
+          characterName: mainChar?.name || 'Unknown'
+        }
+      }
+      const bounty = a.data?.totalBounty || a.data?.automatedBounties || 0
+      grouped[userId].total += Number(bounty)
+    }
+    return Object.values(grouped).sort((a, b) => b.total - a.total).slice(0, 5)
+  }
+
+  const dailyStats = aggregateByUser(dailyLeaderboard)
+  const weeklyStats = aggregateByUser(weeklyLeaderboard)
+  const monthlyStats = aggregateByUser(monthlyLeaderboard)
+
   const characters: Array<{ id: number; name: string; totalSp: number; walletBalance: number; location: string | null; ship: string | null }> = user?.characters || []
   const mainCharacter = characters[0]
 
@@ -57,6 +175,11 @@ export default async function DashboardPage() {
 
   // Removed legacy wallet journal fetching to optimize dashboard performance
   const recentActivity: any[] = []
+  
+  const getActivityTitle = (activity: any) => {
+    return 'Transaction'
+  }
+  
   const timeAgo = (dateString: string) => {
     const now = new Date();
     const date = new Date(dateString);
@@ -192,38 +315,26 @@ export default async function DashboardPage() {
 
         <Card className="bg-eve-panel border-eve-border">
           <CardHeader>
-            <CardTitle className="text-white">Quick Actions</CardTitle>
+            <CardTitle className="text-white">Ratting Leaderboard</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <Link href="/dashboard/activity" className="block">
-              <div className="flex items-center justify-between rounded-lg border border-eve-border bg-eve-dark/50 p-4 transition-colors hover:bg-eve-dark">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-eve-accent/20">
-                    <Target className="h-5 w-5 text-eve-accent" />
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-white">Activity Tracker</h3>
-                    <p className="text-sm text-gray-400">Manage mining, ratting, and combat logs</p>
-                  </div>
-                </div>
-                <ArrowUpRight className="h-4 w-4 text-gray-500" />
-              </div>
-            </Link>
-
-            <Link href="/dashboard/fits" className="block">
-              <div className="flex items-center justify-between rounded-lg border border-eve-border bg-eve-dark/50 p-4 transition-colors hover:bg-eve-dark">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/20">
-                    <Ship className="h-5 w-5 text-purple-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-white">Manage Fits</h3>
-                    <p className="text-sm text-gray-400">Create and save ship fits</p>
-                  </div>
-                </div>
-                <ArrowUpRight className="h-4 w-4 text-gray-500" />
-              </div>
-            </Link>
+          <CardContent>
+            <Tabs defaultValue="daily" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 bg-eve-dark">
+                <TabsTrigger value="daily" className="text-xs">Daily</TabsTrigger>
+                <TabsTrigger value="weekly" className="text-xs">Weekly</TabsTrigger>
+                <TabsTrigger value="monthly" className="text-xs">Monthly</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="daily" className="mt-4">
+                <LeaderboardList data={dailyStats} />
+              </TabsContent>
+              <TabsContent value="weekly" className="mt-4">
+                <LeaderboardList data={weeklyStats} />
+              </TabsContent>
+              <TabsContent value="monthly" className="mt-4">
+                <LeaderboardList data={monthlyStats} />
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>

@@ -3,36 +3,48 @@ import { prisma } from '@/lib/prisma'
 import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
 import { requireAdmin } from '@/lib/admin-auth'
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const { error } = await requireAdmin()
     if (error) return error
     
-    const accounts = await prisma.user.findMany({
-      include: {
-        characters: {
-          select: {
-            id: true,
-            name: true,
-            isMain: true,
-            location: true,
-            ship: true,
-            walletBalance: true,
+    const { searchParams } = new URL(req.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '50')
+    const skip = (page - 1) * limit
+
+    const [accounts, total] = await Promise.all([
+      prisma.user.findMany({
+        skip,
+        take: limit,
+        include: {
+          characters: {
+            select: {
+              id: true,
+              name: true,
+              isMain: true,
+              location: true,
+              ship: true,
+              walletBalance: true,
+            },
+            orderBy: { isMain: 'desc' }
           },
-          orderBy: { isMain: 'desc' }
-        },
-        _count: {
-          select: {
-            characters: true,
-            activities: true,
+          _count: {
+            select: {
+              characters: true,
+              activities: true,
+            }
           }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    })
+        },
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.user.count()
+    ])
     
     return NextResponse.json({
       accounts: accounts,
+      total,
+      hasMore: total > skip + accounts.length,
       availableActivities: ACTIVITY_TYPES.map(a => a.id)
     })
   } catch (error) {
