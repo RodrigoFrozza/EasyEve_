@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { ActivityCard } from '@/components/activity/ActivityCard'
+import { ActivityHistoryItem } from '@/components/activity/ActivityHistoryItem'
 import { RattingHelpModal } from '@/components/activity/RattingHelpModal'
 import { MiningValuableOres } from '@/components/activity/MiningValuableOres'
 import { Button } from '@/components/ui/button'
@@ -810,95 +811,13 @@ function ActivityTrackerContent() {
             </div>
           ) : (
             <div className="grid gap-3">
-              {completedActivities.slice(0, 10).map((activity) => {
-                const typeInfo = ACTIVITY_TYPES.find(t => t.id === activity.type)
-                const startTime = new Date(activity.startTime)
-                const endTime = activity.endTime ? new Date(activity.endTime) : null
-                const durationMs = endTime ? endTime.getTime() - startTime.getTime() : 0
-                const durationHours = Math.floor(durationMs / (1000 * 60 * 60))
-                const durationMinutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60))
-                const durationText = durationHours > 0 ? `${durationHours}h ${durationMinutes}m` : `${durationMinutes}m`
-                
-                const earnings = activity.data?.totalBounty || activity.data?.loot || activity.data?.iskPerMinute * (durationMs / 60000) || 0
-                
-                return (
-                  <div 
-                    key={activity.id} 
-                    className="group relative bg-eve-dark/30 hover:bg-eve-dark/50 rounded-xl p-4 border border-eve-border/30 hover:border-eve-border transition-all"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      {/* Left: Type & Info */}
-                      <div className="flex items-center gap-4">
-                        <div className={cn("p-3 rounded-xl", typeInfo?.bg || "bg-gray-500/10")}>
-                          {typeInfo ? (
-                            <typeInfo.icon className={cn("h-6 w-6", typeInfo.color)} />
-                          ) : (
-                            <Target className="h-6 w-6 text-gray-400" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-white capitalize">{activity.type}</span>
-                            <Badge variant="outline" className={cn(
-                              "text-[10px] h-5",
-                              activity.space === 'high' && "text-green-400 border-green-400/30",
-                              activity.space === 'low' && "text-yellow-400 border-yellow-400/30",
-                              activity.space === 'null' && "text-red-400 border-red-400/30"
-                            )}>
-                              {activity.space === 'high' && 'High Sec'}
-                              {activity.space === 'low' && 'Low Sec'}
-                              {activity.space === 'null' && 'Null Sec'}
-                              {activity.space && !['high', 'low', 'null'].includes(activity.space) && activity.space}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {durationText}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              {activity.participants.length} participante{activity.participants.length !== 1 ? 's' : ''}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right: Earnings & Date */}
-                      <div className="flex items-center gap-4">
-                        {earnings > 0 && (
-                          <div className="text-right">
-                            <p className="text-green-400 font-semibold">{formatISK(earnings)}</p>
-                            <p className="text-[10px] text-gray-500 uppercase">receita</p>
-                          </div>
-                        )}
-                        <div className="text-right min-w-[80px]">
-                          <p className="text-gray-400 text-sm">{getRelativeTime(startTime)}</p>
-                          <p className="text-[10px] text-gray-600">{startTime.toLocaleDateString('pt-BR')}</p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteActivity(activity.id)}
-                          className="h-8 w-8 text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Bottom: Additional info */}
-                    {(activity.data?.siteType || activity.data?.tier || activity.data?.filamentType) && (
-                      <div className="mt-3 pt-3 border-t border-eve-border/30 flex items-center gap-2">
-                        <span className="text-[10px] text-gray-600 uppercase tracking-wide">Detalhes:</span>
-                        <span className="text-xs text-gray-400">
-                          {activity.data?.siteType || activity.data?.tier || activity.data?.filamentType || 'Geral'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+              {completedActivities.slice(0, 10).map((activity) => (
+                <ActivityHistoryItem 
+                  key={activity.id} 
+                  activity={activity} 
+                  onDelete={handleDeleteActivity} 
+                />
+              ))}
             </div>
           )}
 
