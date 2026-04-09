@@ -36,7 +36,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No participants to sync' }, { status: 400 })
     }
 
+    const startTimeManual = new Date(activity.startTime)
+    const startTime = new Date(startTimeManual.getTime() - (60 * 60 * 1000))
+    const endTimeLimit = activity.endTime ? new Date(new Date(activity.endTime).getTime() + 4 * 60 * 60 * 1000) : new Date()
+
     console.log(`[SYNC-MINING] --- START for Activity ID: ${activityId} ---`)
+    console.log(`[SYNC-MINING] Activity start time: ${activity.startTime}`)
+    console.log(`[SYNC-MINING] Filtering period: ${startTime.toISOString()} to ${endTimeLimit.toISOString()}`)
     console.log(`[SYNC-MINING] Participants: ${participants.map(p => p.characterName).join(', ')}`)
 
     const activityData = (activity.data as any) || {}
@@ -97,24 +103,29 @@ export async function POST(request: Request) {
         }
 
         entries.forEach((entry: MiningLedgerEntry) => {
-          console.log(`[SYNC-MINING] ${charName}: Entry - ${entry.date}, qty: ${entry.quantity}, type: ${entry.type_id}`)
+          const entryDate = new Date(entry.date)
           
-          const compositeKey = `${charId}-${entry.type_id}-${entry.date}`
-          
-          if (!logMap.has(compositeKey)) {
-            console.log(`[SYNC-MINING]   [NEW] ${entry.quantity}m3 of type ${entry.type_id} for ${charName}`)
-            logMap.set(compositeKey, {
-              date: entry.date,
-              quantity: entry.quantity,
-              typeId: entry.type_id,
-              characterId: charId,
-              characterName: charName
-            })
-            totalNew++
-          } else {
-            const existing = logMap.get(compositeKey)
-            existing.quantity += entry.quantity
-            logMap.set(compositeKey, existing)
+          // Filter by activity period (startTime - 1h to now)
+          if (entryDate >= startTime && entryDate <= endTimeLimit) {
+            console.log(`[SYNC-MINING] ${charName}: Entry - ${entry.date}, qty: ${entry.quantity}, type: ${entry.type_id}`)
+            
+            const compositeKey = `${charId}-${entry.type_id}-${entryDate.getTime()}`
+            
+            if (!logMap.has(compositeKey)) {
+              console.log(`[SYNC-MINING]   [NEW] ${entry.quantity}m3 of type ${entry.type_id} for ${charName}`)
+              logMap.set(compositeKey, {
+                date: entry.date,
+                quantity: entry.quantity,
+                typeId: entry.type_id,
+                characterId: charId,
+                characterName: charName
+              })
+              totalNew++
+            } else {
+              const existing = logMap.get(compositeKey)
+              existing.quantity += entry.quantity
+              logMap.set(compositeKey, existing)
+            }
           }
         })
       } catch (err) {
