@@ -2,34 +2,74 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { ESI_BASE_URL, USER_AGENT } from '@/lib/sde'
 
-interface MarketPrice {
+const JITA_REGION_ID = 10000002 // The Forge
+const JITA_SYSTEM_ID = 30000142 // Jita
+
+interface MarketOrder {
+  is_buy_order: boolean
+  price: number
+  volume_remain: number
   type_id: number
-  average_price: number | null
-  adjusted_price: number | null
 }
 
-async function getMarketPrices(): Promise<Record<number, { buy: number; sell: number }>> {
-  try {
-    const response = await fetch(`${ESI_BASE_URL}/markets/prices/`, {
-      headers: { 'X-User-Agent': USER_AGENT }
-    })
-    if (!response.ok) return {}
-    
-    const data: MarketPrice[] = await response.json()
-    
-    const priceMap: Record<number, { buy: number; sell: number }> = {}
-    data.forEach(item => {
-      if (item.average_price) {
-        priceMap[item.type_id] = {
-          buy: Math.floor(item.average_price * 0.9),
-          sell: Math.floor(item.average_price * 1.1)
+// Simple in-memory cache for Jita prices (5 min)
+const priceCache: Map<string, { prices: Record<number, { buy: number; sell: number }>; timestamp: number }> = new Map()
+const PRICE_CACHE_TTL = 5 * 60 * 1000
+
+async function getJitaPrices(typeIds: number[]): Promise<Record<number, { buy: number; sell: number }>> {
+  const now = Date.now()
+  const cacheKey = `jita-${typeIds.sort((a, b) => a - b).join(',')}`
+  
+  // Check cache
+  const cached = priceCache.get(cacheKey)
+  if (cached && (now - cached.timestamp < PRICE_CACHE_TTL)) {
+    return cached.prices
+  }
+  
+  const priceMap: Record<number, { buy: number; sell: number }> = {}
+  
+  // Process each type with individual requests (ESI limitation)
+  // Limit to avoid rate limiting
+  const LIMIT = 10
+  const limitedIds = typeIds.slice(0, LIMIT)
+  
+  await Promise.all(
+    limitedIds.map(async (typeId) => {
+      try {
+        const [buyResponse, sellResponse] = await Promise.all([
+          fetch(`${ESI_BASE_URL}/markets/${JITA_REGION_ID}/orders/?type_id=${typeId}&order_type=buy`, {
+            headers: { 'X-User-Agent': USER_AGENT }
+          }),
+          fetch(`${ESI_BASE_URL}/markets/${JITA_REGION_ID}/orders/?type_id=${typeId}&order_type=sell`, {
+            headers: { 'X-User-Agent': USER_AGENT }
+          })
+        ])
+        
+        if (!buyResponse.ok || !sellResponse.ok) return
+        
+        const buyOrders: MarketOrder[] = await buyResponse.json()
+        const sellOrders: MarketOrder[] = await sellResponse.json()
+        
+        // Best buy (highest) and best sell (lowest)
+        const validBuyOrders = buyOrders.filter(o => o.volume_remain > 0)
+        const validSellOrders = sellOrders.filter(o => o.volume_remain > 0)
+        
+        const bestBuy = validBuyOrders.length > 0 ? Math.max(...validBuyOrders.map(o => o.price)) : 0
+        const bestSell = validSellOrders.length > 0 ? Math.min(...validSellOrders.map(o => o.price)) : 0
+        
+        if (bestBuy > 0 || bestSell > 0) {
+          priceMap[typeId] = { buy: bestBuy, sell: bestSell }
         }
+      } catch (e) {
+        console.error(`Error fetching price for type ${typeId}:`, e)
       }
     })
-    return priceMap
-  } catch {
-    return {}
-  }
+  )
+  
+  // Cache the result
+  priceCache.set(cacheKey, { prices: priceMap, timestamp: now })
+  
+  return priceMap
 }
 
 export const dynamic = 'force-dynamic'
@@ -142,7 +182,9 @@ export async function GET(request: Request) {
 
     const types = allTypes[miningType] || []
     
-    const prices = await getMarketPrices()
+    // Get type IDs to fetch prices for
+    const typeIds = types.map(t => t.id)
+    const prices = await getJitaPrices(typeIds)
     
     const result = types.map(t => ({
       ...t,

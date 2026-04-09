@@ -90,10 +90,14 @@ export default function FitsPage() {
       const response = await fetch('/api/fits')
       if (response.ok) {
         const data = await response.json()
-        setFits(data)
+        setFits(Array.isArray(data) ? data : [])
+      } else {
+        console.error('Failed to fetch fits:', response.status)
+        setFits([])
       }
     } catch (error) {
       console.error('Failed to fetch fits:', error)
+      setFits([])
     } finally {
       setLoading(false)
     }

@@ -250,8 +250,8 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="bg-eve-panel border-eve-border">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="bg-eve-panel border-eve-border lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-white">Your Characters</CardTitle>
             <Link href="/dashboard/characters">
@@ -260,27 +260,27 @@ export default async function DashboardPage() {
               </Button>
             </Link>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             {characters.length === 0 ? (
               <p className="text-gray-500">No characters linked yet.</p>
             ) : (
               characters.map((char) => (
                 <div
                   key={char.id}
-                  className="flex items-center gap-4 rounded-lg border border-eve-border bg-eve-dark/50 p-4"
+                  className="flex items-center gap-3 rounded-lg border border-eve-border bg-eve-dark/50 p-3"
                 >
-                  <Avatar className="h-12 w-12">
+                  <Avatar className="h-10 w-10">
                     <AvatarImage src={`https://images.evetech.net/characters/${char.id}/portrait?size=128`} />
                     <AvatarFallback>{char.name[0]}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-white">{char.name}</h3>
+                      <h3 className="font-medium text-white text-sm">{char.name}</h3>
                       {char.id === mainCharacter?.id && (
-                        <Badge variant="eve" className="text-xs">Main</Badge>
+                        <Badge variant="eve" className="text-[10px]">Main</Badge>
                       )}
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-400">
+                    <div className="flex items-center gap-3 text-xs text-gray-400">
                       <span className="flex items-center gap-1">
                         <Zap className="h-3 w-3" />
                         {formatSP(char.totalSp)}
@@ -314,24 +314,24 @@ export default async function DashboardPage() {
         </Card>
 
         <Card className="bg-eve-panel border-eve-border">
-          <CardHeader>
-            <CardTitle className="text-white">Ratting Leaderboard</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-white text-sm">Ratting Leaderboard</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             <Tabs defaultValue="daily" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 bg-eve-dark">
-                <TabsTrigger value="daily" className="text-xs">Daily</TabsTrigger>
-                <TabsTrigger value="weekly" className="text-xs">Weekly</TabsTrigger>
-                <TabsTrigger value="monthly" className="text-xs">Monthly</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3 bg-eve-dark h-8">
+                <TabsTrigger value="daily" className="text-[10px] h-6">D</TabsTrigger>
+                <TabsTrigger value="weekly" className="text-[10px] h-6">W</TabsTrigger>
+                <TabsTrigger value="monthly" className="text-[10px] h-6">M</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="daily" className="mt-4">
+              <TabsContent value="daily">
                 <LeaderboardList data={dailyStats} />
               </TabsContent>
-              <TabsContent value="weekly" className="mt-4">
+              <TabsContent value="weekly">
                 <LeaderboardList data={weeklyStats} />
               </TabsContent>
-              <TabsContent value="monthly" className="mt-4">
+              <TabsContent value="monthly">
                 <LeaderboardList data={monthlyStats} />
               </TabsContent>
             </Tabs>

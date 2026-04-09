@@ -16,9 +16,9 @@ interface LeaderboardListProps {
 export function LeaderboardList({ data }: LeaderboardListProps) {
   if (data.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
-        <Trophy className="h-8 w-8 mx-auto mb-2 opacity-50" />
-        <p className="text-sm">No ratting activity recorded yet</p>
+      <div className="text-center py-4 text-gray-500 text-xs">
+        <Trophy className="h-5 w-5 mx-auto mb-1 opacity-50" />
+        <p>No activity yet</p>
       </div>
     )
   }
@@ -37,29 +37,21 @@ export function LeaderboardList({ data }: LeaderboardListProps) {
   }
 
   return (
-    <div className="space-y-2">
-      {data.map((item, index) => (
+    <div className="space-y-1.5">
+      {data.slice(0, 3).map((item, index) => (
         <div
           key={item.userId}
-          className="flex items-center gap-3 p-3 rounded-lg border border-eve-border bg-eve-dark/50"
+          className="flex items-center gap-2 p-2 rounded-md border border-eve-border bg-eve-dark/30 text-xs"
         >
-          <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${getRankStyle(index)}`}>
+          <div className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${getRankStyle(index)}`}>
             {index + 1}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">
-              {item.characterName}
-            </p>
-            <p className="text-xs text-gray-500">
-              User ID: {item.userId.slice(-6)}
-            </p>
+            <p className="text-white truncate font-medium">{item.characterName}</p>
           </div>
-          <div className="text-right">
-            <p className="text-sm font-bold text-green-400 font-mono">
-              {formatISK(item.total)}
-            </p>
-            <p className="text-xs text-gray-500">Total Bounty</p>
-          </div>
+          <p className="text-green-400 font-mono font-bold">
+            {formatISK(item.total)}
+          </p>
         </div>
       ))}
     </div>
