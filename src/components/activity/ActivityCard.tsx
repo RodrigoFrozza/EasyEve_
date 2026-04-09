@@ -83,18 +83,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
   }
 
-  const logs = (activity.data as any)?.logs || []
-  const [logsData, setLogsData] = useState<any[]>(logs)
-
-  useEffect(() => {
-    const syncStore = () => {
-      const currentActivity = useActivityStore.getState().activities.find(a => a.id === activity.id);
-      if (currentActivity) {
-        setLogsData((currentActivity.data as any)?.logs || []);
-      }
-    };
-    syncStore();
-  }, [activity.id]);
+  const logsData = (activity.data as any)?.logs || []
 
   const uniqueChars = useMemo(() => {
     const chars = new Set<string>()
