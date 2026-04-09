@@ -17,12 +17,6 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ActivityDetailDialog } from './ActivityDetailDialog'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 
 interface ActivityHistoryItemProps {
   activity: any
@@ -143,27 +137,19 @@ export function ActivityHistoryItem({ activity, onDelete }: ActivityHistoryItemP
         </div>
       </div>
 
-      {/* Floating Action: Delete */}
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete(activity.id)
-              }}
-              className="absolute -right-3 -top-3 h-8 w-8 rounded-full bg-zinc-950 border border-zinc-900 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100 z-10 shadow-xl"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="bg-red-500 text-white border-none text-[10px] font-bold">
-            Apagar Registro
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      {/* Delete Action */}
+      <Button
+        variant="ghost"
+        size="icon"
+        title="Apagar Registro"
+        onClick={(e) => {
+          e.stopPropagation()
+          onDelete(activity.id)
+        }}
+        className="absolute -right-3 -top-3 h-8 w-8 rounded-full bg-zinc-950 border border-zinc-900 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100 z-10 shadow-xl"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
 
       <ActivityDetailDialog 
         activity={activity} 

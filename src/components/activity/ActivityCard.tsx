@@ -384,6 +384,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
             <Badge variant="outline" className={cn("text-[8px] uppercase font-black tracking-widest border-zinc-800", typeInfo?.color)}>
               {activity.status}
             </Badge>
+          </div>
           <div className="flex items-center gap-1">
             <ActivityDetailDialog 
               activity={activity} 
