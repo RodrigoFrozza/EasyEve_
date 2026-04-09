@@ -25,6 +25,7 @@ model User {
   fits             Fit[]
   activities        Activity[]
   payments         Payment[]
+  debugLogs        DebugLog[]
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 }
@@ -194,4 +195,21 @@ model SdeCache {
 
   @@index([key])
   @@index([expiresAt])
+}
+
+model DebugLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterId Int?
+  level       String   @default("info") // info, warn, error, debug
+  message     String   @db.Text
+  stack       String?  @db.Text
+  url         String?
+  userAgent   String?
+  context     Json?    // Extra contextual data
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }

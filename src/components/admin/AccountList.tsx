@@ -10,7 +10,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { 
-  Users, Search, Shield, Ban, Zap, Clock, ChevronRight
+  Users, Search, Shield, Ban, Zap, Clock, ChevronRight, Terminal
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -168,7 +168,19 @@ export function AccountList({ accounts, onSelectAccount }: AccountListProps) {
                                 </div>
                             </TableCell>
                             <TableCell className="text-right pr-6">
-                                <ChevronRight className="h-5 w-5 text-gray-600 group-hover:text-eve-accent group-hover:translate-x-1 transition-all inline-block" />
+                                <div className="flex items-center justify-end gap-2">
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            window.location.href = `/dashboard/admin/logs/${acc.id}`
+                                        }}
+                                        className="p-2 rounded-lg bg-eve-dark/50 text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-all group/btn"
+                                        title="Ver Logs de Erro"
+                                    >
+                                        <Terminal className="h-4 w-4" />
+                                    </button>
+                                    <ChevronRight className="h-5 w-5 text-gray-600 group-hover:text-eve-accent group-hover:translate-x-1 transition-all" />
+                                </div>
                             </TableCell>
                         </TableRow>
                     )

@@ -176,8 +176,8 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
                       <span className="text-xs font-bold text-gray-300">Type ID: {typeId}</span>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold text-green-400 font-mono">{formatNumber(oreBreakdown[typeId].quantity)} m³</p>
-                      <p className="text-[10px] text-gray-500">{formatISK(oreBreakdown[typeId].estimatedValue || 0)}</p>
+                      <p className="text-sm font-bold text-green-400 font-mono">{formatNumber(oreBreakdown[typeId]?.quantity ?? 0)} m³</p>
+                      <p className="text-[10px] text-gray-500">{formatISK(oreBreakdown[typeId]?.estimatedValue ?? 0)}</p>
                     </div>
                   </div>
                 ))}
