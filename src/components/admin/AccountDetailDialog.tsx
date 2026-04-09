@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Switch } from '@/components/ui/switch'
 import { 
   Loader2, Ban, Unlock, Trash2, Zap, 
-  Shield, UserCircle, Wallet, MapPin, Rocket
+  Shield, UserCircle, Wallet, MapPin, Rocket, RefreshCw
 } from 'lucide-react'
 import { cn, formatISK } from '@/lib/utils'
 import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
@@ -113,6 +113,31 @@ export function AccountDetailDialog({ account, isOpen, onClose, onRefresh }: Acc
     }
   }
 
+  const handleRenew = async () => {
+    setSaving('renewing')
+    try {
+      // Calculate new date: if expired, 30 days from now. If active, 30 days from current end date.
+      const currentEnd = account.subscriptionEnd ? new Date(account.subscriptionEnd) : new Date()
+      const baseDate = currentEnd > new Date() ? currentEnd : new Date()
+      const newEndDate = new Date(baseDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+
+      const res = await fetch('/api/admin/accounts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: account.id, subscriptionEnd: newEndDate.toISOString() })
+      })
+
+      if (res.ok) {
+        toast.success(`Assinatura renovada até ${newEndDate.toLocaleDateString()}`)
+        onRefresh()
+      }
+    } catch (err) {
+      toast.error('Erro ao renovar assinatura')
+    } finally {
+      setSaving(null)
+    }
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl bg-eve-panel border-eve-border text-white p-0 overflow-hidden">
@@ -183,11 +208,23 @@ export function AccountDetailDialog({ account, isOpen, onClose, onRefresh }: Acc
                     
                     <div className="p-4 rounded-xl bg-eve-dark/50 border border-eve-border/50">
                         <div className="flex items-center justify-between mb-4 pb-4 border-b border-eve-border/30">
-                            <span className="text-xs text-gray-400">Status do Plano</span>
-                            <span className={cn("text-xs font-bold", isExpired ? "text-red-400" : "text-green-400")}>
-                                {account.subscriptionEnd ? new Date(account.subscriptionEnd).toLocaleDateString() : 'VITALÍCIO'}
-                                {isExpired && " (EXPIRADO)"}
-                            </span>
+                            <div className="space-y-1">
+                                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Status do Plano</p>
+                                <p className={cn("text-xs font-bold", isExpired ? "text-red-400" : "text-green-400")}>
+                                    {account.subscriptionEnd ? new Date(account.subscriptionEnd).toLocaleDateString() : 'VITALÍCIO'}
+                                    {isExpired && " (EXPIRADO)"}
+                                </p>
+                            </div>
+                            <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="h-7 text-[10px] gap-1 border-eve-accent/30 text-eve-accent hover:bg-eve-accent/10"
+                                onClick={handleRenew}
+                                disabled={!!saving}
+                            >
+                                {saving === 'renewing' ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                +30 DIAS
+                            </Button>
                         </div>
 
                         <div className="space-y-3">

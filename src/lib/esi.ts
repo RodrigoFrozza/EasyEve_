@@ -400,22 +400,46 @@ export interface MarketPrice {
   adjusted_price?: number
 }
 
+// Cache for market prices (5 min TTL)
+let marketPriceCache: { prices: Record<number, number>; timestamp: number } | null = null
+const MARKET_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
 export async function getMarketPrices(): Promise<Record<number, number>> {
+  const now = Date.now()
+  
+  // Return cached prices if still valid
+  if (marketPriceCache && (now - marketPriceCache.timestamp < MARKET_CACHE_TTL)) {
+    return marketPriceCache.prices
+  }
+
   try {
     const response = await fetch(`${ESI_BASE_URL}/markets/prices/`)
-    if (!response.ok) return {}
+    if (!response.ok) {
+      // Return stale cache if fetch fails
+      return marketPriceCache?.prices || {}
+    }
     const data: MarketPrice[] = await response.json()
     
     // Convert to easy lookup map
+    // Use average_price if available, otherwise fall back to adjusted_price
+    // For rare ores (like Ytirium variants), adjusted_price is more stable
     const priceMap: Record<number, number> = {}
     data.forEach(item => {
       if (item.average_price) {
         priceMap[item.type_id] = item.average_price
+      } else if (item.adjusted_price) {
+        // Fallback to adjusted_price for items without average_price
+        priceMap[item.type_id] = item.adjusted_price
       }
     })
+    
+    // Update cache
+    marketPriceCache = { prices: priceMap, timestamp: now }
+    
     return priceMap
   } catch {
-    return {}
+    // Return stale cache on error
+    return marketPriceCache?.prices || {}
   }
 }
 

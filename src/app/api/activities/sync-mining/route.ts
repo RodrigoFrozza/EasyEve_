@@ -8,6 +8,7 @@ interface MiningLedgerEntry {
   quantity: number
   type_id: number
   corporation_id: number
+  solar_system_id: number
 }
 
 export async function POST(request: Request) {
@@ -67,9 +68,10 @@ export async function POST(request: Request) {
     
     // Add filtered existing logs to map
     existingFiltered.forEach((log: any) => {
-      const key = `${log.characterId}-${log.typeId}-${new Date(log.date).getTime()}`
+      // Use consistent key: charId + typeId
+      const key = `${log.characterId}-${log.typeId}`
       logMap.set(key, log)
-})
+    })
     
     let totalFetched = 0
     let totalNew = 0
@@ -90,43 +92,60 @@ export async function POST(request: Request) {
 
         console.log(`[SYNC-MINING] ${charName}: Token found, fetching from ESI...`)
 
-        const response = await fetch(
-          `https://esi.evetech.net/latest/characters/${charId}/mining/`,
-          { 
-            headers: { 
-              Authorization: `Bearer ${accessToken}`,
-              'X-User-Agent': 'EasyEve/1.0'
-            } 
+        let allEntries: MiningLedgerEntry[] = []
+        let page = 1
+        let totalPages = 1
+
+        do {
+          const response = await fetch(
+            `https://esi.evetech.net/latest/characters/${charId}/mining/?page=${page}`,
+            { 
+              headers: { 
+                Authorization: `Bearer ${accessToken}`,
+                'X-User-Agent': 'EasyEve/1.0'
+              } 
+            }
+          )
+
+          console.log(`[SYNC-MINING] ${charName}: ESI Response status: ${response.status}, page: ${page}`)
+
+          if (!response.ok) {
+            const errorText = await response.text()
+            console.log(`[SYNC-MINING] ${charName}: Failed to fetch from ESI (${response.status}): ${errorText}`)
+            break
           }
-        )
 
-        console.log(`[SYNC-MINING] ${charName}: ESI Response status: ${response.status}`)
+          // Get total pages from header
+          const pagesHeader = response.headers.get('x-pages')
+          if (pagesHeader) {
+            totalPages = parseInt(pagesHeader, 10)
+          }
 
-        if (!response.ok) {
-          const errorText = await response.text()
-          console.log(`[SYNC-MINING] ${charName}: Failed to fetch from ESI (${response.status}): ${errorText}`)
-          continue
-        }
+          const entries: MiningLedgerEntry[] = await response.json()
+          allEntries = allEntries.concat(entries)
+          
+          console.log(`[SYNC-MINING] ${charName}: Fetched page ${page}/${totalPages}, ${entries.length} entries`)
+          page++
 
-        const entries: MiningLedgerEntry[] = await response.json()
+        } while (page <= totalPages)
         
-        console.log(`[SYNC-MINING] ${charName}: Fetched ${entries.length} entries from ESI`)
-        totalFetched += entries.length
+        console.log(`[SYNC-MINING] ${charName}: Fetched ${allEntries.length} total entries from ${totalPages} pages`)
+        totalFetched += allEntries.length
 
-        if (entries.length === 0) {
+        if (allEntries.length === 0) {
           console.log(`[SYNC-MINING] ${charName}: No mining records returned (character may not have mined recently)`)
         }
 
-        entries.forEach((entry: MiningLedgerEntry) => {
-          const entryDate = new Date(entry.date)
+        allEntries.forEach((entry: MiningLedgerEntry) => {
           const entryDateOnly = entry.date // ESI returns "YYYY-MM-DD"
           const activityDateOnly = startTimeManual.toISOString().split('T')[0]
           
           // Include all entries from the activity date onwards
           if (entryDateOnly >= activityDateOnly) {
-            console.log(`[SYNC-MINING] ${charName}: Entry - ${entry.date}, qty: ${entry.quantity}, type: ${entry.type_id}`)
+            console.log(`[SYNC-MINING] ${charName}: Entry - ${entry.date}, qty: ${entry.quantity}, type: ${entry.type_id}, system: ${entry.solar_system_id}`)
             
-            const compositeKey = `${charId}-${entry.type_id}-${entryDate.getTime()}`
+            // Key: charId + typeId only (quantity is already daily accumulated)
+            const compositeKey = `${charId}-${entry.type_id}`
             
             if (!logMap.has(compositeKey)) {
               console.log(`[SYNC-MINING]   [NEW] ${entry.quantity}m3 of type ${entry.type_id} for ${charName}`)
@@ -135,12 +154,19 @@ export async function POST(request: Request) {
                 quantity: entry.quantity,
                 typeId: entry.type_id,
                 characterId: charId,
-                characterName: charName
+                characterName: charName,
+                solarSystemId: entry.solar_system_id
               })
               totalNew++
             } else {
               const existing = logMap.get(compositeKey)
-              existing.quantity += entry.quantity
+              // Mining ledger returns ACCUMULATED daily quantity per type/system
+              // Use Math.max to get the latest value (most recent entry for that day)
+              existing.quantity = Math.max(existing.quantity, entry.quantity)
+              // Update solar_system_id if available
+              if (entry.solar_system_id) {
+                existing.solarSystemId = entry.solar_system_id
+              }
               logMap.set(compositeKey, existing)
             }
           }
@@ -166,9 +192,24 @@ export async function POST(request: Request) {
 
     const priceMap = await getMarketPrices()
 
+    // Get base prices for ores without market price
+    const typeIdsWithoutPrice = Object.keys(oreBreakdown).filter(id => !priceMap[Number(id)])
+    const basePrices: Record<number, number> = {}
+    
+    if (typeIdsWithoutPrice.length > 0) {
+      const types = await prisma.eveType.findMany({
+        where: { id: { in: typeIdsWithoutPrice.map(Number) } },
+        select: { id: true, basePrice: true }
+      })
+      types.forEach(t => {
+        if (t.basePrice) basePrices[t.id] = t.basePrice
+      })
+    }
+
     Object.keys(oreBreakdown).forEach(typeId => {
       const typeIdNum = parseInt(typeId)
-      const price = priceMap[typeIdNum] || 0
+      // Use market price, fallback to base_price, then 0
+      const price = priceMap[typeIdNum] || basePrices[typeIdNum] || 0
       oreBreakdown[typeIdNum].estimatedValue = oreBreakdown[typeIdNum].quantity * price
     })
 
@@ -181,7 +222,8 @@ export async function POST(request: Request) {
       if (!participantBreakdown[log.characterId]) {
         participantBreakdown[log.characterId] = { quantity: 0, estimatedValue: 0 }
       }
-      const price = priceMap[log.typeId] || 0
+      const typeIdNum = Number(log.typeId)
+      const price = priceMap[typeIdNum] || basePrices[typeIdNum] || 0
       participantBreakdown[log.characterId].quantity += log.quantity
       participantBreakdown[log.characterId].estimatedValue += log.quantity * price
     })

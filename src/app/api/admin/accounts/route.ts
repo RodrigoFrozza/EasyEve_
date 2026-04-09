@@ -47,19 +47,24 @@ export async function PUT(request: Request) {
     if (error) return error
     
     const body = await request.json()
-    const { userId, allowedActivities } = body
+    const { userId, allowedActivities, subscriptionEnd } = body
     
-    if (!userId || !Array.isArray(allowedActivities)) {
-      return NextResponse.json({ error: 'Missing userId or allowedActivities' }, { status: 400 })
+    if (!userId) {
+      return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
     }
+    
+    const updateData: any = {}
+    if (allowedActivities) updateData.allowedActivities = allowedActivities
+    if (subscriptionEnd) updateData.subscriptionEnd = new Date(subscriptionEnd)
     
     const updated = await prisma.user.update({
       where: { id: userId },
-      data: { allowedActivities },
+      data: updateData,
       select: {
         id: true,
         accountCode: true,
         allowedActivities: true,
+        subscriptionEnd: true,
       }
     })
     

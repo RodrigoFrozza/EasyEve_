@@ -13,8 +13,8 @@ export default function HomePage() {
           <span className="text-4xl font-bold text-black">E</span>
         </div>
         
-        <h1 className="text-5xl font-bold text-white mb-4">
-          Easy<span className="text-eve-accent">Eve</span>
+        <h1 className="text-5xl font-bold text-white mb-4 tracking-tighter">
+          Easy <span className="text-eve-accent">Eve</span>
         </h1>
         
         <p className="text-xl text-gray-400 mb-8 max-w-md">
@@ -39,7 +39,7 @@ export default function HomePage() {
 
       <div className="absolute bottom-8 text-center text-gray-500 text-sm">
         <p>EVE Online is a registered trademark of CCP Games.</p>
-        <p className="mt-1">EasyEve is not affiliated with CCP Games.</p>
+        <p className="mt-1">Easy Eve Holding's is not affiliated with CCP Games.</p>
       </div>
     </div>
   )

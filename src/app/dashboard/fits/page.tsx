@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { formatISK } from '@/lib/utils'
-import { Plus, Search, Ship, Trash2, Edit, RefreshCw } from 'lucide-react'
+import { Plus, Search, Ship, Trash2, Edit, RefreshCw, Download } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { getTypeIconUrl } from '@/lib/sde'
 
@@ -50,6 +50,40 @@ export default function FitsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newFit, setNewFit] = useState({ name: '', shipName: '', cost: 0 })
+  const [importing, setImporting] = useState(false)
+
+  const importFromESI = async () => {
+    setImporting(true)
+    try {
+      const response = await fetch('/api/esi/fittings')
+      if (response.ok) {
+        const esiFits = await response.json()
+        // Save each fit to database
+        for (const esiFit of esiFits) {
+          await fetch('/api/fits', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: esiFit.name,
+              shipTypeId: esiFit.shipTypeId,
+              shipName: esiFit.shipName,
+              highSlots: esiFit.highSlots || [],
+              medSlots: esiFit.medSlots || [],
+              lowSlots: esiFit.lowSlots || [],
+              rigSlots: esiFit.rigSlots || [],
+              source: 'esi'
+            })
+          })
+        }
+        // Refresh fits list
+        await fetchFits()
+      }
+    } catch (error) {
+      console.error('Failed to import fits:', error)
+    } finally {
+      setImporting(false)
+    }
+  }
 
   const fetchFits = useCallback(async () => {
     try {
@@ -137,13 +171,24 @@ export default function FitsPage() {
           <h1 className="text-3xl font-bold text-white">Fit Manager</h1>
           <p className="text-gray-400">Create and manage your ship fits</p>
         </div>
-        <Button 
-          onClick={() => setShowCreateModal(true)}
-          className="bg-eve-accent text-black hover:bg-eve-accent/80"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Create Fit
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={importFromESI}
+            disabled={importing}
+            className="border-eve-border"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {importing ? 'Importing...' : 'Import from EVE'}
+          </Button>
+          <Button 
+            onClick={() => setShowCreateModal(true)}
+            className="bg-eve-accent text-black hover:bg-eve-accent/80"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Create Fit
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-4">

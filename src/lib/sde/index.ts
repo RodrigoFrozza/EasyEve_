@@ -295,3 +295,49 @@ export async function getMiningTypes(miningType: 'Ore' | 'Ice' | 'Gas' | 'Moon')
     return []
   }
 }
+
+/**
+ * Batch resolve type IDs to names - uses local DB first, falls back to ESI
+ */
+export async function resolveTypeNames(typeIds: number[]): Promise<Record<number, string>> {
+  const uniqueIds = Array.from(new Set(typeIds))
+  const result: Record<number, string> = {}
+  
+  // Try local DB first
+  const localTypes = await prisma.eveType.findMany({
+    where: { id: { in: uniqueIds } },
+    select: { id: true, name: true }
+  })
+  
+  localTypes.forEach(t => {
+    result[t.id] = t.name
+  })
+  
+  // Find missing IDs
+  const missingIds = uniqueIds.filter(id => !result[id])
+  
+  // Fetch missing from ESI in parallel (batched)
+  if (missingIds.length > 0) {
+    const BATCH_SIZE = 10
+    for (let i = 0; i < missingIds.length; i += BATCH_SIZE) {
+      const batch = missingIds.slice(i, i + BATCH_SIZE)
+      await Promise.all(
+        batch.map(async (typeId) => {
+          try {
+            const response = await fetch(`${ESI_BASE_URL}/universe/types/${typeId}/`)
+            if (response.ok) {
+              const data = await response.json()
+              result[typeId] = data.name || `Type ${typeId}`
+            } else {
+              result[typeId] = `Type ${typeId}`
+            }
+          } catch {
+            result[typeId] = `Type ${typeId}`
+          }
+        })
+      )
+    }
+  }
+  
+  return result
+}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { 
   Table, 
   TableBody, 
@@ -48,19 +48,21 @@ export function AccountList({ accounts, onSelectAccount }: AccountListProps) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'active' | 'blocked' | 'expired'>('all')
 
-  const filteredAccounts = accounts.filter(acc => {
-    const matchesSearch = 
-      acc.name?.toLowerCase().includes(search.toLowerCase()) || 
-      acc.accountCode?.toLowerCase().includes(search.toLowerCase()) ||
-      acc.id.toLowerCase().includes(search.toLowerCase())
-    
-    const isExpired = acc.subscriptionEnd && new Date(acc.subscriptionEnd) < new Date()
-    
-    if (filter === 'active') return matchesSearch && !acc.isBlocked && !isExpired
-    if (filter === 'blocked') return matchesSearch && acc.isBlocked
-    if (filter === 'expired') return matchesSearch && isExpired
-    return matchesSearch
-  })
+  const filteredAccounts = useMemo(() => {
+    return accounts.filter(acc => {
+      const matchesSearch = 
+        acc.name?.toLowerCase().includes(search.toLowerCase()) || 
+        acc.accountCode?.toLowerCase().includes(search.toLowerCase()) ||
+        acc.id.toLowerCase().includes(search.toLowerCase())
+      
+      const isExpired = acc.subscriptionEnd && new Date(acc.subscriptionEnd) < new Date()
+      
+      if (filter === 'active') return matchesSearch && !acc.isBlocked && !isExpired
+      if (filter === 'blocked') return matchesSearch && acc.isBlocked
+      if (filter === 'expired') return matchesSearch && isExpired
+      return matchesSearch
+    })
+  }, [accounts, search, filter])
 
   return (
     <div className="space-y-4">

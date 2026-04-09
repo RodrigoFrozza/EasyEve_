@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { formatISK, formatNumber, cn } from '@/lib/utils'
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription 
@@ -26,6 +26,8 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
   })
   const [viewMode, setViewMode] = useState<'list' | 'table'>('list')
   const [logFilterChar, setLogFilterChar] = useState('all')
+  const [oreNames, setOreNames] = useState<Record<number, string>>({})
+  const [systemNames, setSystemNames] = useState<Record<number, string>>({})
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
@@ -36,6 +38,46 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
   const miningTotalValue = (activity.data?.totalEstimatedValue || 0)
   const oreBreakdown = (activity.data?.oreBreakdown || {})
   const participantEarnings = (activity.data?.participantEarnings || {})
+
+  // Fetch ore names when logs change
+  useEffect(() => {
+    const typeIds = Array.from(new Set(logs.map((l: any) => l.typeId).filter(Boolean)))
+    if (typeIds.length === 0) return
+
+    fetch('/api/sde/resolve-types', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ typeIds })
+    })
+      .then(res => res.json())
+      .then(data => setOreNames(data))
+      .catch(() => {})
+  }, [logs])
+
+  // Fetch solar system names when logs change
+  useEffect(() => {
+    const rawSystemIds = logs.map((l: any) => l.solarSystemId).filter((id: any): id is number => id && typeof id === 'number')
+    const systemIds = Array.from(new Set(rawSystemIds))
+    if (systemIds.length === 0) return
+
+    // Simple batch resolve - just fetch names
+    const fetchSystemNames = async () => {
+      const results: Record<number, string> = {}
+      for (const sysId of systemIds as number[]) {
+        try {
+          const res = await fetch(`/api/sde/system-name?systemId=${sysId}`)
+          if (res.ok) {
+            const data = await res.json()
+            results[sysId] = data.name || `System ${sysId}`
+          }
+        } catch {
+          results[sysId] = `System ${sysId}`
+        }
+      }
+      setSystemNames(results)
+    }
+    fetchSystemNames()
+  }, [logs])
 
   const uniqueChars = useMemo(() => {
     const chars = new Set<string>()
@@ -173,7 +215,7 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
                   <div key={typeId} className="flex items-center justify-between p-2.5 bg-green-950/20 border border-green-900/30 rounded-lg">
                     <div className="flex items-center gap-2">
                       <Gem className="h-4 w-4 text-green-400" />
-                      <span className="text-xs font-bold text-gray-300">Type ID: {typeId}</span>
+                      <span className="text-xs font-bold text-gray-300">{oreNames[Number(typeId)] || `Type ${typeId}`}</span>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-bold text-green-400 font-mono">{formatNumber(oreBreakdown[typeId]?.quantity ?? 0)} m³</p>
@@ -229,7 +271,10 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
                       </Avatar>
                       <div className="flex flex-col">
                         <span className="text-gray-300 text-[10px] font-medium">{log.characterName}</span>
-                        <span className="text-[8px] text-gray-500">Type: {log.typeId}</span>
+                        <span className="text-[8px] text-gray-500">
+                          {oreNames[Number(log.typeId)] || `Type ${log.typeId}`}
+                          {log.solarSystemId && ` • ${systemNames[Number(log.solarSystemId)] || `Sys ${log.solarSystemId}`}`}
+                        </span>
                       </div>
                     </div>
                     <div className="text-right">

@@ -13,7 +13,7 @@ import { toast } from 'sonner'
 export default function SubscriptionPage() {
   const { data: session } = useSession()
   const [copied, setCopied] = useState(false)
-  const corpName = "EasyEve Holdings"
+  const corpName = "Easy Eve Holding's"
 
   const copyCorp = () => {
     navigator.clipboard.writeText(corpName)

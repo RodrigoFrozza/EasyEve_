@@ -31,6 +31,8 @@ const navigation = [
   { name: 'Activity Tracker', href: '/dashboard/activity', icon: Target },
   { name: 'Subscription', href: '/dashboard/subscription', icon: Crown },
   { name: 'Fits', href: '/dashboard/fits', icon: Ship },
+  { name: 'Fit Editor', href: '/dashboard/fits/editor', icon: Ship },
+  { name: 'Fit Compare', href: '/dashboard/fits/compare', icon: Target },
 ]
 
 const adminNavigation = [
@@ -51,9 +53,9 @@ export function Sidebar() {
     <div className="flex h-screen w-64 flex-col bg-eve-dark border-r border-eve-border">
       <div className="flex h-16 items-center gap-2 border-b border-eve-border px-4">
         <div className="flex h-8 w-8 items-center justify-center rounded bg-eve-accent">
-          <span className="text-lg font-bold text-black">E</span>
+          <span className="text-lg font-bold text-black" title="Easy Eve Holding's">E</span>
         </div>
-        <span className="text-xl font-bold text-white">EasyEve</span>
+        <span className="text-xl font-bold text-white tracking-tight">Easy <span className="text-eve-accent">Eve</span></span>
       </div>
 
       <nav className="flex-1 space-y-1 p-4">
@@ -63,6 +65,7 @@ export function Sidebar() {
             <Link
               key={item.name}
               href={item.href}
+              title={item.name}
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                 isActive

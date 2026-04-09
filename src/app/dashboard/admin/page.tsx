@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { 
-  Loader2, Shield, DollarSign, Wallet, History, RefreshCw, XCircle, CheckCircle2
+  Loader2, Shield, DollarSign, Activity, History, Search, RefreshCw, Wallet, CheckCircle2, XCircle
 } from 'lucide-react'
 import { useSession } from '@/lib/session-client'
 import { formatISK, cn } from '@/lib/utils'
@@ -36,6 +36,7 @@ import {
 import { StatsRow } from '@/components/admin/StatsRow'
 import { AccountList } from '@/components/admin/AccountList'
 import { AccountDetailDialog } from '@/components/admin/AccountDetailDialog'
+import { GlobalLogs } from '@/components/admin/GlobalLogs'
 
 interface AccountData {
   id: string
@@ -109,6 +110,7 @@ function AdminContent() {
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null)
   const [selectedModules, setSelectedModules] = useState<string[]>(['ratting'])
   const [isSyncing, setIsSyncing] = useState(false)
+  const [paymentSearch, setPaymentSearch] = useState('')
 
   // Memoized Stats
   const stats = useMemo(() => {
@@ -134,26 +136,39 @@ function AdminContent() {
     }
   }, [session, sessionStatus])
 
+  useEffect(() => {
+    if (sessionStatus === 'authenticated') {
+      const timer = setTimeout(() => {
+        fetchPayments()
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [paymentSearch])
+
+  const fetchPayments = async () => {
+    try {
+      const payRes = await fetch(`/api/admin/payments?search=${encodeURIComponent(paymentSearch)}`)
+      if (payRes.ok) setPayments(await payRes.json())
+    } catch (err) {
+      console.error('Failed to fetch payments:', err)
+    }
+  }
+
   const fetchAllData = async () => {
     setLoading(true)
     try {
-      const [accRes, priceRes, payRes] = await Promise.all([
+      const [accRes, priceRes] = await Promise.all([
         fetch('/api/admin/accounts'),
-        fetch('/api/admin/module-prices'),
-        fetch('/api/admin/payments')
+        fetch('/api/admin/module-prices')
       ])
       
       if (accRes.ok) {
         const accData = await accRes.json()
         setAccounts(accData.accounts || [])
-        // Update selected account if it was open
-        if (selectedAccount) {
-          const updated = accData.accounts.find((a: AccountData) => a.id === selectedAccount.id)
-          if (updated) setSelectedAccount(updated)
-        }
       }
       if (priceRes.ok) setPrices(await priceRes.json())
-      if (payRes.ok) setPayments(await payRes.json())
+      
+      await fetchPayments()
     } catch (err) {
       console.error('Failed to fetch admin data:', err)
     } finally {
@@ -265,8 +280,11 @@ function AdminContent() {
           <TabsTrigger value="prices" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black font-bold">
             Módulos e Preços
           </TabsTrigger>
-          <TabsTrigger value="financial" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black font-bold">
+          <TabsTrigger value="payments" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black font-bold">
             Conciliação ESI
+          </TabsTrigger>
+          <TabsTrigger value="health" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black font-bold">
+            Saúde do Sistema
           </TabsTrigger>
         </TabsList>
 
@@ -337,16 +355,27 @@ function AdminContent() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="financial" className="space-y-4">
+        <TabsContent value="payments" className="space-y-4">
           <div className="flex items-center justify-between">
              <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <History className="h-5 w-5 text-eve-accent" />
                 Histórico de Transações
              </h2>
-             <Button onClick={handleSyncWallet} disabled={isSyncing} className="bg-eve-accent text-black hover:bg-eve-accent/80 font-bold">
-                {isSyncing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                Sincronizar ESI Wallet
-             </Button>
+             <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input 
+                    placeholder="Buscar..." 
+                    className="pl-9 h-9 w-[200px] bg-eve-dark border-eve-border text-xs"
+                    value={paymentSearch}
+                    onChange={(e) => setPaymentSearch(e.target.value)}
+                  />
+                </div>
+                <Button onClick={handleSyncWallet} disabled={isSyncing} className="bg-eve-accent text-black hover:bg-eve-accent/80 font-bold">
+                    {isSyncing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                    Sincronizar ESI Wallet
+                </Button>
+             </div>
           </div>
 
           <Card className="bg-eve-panel border-eve-border shadow-2xl overflow-hidden">
@@ -448,6 +477,10 @@ function AdminContent() {
                 </div>
              </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="health">
+          <GlobalLogs />
         </TabsContent>
       </Tabs>
 
