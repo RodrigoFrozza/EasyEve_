@@ -44,7 +44,7 @@ import {
   DialogTrigger,
   DialogDescription
 } from '@/components/ui/dialog'
-import { cn, formatISK } from '@/lib/utils'
+import { cn, formatISK, formatNumber } from '@/lib/utils'
 import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
 import { type Activity, useActivityStore } from '@/lib/stores/activity-store'
 import { MTULootField } from './MTULootField'
@@ -198,7 +198,16 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
     lootAppraisedAt = null
   } = (activity.data as any) || {}
 
-  const totalIsk = automatedBounties + automatedEss + (activity.data?.additionalBounties || 0) + estimatedLootValue + estimatedSalvageValue
+  const isMiningActivity = activity.type === 'mining'
+  
+  const miningTotalQuantity = isMiningActivity ? (activity.data?.totalQuantity || 0) : 0
+  const miningTotalValue = isMiningActivity ? (activity.data?.totalEstimatedValue || 0) : 0
+  const miningLogs = isMiningActivity ? (activity.data?.logs || []) : []
+  const oreBreakdown = isMiningActivity ? (activity.data?.oreBreakdown || {}) : {}
+  
+  const totalIsk = isMiningActivity 
+    ? miningTotalValue 
+    : automatedBounties + automatedEss + (activity.data?.additionalBounties || 0) + estimatedLootValue + estimatedSalvageValue
 
   // Elapsed Time Timer
   useEffect(() => {
@@ -219,23 +228,27 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   const handleSyncFinancials = async () => {
     setIsSyncing(true)
     setSyncStatus('idle')
-    const toastId = toast.loading("Syncing with ESI...", { description: "Fetching latest wallet journal entries." })
+    
+    const isMining = activity.type === 'mining'
+    const endpoint = isMining ? 'sync-mining' : 'sync'
+    const desc = isMining ? "Fetching mining ledger data." : "Fetching latest wallet journal entries."
+    const successDesc = isMining ? (updated: any) => `Found ${updated.data?.logs?.length || 0} mining records.` : (updated: any) => `Found ${updated.data?.logs?.length || 0} recent transactions.`
+    
+    const toastId = toast.loading("Syncing with ESI...", { description: desc })
     try {
-      const res = await fetch(`/api/activities/sync?id=${activity.id}`, { method: 'POST' })
+      const res = await fetch(`/api/activities/${endpoint}?id=${activity.id}`, { method: 'POST' })
       if (res.ok) {
         const updated = await res.json()
         useActivityStore.getState().updateActivity(activity.id, updated)
         setSyncStatus('success')
-        const newLogsCount = updated.data?.logs?.length || 0
-        toast.success("ESI Sync Complete", { id: toastId, description: `Found ${newLogsCount} recent transactions.` })
+        toast.success("ESI Sync Complete", { id: toastId, description: successDesc(updated) })
         
-        // Also refresh appraisal automatically on sync if needed - use UPDATED data, not old activity.data
-        if (updated.data?.mtuContents?.length > 0) {
+        if (!isMining && updated.data?.mtuContents?.length > 0) {
           handleRefreshAppraisal(false, updated.data)
         }
       } else {
         setSyncStatus('error')
-        toast.error("Sync Failed", { id: toastId, description: "Could not retrieve wallet data from ESI." })
+        toast.error("Sync Failed", { id: toastId, description: isMining ? "Could not retrieve mining data from ESI." : "Could not retrieve wallet data from ESI." })
       }
     } catch (error) {
       setSyncStatus('error')
@@ -659,7 +672,27 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
       <CardContent className="space-y-3 p-4">
         {displayMode === 'compact' ? (
           <>
-            {/* Compact Stats Grid */}
+            {/* Compact Stats Grid - Mining */}
+            {isMiningActivity ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-blue-500/30">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Mined</p>
+                  <p className="text-sm font-bold text-blue-400 font-mono">{formatNumber(miningTotalQuantity)} m3</p>
+                </div>
+                <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-green-500/30">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Est. Value</p>
+                  <p className="text-sm font-bold text-green-400 font-mono">{formatISK(miningTotalValue)}</p>
+                </div>
+                <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-cyan-500/30">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-tighter">m3/hr</p>
+                  <p className="text-sm font-bold text-cyan-400 font-mono">{formatNumber(miningTotalQuantity / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000))}</p>
+                </div>
+                <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-yellow-500/30">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-tighter">ISK/hr</p>
+                  <p className="text-sm font-bold text-yellow-400 font-mono">{formatISK(miningTotalValue / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000))}</p>
+                </div>
+              </div>
+            ) : (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-green-500/30">
                 <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Bounty</p>
@@ -678,19 +711,20 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                 <p className="text-sm font-bold text-orange-400 font-mono">{formatISK(estimatedSalvageValue)}</p>
               </div>
             </div>
+            )}
 
             {/* Summary Bar */}
             <div className="flex items-center justify-between bg-[#12121a]/80 backdrop-blur-md border border-zinc-800/50 rounded-xl p-3 shadow-lg">
               <div>
-                <p className="text-[10px] text-gray-500 uppercase font-black">Total</p>
-                <p className="text-xl font-black text-green-400 font-mono leading-tight tracking-tighter">{formatISK(totalIsk)}</p>
+                <p className="text-[10px] text-gray-500 uppercase font-black">{isMiningActivity ? 'Est. Value' : 'Total'}</p>
+                <p className="text-xl font-black text-green-400 font-mono leading-tight tracking-tighter">{isMiningActivity ? formatISK(miningTotalValue) : formatISK(totalIsk)}</p>
               </div>
               <div className="text-right flex items-center gap-4">
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase font-black">Rate</p>
                   <p className="text-sm font-bold text-cyan-400 font-mono leading-tight">{formatISK(totalIsk / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000))}/h</p>
                 </div>
-              {activity.type === 'ratting' && (
+              {(activity.type === 'ratting' || activity.type === 'mining') && (
                 <Button 
                   size="sm" 
                   variant="outline"
@@ -721,52 +755,56 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => {
-                    const newMTUs = [...mtuContents, { loot: '' }]
-                    handleMTUChange(newMTUs)
-                    setDisplayMode('tabs')
-                    setExpandedSections(prev => ({ ...prev, mtu: true }))
-                  }}
-                  className="text-xs text-blue-400 font-bold hover:text-blue-300 hover:bg-blue-400/10 rounded-full px-3"
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  MTU
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => {
-                    const newSalvage = [...salvageContents, { loot: '' }]
-                    handleSalvageChange(newSalvage)
-                    setDisplayMode('tabs')
-                    setExpandedSections(prev => ({ ...prev, salvage: true }))
-                  }}
-                  className="text-xs text-orange-400 font-bold hover:text-orange-300 hover:bg-orange-400/10 rounded-full px-3"
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Salvage
-                </Button>
-                <Button 
-                  variant="outline" 
-                   size="sm"
-                  onClick={() => setDisplayMode('tabs')}
-                  className="text-xs border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-full px-4"
-                >
-                  View Details
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={onEnd}
-                  className="text-xs border-red-500/30 text-red-500/70 hover:text-red-400 hover:bg-red-500/10 rounded-full px-3"
-                  title="Finalizar Atividade"
-                >
-                  <StopCircle className="h-3.5 w-3.5" />
-                </Button>
+<div className="flex items-center gap-2">
+              {activity.type === 'ratting' && (
+                <>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      const newMTUs = [...mtuContents, { loot: '' }]
+                      handleMTUChange(newMTUs)
+                      setDisplayMode('tabs')
+                      setExpandedSections(prev => ({ ...prev, mtu: true }))
+                    }}
+                    className="text-xs text-blue-400 font-bold hover:text-blue-300 hover:bg-blue-400/10 rounded-full px-3"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    MTU
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      const newSalvage = [...salvageContents, { loot: '' }]
+                      handleSalvageChange(newSalvage)
+                      setDisplayMode('tabs')
+                      setExpandedSections(prev => ({ ...prev, salvage: true }))
+                    }}
+                    className="text-xs text-orange-400 font-bold hover:text-orange-300 hover:bg-orange-400/10 rounded-full px-3"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Salvage
+                  </Button>
+                </>
+              )}
+              <Button 
+                variant="outline" 
+                 size="sm"
+                onClick={() => setDisplayMode('tabs')}
+                className="text-xs border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-full px-4"
+              >
+                View Details
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={onEnd}
+                className="text-xs border-red-500/30 text-red-500/70 hover:text-red-400 hover:bg-red-500/10 rounded-full px-3"
+                title="Finalizar Atividade"
+              >
+                <StopCircle className="h-3.5 w-3.5" />
+              </Button>
               </div>
             </div>
           </>
