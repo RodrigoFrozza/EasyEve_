@@ -96,57 +96,22 @@ model ModulePrice {
 }
 
 model Fit {
-  id            String    @id @default(cuid())
-  name          String
-  description   String?
-  shipTypeId     Int
-  shipName      String
+  id          String   @id @default(cuid())
+  name        String
+  shipTypeId  Int
+  shipName    String
+  modules     Json     @default("[]")
+  dps        Float?
+  tank       Float?
+  cost       Float?
   
-  // Estrutura de slots
-  highSlots     Json      @default("[]")   // [{ typeId, chargeTypeId?, offline }]
-  medSlots      Json      @default("[]")
-  lowSlots      Json      @default("[]")
-  rigSlots      Json     @default("[]")
-  subsystemSlots Json?   // Para Strategic Cruisers
-  droneBay     Json     @default("[]")   // [{ typeId, quantity }]
-  cargo        Json     @default("[]")   // [{ typeId, quantity }]
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  // Stats calculados
-  dps           Float?
-  volley        Float?
-  tank          Float?
-  ehp           Float?
-  capStable     Boolean?
-  capUse        Float?
-  capRecharge  Float?
-  cost          Float?
-  
-  // Requisitos
-  cpuUsed       Float?
-  cpuTotal      Float?
-  pgUsed        Float?
-  pgTotal       Float?
-  
-  // Slots count
-  highSlotCount Int?
-  medSlotCount Int?
-  lowSlotCount Int?
-  rigSlotCount Int?
-  
-  // Origem
-  source        String?   // "manual", "esi", "eft_import"
-  fitId        String?  // ID do fitting no jogo (ESI)
-  
-  modules      Json     @default("[]")   // Flat list for simple UI display
-  
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([userId])
-  @@index([shipTypeId])
 }
 
 
