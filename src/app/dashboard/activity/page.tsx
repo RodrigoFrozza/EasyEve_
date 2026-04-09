@@ -5,7 +5,6 @@ import { useSearchParams } from 'next/navigation'
 import { ActivityCard } from '@/components/activity/ActivityCard'
 import { RattingHelpModal } from '@/components/activity/RattingHelpModal'
 import { MiningValuableOres } from '@/components/activity/MiningValuableOres'
-import { getMiningTypes } from '@/lib/sde'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -285,9 +284,16 @@ function ActivityTrackerContent() {
   // Fetch mining types when miningType changes
   useEffect(() => {
     if (newActivity.type === 'mining' && newActivity.data?.miningType) {
-      const miningType = newActivity.data.miningType as 'Ore' | 'Ice' | 'Gas' | 'Moon'
-      getMiningTypes(miningType)
-        .then(setMiningOptions)
+      const miningType = newActivity.data.miningType
+      fetch(`/api/sde/mining-types?type=${miningType}`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setMiningOptions(data)
+          } else {
+            setMiningOptions([])
+          }
+        })
         .catch(err => {
           console.error('Failed to fetch mining types:', err)
           setMiningOptions([])
