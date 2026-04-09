@@ -261,13 +261,22 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
     const isMining = activity.type === 'mining'
     const endpoint = isMining ? 'sync-mining' : 'sync'
     const desc = isMining ? "Fetching mining ledger data." : "Fetching latest wallet journal entries."
-    const successDesc = isMining ? (updated: any) => `Found ${updated.data?.logs?.length || 0} mining records.` : (updated: any) => `Found ${updated.data?.logs?.length || 0} recent transactions.`
+    const successDesc = isMining ? (updated: any) => {
+      const logCount = updated.data?.logs?.length || 0
+      console.log('[UI] Mining sync completed, logs:', logCount)
+      return `Found ${logCount} mining records.`
+    } : (updated: any) => `Found ${updated.data?.logs?.length || 0} recent transactions.`
     
     const toastId = toast.loading("Syncing with ESI...", { description: desc })
     try {
+      console.log('[UI] Calling endpoint:', endpoint, 'with id:', activity.id)
       const res = await fetch(`/api/activities/${endpoint}?id=${activity.id}`, { method: 'POST' })
+      console.log('[UI] Response status:', res.status)
+      
       if (res.ok) {
         const updated = await res.json()
+        console.log('[UI] Updated activity data:', updated.data)
+        
         useActivityStore.getState().updateActivity(activity.id, updated)
         setSyncStatus('success')
         toast.success("ESI Sync Complete", { id: toastId, description: successDesc(updated) })
@@ -276,10 +285,13 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
           handleRefreshAppraisal(false, updated.data)
         }
       } else {
+        const errorText = await res.text()
+        console.log('[UI] Error response:', errorText)
         setSyncStatus('error')
         toast.error("Sync Failed", { id: toastId, description: isMining ? "Could not retrieve mining data from ESI." : "Could not retrieve wallet data from ESI." })
       }
     } catch (error) {
+      console.error('[UI] Sync error:', error)
       setSyncStatus('error')
       toast.error("Sync Error", { id: toastId, description: "A network error occurred." })
     } finally {

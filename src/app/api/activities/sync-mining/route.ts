@@ -36,74 +36,93 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No participants to sync' }, { status: 400 })
     }
 
-    const startTimeManual = new Date(activity.startTime)
-    const startTime = new Date(startTimeManual.getTime() - (60 * 60 * 1000))
-    const endTimeLimit = activity.endTime ? new Date(new Date(activity.endTime).getTime() + 4 * 60 * 60 * 1000) : new Date()
-
     console.log(`[SYNC-MINING] --- START for Activity ID: ${activityId} ---`)
-    console.log(`[SYNC-MINING] Window (UTC): ${startTime.toISOString()} to ${endTimeLimit.toISOString()}`)
+    console.log(`[SYNC-MINING] Participants: ${participants.map(p => p.characterName).join(', ')}`)
 
     const activityData = (activity.data as any) || {}
     const existingLogs = activityData.logs || []
     const logMap = new Map<string, any>()
+
+    console.log(`[SYNC-MINING] Existing logs: ${existingLogs.length}`)
 
     existingLogs.forEach((log: any) => {
       const key = `${log.characterId}-${log.typeId}-${new Date(log.date).getTime()}`
       logMap.set(key, log)
     })
 
+    let totalFetched = 0
+    let totalNew = 0
+
     for (const participant of participants) {
       const charId = participant.characterId
       const charName = participant.characterName || `Unknown (${charId})`
+      
+      console.log(`[SYNC-MINING] Processing character: ${charName} (${charId})`)
       
       try {
         const { accessToken } = await getValidAccessToken(charId)
         
         if (!accessToken) {
-          console.log(`[SYNC-MINING] ${charName}: No valid access token`)
+          console.log(`[SYNC-MINING] ${charName}: No valid access token for character ${charId}`)
           continue
         }
 
+        console.log(`[SYNC-MINING] ${charName}: Token found, fetching from ESI...`)
+
         const response = await fetch(
           `https://esi.evetech.net/latest/characters/${charId}/mining/`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
+          { 
+            headers: { 
+              Authorization: `Bearer ${accessToken}`,
+              'X-User-Agent': 'EasyEve/1.0'
+            } 
+          }
         )
 
+        console.log(`[SYNC-MINING] ${charName}: ESI Response status: ${response.status}`)
+
         if (!response.ok) {
-          console.log(`[SYNC-MINING] ${charName}: Failed to fetch from ESI (${response.status})`)
+          const errorText = await response.text()
+          console.log(`[SYNC-MINING] ${charName}: Failed to fetch from ESI (${response.status}): ${errorText}`)
           continue
         }
 
         const entries: MiningLedgerEntry[] = await response.json()
-
+        
         console.log(`[SYNC-MINING] ${charName}: Fetched ${entries.length} entries from ESI`)
+        totalFetched += entries.length
+
+        if (entries.length === 0) {
+          console.log(`[SYNC-MINING] ${charName}: No mining records returned (character may not have mined recently)`)
+        }
 
         entries.forEach((entry: MiningLedgerEntry) => {
-          const entryDate = new Date(entry.date)
+          console.log(`[SYNC-MINING] ${charName}: Entry - ${entry.date}, qty: ${entry.quantity}, type: ${entry.type_id}`)
           
-          if (entryDate >= startTime && entryDate <= endTimeLimit) {
-            const compositeKey = `${charId}-${entry.type_id}-${entryDate.getTime()}`
-            
-            if (!logMap.has(compositeKey)) {
-              console.log(`[SYNC-MINING]   [NEW] ${entry.quantity}m3 of type ${entry.type_id} for ${charName}`)
-              logMap.set(compositeKey, {
-                date: entry.date,
-                quantity: entry.quantity,
-                typeId: entry.type_id,
-                characterId: charId,
-                characterName: charName
-              })
-            } else {
-              const existing = logMap.get(compositeKey)
-              existing.quantity += entry.quantity
-              logMap.set(compositeKey, existing)
-            }
+          const compositeKey = `${charId}-${entry.type_id}-${entry.date}`
+          
+          if (!logMap.has(compositeKey)) {
+            console.log(`[SYNC-MINING]   [NEW] ${entry.quantity}m3 of type ${entry.type_id} for ${charName}`)
+            logMap.set(compositeKey, {
+              date: entry.date,
+              quantity: entry.quantity,
+              typeId: entry.type_id,
+              characterId: charId,
+              characterName: charName
+            })
+            totalNew++
+          } else {
+            const existing = logMap.get(compositeKey)
+            existing.quantity += entry.quantity
+            logMap.set(compositeKey, existing)
           }
         })
       } catch (err) {
         console.error(`[SYNC-MINING] ERROR: Failed to sync for character ${charName} (${charId}):`, err)
       }
     }
+
+    console.log(`[SYNC-MINING] Total fetched from ESI: ${totalFetched}, New records added: ${totalNew}`)
 
     const allLogs = Array.from(logMap.values())
     allLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -155,7 +174,7 @@ export async function POST(request: Request) {
       lastSyncAt: new Date().toISOString()
     }
 
-    console.log(`[SYNC-MINING] --- END SYNC Summary: Total: ${totalQuantity}m3 | Value: ${totalEstimatedValue} ISK | Logs: ${allLogs.length} ---`)
+    console.log(`[SYNC-MINING] --- END SYNC Summary: Total: ${totalQuantity}m3 | Value: ${totalEstimatedValue} ISK | Logs: ${allLogs.length} | Fetched: ${totalFetched} | New: ${totalNew} ---`)
 
     const updatedActivity = await prisma.activity.update({
       where: { id: activityId },
