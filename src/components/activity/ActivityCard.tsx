@@ -198,7 +198,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
     lootAppraisedAt = null
   } = (activity.data as any) || {}
 
-  const totalIsk = automatedBounties + automatedEss + estimatedLootValue + estimatedSalvageValue
+  const totalIsk = automatedBounties + automatedEss + (activity.data?.additionalBounties || 0) + estimatedLootValue + estimatedSalvageValue
 
   // Elapsed Time Timer
   useEffect(() => {
@@ -383,10 +383,10 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                 <div className="bg-green-950/20 border border-green-900/30 rounded-lg p-2.5">
                   <div className="flex items-center gap-1.5 mb-1">
                     <Wallet className="h-3 w-3 text-green-400" />
-                    <span className="text-[9px] text-green-400/70 uppercase font-bold tracking-wider">Bounty</span>
+                    <span className="text-[9px] text-green-400/70 uppercase font-bold tracking-wider">Gross Bounty</span>
                   </div>
                   <div className="text-sm font-bold text-green-400 font-mono">
-                    {formatISK(activity.data?.grossBounties || (activity.data?.automatedBounties || 0) + (activity.data?.additionalBounties || 0))}
+                    {formatISK(activity.data?.grossBounties || (activity.data?.automatedBounties || 0) + (activity.data?.automatedEss || 0) + (activity.data?.additionalBounties || 0))}
                   </div>
                 </div>
                 <div className="bg-zinc-800/30 border border-zinc-700/30 rounded-lg p-2.5">
@@ -617,8 +617,8 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
               {/* Totals Section */}
               <div className="border-t border-eve-border/50 pt-4 space-y-2 font-mono">
                 <div className="flex justify-between text-xs items-center">
-                  <span className="text-gray-500 uppercase tracking-tighter">Bounty</span>
-                  <span className="text-green-400 font-bold">+{formatISK((activity.data?.automatedBounties || 0) + (activity.data?.additionalBounties || 0))}</span>
+                  <span className="text-gray-500 uppercase tracking-tighter">Gross Bounty</span>
+                  <span className="text-green-400 font-bold">+{formatISK(activity.data?.grossBounties || (activity.data?.automatedBounties || 0) + (activity.data?.automatedEss || 0) + (activity.data?.additionalBounties || 0))}</span>
                 </div>
                 <div className="flex justify-between text-xs items-center">
                   <span className="text-gray-500 uppercase tracking-tighter">ESS</span>
@@ -641,8 +641,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                   <span className="text-[10px] uppercase font-black text-gray-500">NET RUN PROFIT</span>
                   <span className="text-xl font-mono font-black text-eve-accent tracking-tighter">
                     {formatISK(
-                      (activity.data?.grossBounties || 0) + 
-                      (activity.data?.automatedEss || 0) + 
+                      (activity.data?.grossBounties || (activity.data?.automatedBounties || 0) + (activity.data?.automatedEss || 0) + (activity.data?.additionalBounties || 0)) + 
                       estimatedLootValue +
                       estimatedSalvageValue - 
                       (activity.data?.automatedTaxes || 0)
@@ -664,7 +663,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-green-500/30">
                 <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Bounty</p>
-                <p className="text-sm font-bold text-green-400 font-mono">{formatISK(activity.data?.grossBounties || activity.data?.automatedBounties || 0)}</p>
+                <p className="text-sm font-bold text-green-400 font-mono">{formatISK(activity.data?.grossBounties || (activity.data?.automatedBounties || 0) + (activity.data?.automatedEss || 0) + (activity.data?.additionalBounties || 0))}</p>
               </div>
               <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-yellow-500/30">
                 <p className="text-[10px] text-gray-500 uppercase tracking-tighter">ESS</p>
@@ -776,8 +775,8 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
             {/* Tabs Mode - Stats + Unified Metrics */}
             <div className="grid grid-cols-2 gap-2 mb-3">
               <div className="bg-green-500/5 border border-green-500/10 rounded-lg p-2.5 backdrop-blur-sm shadow-inner group/stat">
-                <p className="text-[9px] text-green-400/50 uppercase font-bold tracking-widest mb-1">Bounty</p>
-                <p className="text-lg font-bold text-green-400 font-mono tracking-tight">{formatISK(activity.data?.grossBounties || 0)}</p>
+                <p className="text-[9px] text-green-400/50 uppercase font-bold tracking-widest mb-1">Bounties</p>
+                <p className="text-lg font-bold text-green-400 font-mono tracking-tight">{formatISK(activity.data?.grossBounties || (activity.data?.automatedBounties || 0) + (activity.data?.automatedEss || 0) + (activity.data?.additionalBounties || 0))}</p>
               </div>
               <div className="bg-yellow-500/5 border border-yellow-500/10 rounded-lg p-2.5 backdrop-blur-sm shadow-inner group/stat">
                 <p className="text-[9px] text-yellow-400/50 uppercase font-bold tracking-widest mb-1">ESS</p>

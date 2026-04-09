@@ -77,7 +77,7 @@ export async function POST(
               const amount = Math.abs(entry.amount || 0)
               let type: 'bounty' | 'ess' | 'tax' | null = null
 
-              if (refType.includes('bounty_prizes') || refType.includes('bounty_payout') || refType.includes('agent_mission_reward')) {
+              if (refType === 'bounty' || refType.includes('bounty_prizes') || refType.includes('bounty_payout') || refType.includes('agent_mission_reward')) {
                 type = 'bounty'
               } else if (refType.includes('ess_payout') || refType.includes('ess_escrow')) {
                 type = 'ess'
@@ -142,8 +142,8 @@ export async function POST(
       automatedBounties: totalBounties,
       automatedEss: totalEss,
       automatedTaxes: totalTaxes,
-      // P4 Recommendation: Gross Bounties = Auto + Taxes + Manual
-      grossBounties: totalBounties + totalTaxes + additionalBounties,
+      // P4 Recommendation: Gross Bounties = Auto + ESS + Manual
+      grossBounties: totalBounties + totalEss + additionalBounties,
       participantEarnings,
       logs: allLogs, // Now keeps full history, no slice
       lastSyncAt: new Date().toISOString()
