@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { formatISK, cn } from '@/lib/utils'
+import { formatISK, cn, calculateNetProfit, timeAgo } from '@/lib/utils'
 import { useActivityStore } from '@/lib/stores/activity-store'
 import { FleetSection } from '../shared/FleetSection'
 import { MTULootField } from '../MTULootField'
@@ -37,12 +37,14 @@ export function RattingActivityContent({
 
   const automatedBounties = activity.data?.automatedBounties || 0
   const automatedEss = activity.data?.automatedEss || 0
+  const automatedTaxes = activity.data?.automatedTaxes || 0
   const additionalBounties = activity.data?.additionalBounties || 0
-  const estimatedLootValue = 0 
-  const estimatedSalvageValue = 0
+  const estimatedLootValue = activity.data?.estimatedLootValue || 0 
+  const estimatedSalvageValue = activity.data?.estimatedSalvageValue || 0
 
-  const totalIsk = automatedBounties + automatedEss + additionalBounties + estimatedLootValue + estimatedSalvageValue
-  const iskPerHour = totalIsk / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000)
+  const totalIsk = calculateNetProfit(activity.data)
+  const durationHours = Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000)
+  const iskPerHour = totalIsk / durationHours
 
   const mtuContents = activity.data?.mtuContents || []
   const salvageContents = activity.data?.salvageContents || []
@@ -62,21 +64,24 @@ export function RattingActivityContent({
   return (
     <div className="space-y-3">
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        <div className="bg-green-500/5 border border-green-500/10 rounded-lg p-2.5 backdrop-blur-sm">
-          <p className="text-[9px] text-green-400/50 uppercase font-bold tracking-widest mb-1">Bounties</p>
-          <p className="text-lg font-bold text-green-400 font-mono tracking-tight">
-            {formatISK(automatedBounties + automatedEss + additionalBounties)}
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="bg-green-500/5 border border-green-500/10 rounded-lg p-2 backdrop-blur-sm">
+          <p className="text-[8px] text-green-400/50 uppercase font-bold tracking-widest mb-1">Bounty</p>
+          <p className="text-xs font-bold text-green-400 font-mono tracking-tight">
+            {formatISK(automatedBounties + additionalBounties)}
           </p>
         </div>
-        <div className="bg-yellow-500/5 border border-yellow-500/10 rounded-lg p-2.5 backdrop-blur-sm flex flex-col justify-between">
+        <div className="bg-yellow-500/5 border border-yellow-500/10 rounded-lg p-2 backdrop-blur-sm flex flex-col justify-between">
           <div>
-            <p className="text-[9px] text-yellow-400/50 uppercase font-bold tracking-widest mb-1">ESS</p>
-            <p className="text-lg font-bold text-green-400 font-mono tracking-tight">{formatISK(automatedEss)}</p>
+            <p className="text-[8px] text-yellow-400/50 uppercase font-bold tracking-widest mb-1">ESS</p>
+            <p className="text-xs font-bold text-yellow-400 font-mono tracking-tight text-green-400">{formatISK(automatedEss)}</p>
           </div>
-          {essCountdown && activity.status === 'active' && (
-            <p className="text-xs font-mono text-cyan-400 mt-1 font-bold">Next Payout: {essCountdown}</p>
-          )}
+        </div>
+        <div className="bg-red-500/5 border border-red-500/10 rounded-lg p-2 backdrop-blur-sm">
+          <p className="text-[8px] text-red-400/50 uppercase font-bold tracking-widest mb-1">Taxes</p>
+          <p className="text-xs font-bold text-red-400 font-mono tracking-tight">
+            {formatISK(automatedTaxes)}
+          </p>
         </div>
       </div>
 
@@ -174,12 +179,20 @@ export function RattingActivityContent({
         )}
       </div>
       
-      {/* Sync Button */}
-      <div className="pt-4 mt-2 border-t border-zinc-900/50 flex gap-2">
+      {/* Sync Button & Info */}
+      <div className="pt-4 mt-2 border-t border-zinc-900/50 space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <p className="text-[8px] text-zinc-600 uppercase font-bold tracking-widest">
+            {activity.data?.lastSyncAt ? `Last Sync: ${timeAgo(activity.data.lastSyncAt)}` : 'No sync data'}
+          </p>
+          {essCountdown && activity.status === 'active' && (
+            <p className="text-[8px] text-cyan-500 font-mono font-bold uppercase tracking-wider">Next Payout: {essCountdown}</p>
+          )}
+        </div>
         <button 
           disabled={isSyncing}
           onClick={onSync}
-          className="flex-1 h-10 text-[10px] uppercase font-black tracking-[0.2em] rounded-xl bg-zinc-900/50 hover:bg-zinc-800 text-zinc-500 hover:text-white border border-zinc-800/50 flex items-center justify-center gap-2"
+          className="w-full h-10 text-[10px] uppercase font-black tracking-[0.2em] rounded-xl bg-zinc-900/50 hover:bg-zinc-800 text-zinc-500 hover:text-white border border-zinc-800/50 flex items-center justify-center gap-2 transition-all"
         >
           {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> :
            syncStatus === 'success' ? <span className="text-green-500">✓</span> :

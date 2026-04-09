@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCharacterWalletJournal } from '@/lib/esi'
 import { getValidAccessToken } from '@/lib/token-manager'
+import { ESI_REF_TYPES } from '@/lib/constants/activity-data'
 
 export async function POST(
   request: Request,
@@ -59,7 +60,7 @@ export async function POST(
     // 2. Loop through participants and fetch their wallet journals
     for (const participant of participants) {
       const charId = participant.characterId
-      const charName = participant.characterName || `Unknown (${charId})`
+      const charName = participant.characterName || `Citizen ${charId}`
       
       try {
         const journal = await getCharacterWalletJournal(charId, endTimeLimit)
@@ -77,11 +78,11 @@ export async function POST(
               const amount = Math.abs(entry.amount || 0)
               let type: 'bounty' | 'ess' | 'tax' | null = null
 
-              if (refType === 'bounty' || refType.includes('bounty_prizes') || refType.includes('bounty_payout') || refType.includes('agent_mission_reward')) {
+              if (ESI_REF_TYPES.BOUNTY.some(t => refType === t || refType.includes(t))) {
                 type = 'bounty'
-              } else if (refType.includes('ess_payout') || refType.includes('ess_escrow')) {
+              } else if (ESI_REF_TYPES.ESS.some(t => refType === t || refType.includes(t))) {
                 type = 'ess'
-              } else if (refType.includes('corporation_tax_payout')) {
+              } else if (ESI_REF_TYPES.TAX.some(t => refType === t || refType.includes(t))) {
                 type = 'tax'
               }
 
@@ -92,7 +93,7 @@ export async function POST(
                 
                 // Check if we already have this transaction for this specific character
                 if (!logMap.has(compositeKey)) {
-                   console.log(`[SYNC]   [NEW] ${type.toUpperCase()}: ${amount} ISK for ${charName}`)
+                   console.log(`[SYNC]   [NEW] ${type.toUpperCase()}: ${amount.toLocaleString()} ISK for ${charName}`)
                    logMap.set(compositeKey, { 
                      refId, 
                      date: entry.date, 
@@ -101,8 +102,6 @@ export async function POST(
                      charName, 
                      charId 
                    })
-                } else {
-                   console.log(`[SYNC]   [DUP] Skipping duplicate ${refId} for ${charName}`)
                 }
               }
             }
@@ -126,7 +125,6 @@ export async function POST(
       else if (log.type === 'ess') totalEss += log.amount
       else if (log.type === 'tax') totalTaxes += log.amount
 
-      // P3 Recommendation: Participant earnings should be gross (Bounty + ESS + Tax)
       if (!participantEarnings[log.charId]) participantEarnings[log.charId] = 0
       participantEarnings[log.charId] += log.amount
     })
@@ -142,10 +140,9 @@ export async function POST(
       automatedBounties: totalBounties,
       automatedEss: totalEss,
       automatedTaxes: totalTaxes,
-      // P4 Recommendation: Gross Bounties = Auto + ESS + Manual
       grossBounties: totalBounties + totalEss + additionalBounties,
       participantEarnings,
-      logs: allLogs, // Now keeps full history, no slice
+      logs: allLogs,
       lastSyncAt: new Date().toISOString()
     }
 

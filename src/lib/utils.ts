@@ -12,16 +12,29 @@ export function formatNumber(num: number | undefined | null): string {
 
 export function formatISK(isk: number | undefined | null): string {
   if (isk == null || isNaN(isk)) return '0 ISK'
-  if (isk >= 1_000_000_000) {
-    return `${(isk / 1_000_000_000).toFixed(2)}B ISK`
+  const isNegative = isk < 0
+  const absIsk = Math.abs(isk)
+  let result = ''
+  
+  if (absIsk >= 1_000_000_000) {
+    result = `${(absIsk / 1_000_000_000).toFixed(2)}B ISK`
+  } else if (absIsk >= 1_000_000) {
+    result = `${(absIsk / 1_000_000).toFixed(2)}M ISK`
+  } else if (absIsk >= 1_000) {
+    result = `${(absIsk / 1_000).toFixed(2)}K ISK`
+  } else {
+    result = `${absIsk.toFixed(2)} ISK`
   }
-  if (isk >= 1_000_000) {
-    return `${(isk / 1_000_000).toFixed(2)}M ISK`
-  }
-  if (isk >= 1_000) {
-    return `${(isk / 1_000).toFixed(2)}K ISK`
-  }
-  return `${isk.toFixed(2)} ISK`
+
+  return isNegative ? `-${result}` : result
+}
+
+export function calculateNetProfit(data: any): number {
+  if (!data) return 0
+  const bounties = (data.automatedBounties || 0) + (data.automatedEss || 0) + (data.additionalBounties || 0)
+  const assets = (data.estimatedLootValue || 0) + (data.estimatedSalvageValue || 0)
+  const taxes = (data.automatedTaxes || 0)
+  return (bounties + assets) - taxes
 }
 
 export function formatSP(sp: number | undefined | null): string {
@@ -35,8 +48,9 @@ export function formatSP(sp: number | undefined | null): string {
   return `${sp} SP`
 }
 
-export function timeAgo(date: Date): string {
-  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000)
+export function timeAgo(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  const seconds = Math.floor((new Date().getTime() - d.getTime()) / 1000)
   
   const intervals = [
     { label: 'year', seconds: 31536000 },

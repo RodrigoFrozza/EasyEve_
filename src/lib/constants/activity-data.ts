@@ -40,3 +40,9 @@ export const EXPLORATION_SITE_TYPES = ['Relic Site', 'Data Site', 'Ghost Site', 
 export const DIFFICULTIES = ['Level I', 'Level II', 'Level III', 'Level IV', 'Level V']
 export const CRAB_PHASES = ['Deployment', 'Linking (4min)', 'Scanning (10min)', 'Rewards']
 export const DED_LEVELS = ['1/10', '2/10', '3/10', '4/10', '5/10', '6/10', '7/10', '8/10', '9/10', '10/10']
+
+export const ESI_REF_TYPES = {
+  BOUNTY: ['bounty', 'bounty_prizes', 'bounty_payout', 'agent_mission_reward'],
+  ESS: ['ess_payout', 'ess_escrow'],
+  TAX: ['corporation_tax_payout']
+} as const

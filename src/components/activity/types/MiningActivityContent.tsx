@@ -8,7 +8,7 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { FleetSection } from '../shared/FleetSection'
 import { Button } from '@/components/ui/button'
-import { Loader2, Gem, List, Table2, Download, Filter, TrendingUp } from 'lucide-react'
+import { Loader2, Gem, Download, MapPin, Clock, Users, Layers, TrendingUp } from 'lucide-react'
 
 interface MiningActivityContentProps {
   activity: any
@@ -24,7 +24,6 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
     mining: false,
     ledger: false
   })
-  const [viewMode, setViewMode] = useState<'list' | 'table'>('list')
   const [logFilterChar, setLogFilterChar] = useState('all')
   const [logFilterSystem, setLogFilterSystem] = useState('all')
   const [oreNames, setOreNames] = useState<Record<number, string>>({})
@@ -39,6 +38,7 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
   const miningTotalValue = (activity.data?.totalEstimatedValue || 0)
   const oreBreakdown = (activity.data?.oreBreakdown || {})
   const participantEarnings = (activity.data?.participantEarnings || {})
+  const lastSyncAt = (activity.data as any)?.lastSyncAt
 
   // Fetch ore names when logs change
   useEffect(() => {
@@ -61,7 +61,6 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
     const systemIds = Array.from(new Set(rawSystemIds))
     if (systemIds.length === 0) return
 
-    // Simple batch resolve - just fetch names
     const fetchSystemNames = async () => {
       const results: Record<number, string> = {}
       for (const sysId of systemIds as number[]) {
@@ -96,6 +95,19 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
     return Array.from(systems)
   }, [logs, systemNames])
 
+  // Get main system (most used)
+  const mainSystem = useMemo(() => {
+    const systemCounts: Record<string, number> = {}
+    logs.forEach((l: any) => {
+      if (l.solarSystemId) {
+        const sysName = systemNames[Number(l.solarSystemId)] || `System ${l.solarSystemId}`
+        systemCounts[sysName] = (systemCounts[sysName] || 0) + l.quantity
+      }
+    })
+    const sorted = Object.entries(systemCounts).sort((a, b) => b[1] - a[1])
+    return sorted[0]?.[0] || 'Unknown'
+  }, [logs, systemNames])
+
   const filteredLogs = useMemo(() => {
     return logs.filter((log: any) => {
       const matchChar = logFilterChar === 'all' || log.characterName === logFilterChar
@@ -117,15 +129,44 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
     return breakdown
   }, [logs])
 
-  const oreTypes = Object.keys(oreBreakdown)
-  
-  // Check if activity is still active (started less than 24h ago and no endTime)
+  // Sort ores by value (descending)
+  const sortedOreTypes = useMemo(() => {
+    return Object.keys(oreBreakdown).sort((a, b) => {
+      const valueA = oreBreakdown[a]?.estimatedValue || 0
+      const valueB = oreBreakdown[b]?.estimatedValue || 0
+      return valueB - valueA
+    })
+  }, [oreBreakdown])
+
+  // Check if activity is still active
   const startTimeMs = new Date(activity.startTime).getTime()
   const hoursElapsed = (Date.now() - startTimeMs) / 3600000
   const isActivityActive = !activity.endTime && hoursElapsed < 24
   
   const iskPerHour = isActivityActive ? miningTotalValue / Math.max(0.01, hoursElapsed) : 0
   const m3PerHour = isActivityActive ? miningTotalQuantity / Math.max(0.01, hoursElapsed) : 0
+
+  // Format last sync time
+  const lastSyncFormatted = useMemo(() => {
+    if (!lastSyncAt) return null
+    const syncTime = new Date(lastSyncAt).getTime()
+    const minutesAgo = Math.floor((Date.now() - syncTime) / 60000)
+    if (minutesAgo < 1) return 'agora'
+    if (minutesAgo < 60) return `${minutesAgo} min`
+    const hours = Math.floor(minutesAgo / 60)
+    if (hours < 24) return `${hours}h`
+    return `${Math.floor(hours / 24)}d`
+  }, [lastSyncAt])
+
+  // Calculate activity duration
+  const activityDuration = useMemo(() => {
+    const start = new Date(activity.startTime).getTime()
+    const end = activity.endTime ? new Date(activity.endTime).getTime() : Date.now()
+    const diffMs = end - start
+    const hours = Math.floor(diffMs / 3600000)
+    const minutes = Math.floor((diffMs % 3600000) / 60000)
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+  }, [activity.startTime, activity.endTime])
 
   const handleExportCSV = () => {
     if (logs.length === 0) return
@@ -157,8 +198,8 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
 
   return (
     <div className="space-y-3">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-2 mb-3">
+      {/* Main Stats Grid - 4 columns */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-2.5 backdrop-blur-sm">
           <p className="text-[9px] text-blue-400/50 uppercase font-bold tracking-widest mb-1">Total Minerado</p>
           <p className="text-lg font-bold text-blue-400 font-mono tracking-tight">{formatNumber(miningTotalQuantity)} m³</p>
@@ -169,23 +210,26 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
           <p className="text-lg font-bold text-green-400 font-mono tracking-tight">{formatISK(miningTotalValue)}</p>
           <p className="text-[9px] text-green-400/30 mt-1">{formatISK(iskPerHour)}/h</p>
         </div>
-      </div>
-
-      {/* Status Bar */}
-      <div className="mb-3 p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/10 backdrop-blur-md flex items-center justify-between">
-        <div className="space-y-0.5">
-          <p className="text-[8px] text-cyan-400/50 uppercase font-black tracking-[0.2em]">Valor Estimado</p>
-          <p className="text-sm font-bold text-white font-mono leading-none">{formatISK(miningTotalValue)}</p>
+        <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-lg p-2.5 backdrop-blur-sm">
+          <p className="text-[9px] text-cyan-400/50 uppercase font-bold tracking-widest mb-1">Pilotos</p>
+          <p className="text-lg font-bold text-cyan-400 font-mono tracking-tight">{uniqueChars.length}</p>
+          <p className="text-[9px] text-cyan-400/30 mt-1 flex items-center gap-1">
+            <Layers className="h-3 w-3" />
+            {sortedOreTypes.length} ores
+          </p>
         </div>
-        <div className="h-8 w-[1px] bg-cyan-500/10" />
-        <div className="space-y-0.5 text-right">
-          <p className="text-[8px] text-zinc-500 uppercase font-black tracking-[0.2em]">Efficiency</p>
-          <p className="text-xs font-bold text-cyan-400 font-mono leading-none">{formatNumber(Math.round(m3PerHour))} m³/h</p>
+        <div className="bg-purple-500/5 border border-purple-500/10 rounded-lg p-2.5 backdrop-blur-sm">
+          <p className="text-[9px] text-purple-400/50 uppercase font-bold tracking-widest mb-1">Duração</p>
+          <p className="text-lg font-bold text-purple-400 font-mono tracking-tight">{activityDuration}</p>
+          <p className="text-[9px] text-purple-400/30 mt-1 flex items-center gap-1">
+            <MapPin className="h-3 w-3" />
+            {mainSystem}
+          </p>
         </div>
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex gap-1.5 p-1 rounded-full bg-zinc-950/80 border border-zinc-900/50 mb-4 backdrop-blur-xl">
+      <div className="flex gap-1.5 p-1 rounded-full bg-zinc-950/80 border border-zinc-900/50 mb-3 backdrop-blur-xl">
         <button
           onClick={() => toggleSection('fleet')}
           className={cn(
@@ -206,7 +250,7 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
               : "text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50"
           )}
         >
-          Ore Breakdown
+          Ores ({sortedOreTypes.length})
         </button>
         <button
           onClick={() => toggleSection('ledger')}
@@ -217,12 +261,12 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
               : "text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50"
           )}
         >
-          Ledger
+          Ledger ({logs.length})
         </button>
       </div>
 
       {/* Tab Content */}
-      <div className="min-h-[220px]">
+      <div className="min-h-[180px]">
         {expandedSections.fleet && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <FleetSection 
@@ -235,22 +279,38 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
 
         {expandedSections.mining && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-            {oreTypes.length === 0 ? (
+            {sortedOreTypes.length === 0 ? (
               <p className="text-center text-[10px] text-gray-600 italic py-8">No mining data yet. Click Sync to fetch from ESI.</p>
             ) : (
-              <div className="space-y-2">
-                {oreTypes.map(typeId => (
-                  <div key={typeId} className="flex items-center justify-between p-2.5 bg-green-950/20 border border-green-900/30 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Gem className="h-4 w-4 text-green-400" />
-                      <span className="text-xs font-bold text-gray-300">{oreNames[Number(typeId)] || `Type ${typeId}`}</span>
+              <div className="space-y-1.5">
+                {sortedOreTypes.map((typeId, idx) => {
+                  const quantity = oreBreakdown[typeId]?.quantity || 0
+                  const value = oreBreakdown[typeId]?.estimatedValue || 0
+                  const maxValue = oreBreakdown[sortedOreTypes[0]]?.estimatedValue || 1
+                  const percentage = Math.round((value / maxValue) * 100)
+                  const oreName = oreNames[Number(typeId)] || `Type ${typeId}`
+                  
+                  return (
+                    <div key={typeId} className="flex items-center gap-3 p-2.5 bg-green-950/10 border border-green-900/20 rounded-lg">
+                      <span className="text-[10px] font-bold text-green-500 w-4">{idx + 1}.</span>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Gem className="h-4 w-4 text-green-400 flex-shrink-0" />
+                        <span className="text-xs font-bold text-gray-300 truncate">{oreName}</span>
+                      </div>
+                      {/* Progress bar */}
+                      <div className="w-16 h-2 bg-zinc-800 rounded-full overflow-hidden flex-shrink-0">
+                        <div 
+                          className="h-full bg-gradient-to-r from-green-600 to-green-400 rounded-full"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                      <div className="text-right flex-shrink-0 w-24">
+                        <p className="text-sm font-bold text-green-400 font-mono">{formatNumber(quantity)} m³</p>
+                        <p className="text-[10px] text-gray-500">{formatISK(value)}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-green-400 font-mono">{formatNumber(oreBreakdown[typeId]?.quantity ?? 0)} m³</p>
-                      <p className="text-[10px] text-gray-500">{formatISK(oreBreakdown[typeId]?.estimatedValue ?? 0)}</p>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
@@ -265,7 +325,7 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
                 onChange={e => setLogFilterChar(e.target.value)}
                 className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-gray-300 outline-none focus:border-zinc-500 flex-1"
               >
-                <option value="all">All Characters</option>
+                <option value="all">All Pilots</option>
                 {uniqueChars.map(char => (
                   <option key={char} value={char}>{char}</option>
                 ))}
@@ -297,7 +357,7 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
             {filteredLogs.length === 0 ? (
               <p className="text-center text-[10px] text-gray-600 italic py-8">No mining records.</p>
             ) : (
-              <div className="space-y-1.5 max-h-[200px] overflow-y-auto custom-scrollbar">
+              <div className="space-y-1.5 max-h-[180px] overflow-y-auto custom-scrollbar">
                 {filteredLogs.map((log: any, idx: number) => (
                   <div key={idx} className="flex items-center justify-between py-2 px-3 rounded border-l-2 border-l-purple-500 bg-purple-950/10">
                     <div className="flex items-center gap-2">
@@ -331,8 +391,8 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
         )}
       </div>
       
-      {/* Sync Button */}
-      <div className="pt-4 mt-2 border-t border-zinc-900/50 flex gap-2">
+      {/* Sync Button with Last Sync Info */}
+      <div className="pt-3 mt-2 border-t border-zinc-900/50 flex items-center gap-2">
         <button 
           disabled={isSyncing}
           onClick={onSync}
@@ -344,6 +404,12 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
            <span className="text-zinc-400">⟳</span>}
           {isSyncing ? 'Syncing...' : 'Sync ESI'}
         </button>
+        {lastSyncFormatted && (
+          <span className="text-[9px] text-zinc-600 flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {lastSyncFormatted}
+          </span>
+        )}
         <button 
           onClick={onEnd}
           className="flex-1 h-10 text-[10px] uppercase font-black tracking-[0.2em] rounded-xl bg-red-950/10 hover:bg-red-950/30 text-red-500/70 hover:text-red-400 border border-red-900/20 flex items-center justify-center gap-2"

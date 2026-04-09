@@ -44,7 +44,7 @@ import {
   DialogTrigger,
   DialogDescription
 } from '@/components/ui/dialog'
-import { cn, formatISK, formatNumber } from '@/lib/utils'
+import { cn, formatISK, formatNumber, calculateNetProfit } from '@/lib/utils'
 import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
 import { type Activity, useActivityStore } from '@/lib/stores/activity-store'
 import { ActivityDetailDialog } from './ActivityDetailDialog'
@@ -205,7 +205,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   
   const totalIsk = isMiningActivity 
     ? miningTotalValue 
-    : automatedBounties + automatedEss + (activity.data?.additionalBounties || 0) + estimatedLootValue + estimatedSalvageValue
+    : calculateNetProfit(activity.data)
 
   // Elapsed Time Timer
   useEffect(() => {

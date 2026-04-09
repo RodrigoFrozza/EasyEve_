@@ -75,6 +75,11 @@ export default async function DashboardPage() {
 
   const now = new Date()
 
+  console.log('[DEBUG] now:', now)
+  console.log('[DEBUG] getStartOfDay:', getStartOfDay(now))
+  console.log('[DEBUG] getStartOfWeek:', getStartOfWeek(now))
+  console.log('[DEBUG] getStartOfMonth:', getStartOfMonth(now))
+
   const [dailyLeaderboard, weeklyLeaderboard, monthlyLeaderboard] = await Promise.all([
     prisma.activity.findMany({
       where: {
@@ -146,7 +151,7 @@ export default async function DashboardPage() {
   }
 
   const aggregateByUser = (activities: any[]) => {
-    const grouped: Record<string, { userId: string; total: number; characterName: string }> = {}
+    const grouped: Record<string, { userId: string; total: number; characterName: string; characterId: number }> = {}
     for (const a of activities) {
       const userId = a.user.id
       const mainChar = a.user.characters[0]
@@ -154,7 +159,8 @@ export default async function DashboardPage() {
         grouped[userId] = {
           userId,
           total: 0,
-          characterName: mainChar?.name || 'Unknown'
+          characterName: mainChar?.name || 'Unknown',
+          characterId: mainChar?.id || 0
         }
       }
       const bounty = a.data?.totalBounty || a.data?.automatedBounties || 0
@@ -166,6 +172,12 @@ export default async function DashboardPage() {
   const dailyStats = aggregateByUser(dailyLeaderboard)
   const weeklyStats = aggregateByUser(weeklyLeaderboard)
   const monthlyStats = aggregateByUser(monthlyLeaderboard)
+
+  console.log('[DEBUG] dailyLeaderboard count:', dailyLeaderboard.length)
+  console.log('[DEBUG] dailyLeaderboard sample:', dailyLeaderboard[0])
+  console.log('[DEBUG] dailyStats:', dailyStats)
+  console.log('[DEBUG] weeklyStats:', weeklyStats)
+  console.log('[DEBUG] monthlyStats:', monthlyStats)
 
   const characters: Array<{ id: number; name: string; totalSp: number; walletBalance: number; location: string | null; ship: string | null }> = user?.characters || []
   const mainCharacter = characters[0]

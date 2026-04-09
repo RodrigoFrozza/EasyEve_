@@ -1,12 +1,13 @@
 'use client'
 
 import { formatISK } from '@/lib/utils'
-import { Trophy } from 'lucide-react'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 
 interface LeaderboardItem {
   userId: string
   total: number
   characterName: string
+  characterId: number
 }
 
 interface LeaderboardListProps {
@@ -16,42 +17,66 @@ interface LeaderboardListProps {
 export function LeaderboardList({ data }: LeaderboardListProps) {
   if (data.length === 0) {
     return (
-      <div className="text-center py-4 text-gray-500 text-xs">
-        <Trophy className="h-5 w-5 mx-auto mb-1 opacity-50" />
-        <p>No activity yet</p>
+      <div className="text-center py-6 text-gray-500 text-xs">
+        <p className="text-gray-400">No activity recorded</p>
       </div>
     )
   }
 
-  const getRankStyle = (index: number) => {
+  const getMedalEmoji = (index: number) => {
     switch (index) {
-      case 0:
-        return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30'
-      case 1:
-        return 'text-gray-300 bg-gray-500/10 border-gray-500/30'
-      case 2:
-        return 'text-amber-600 bg-amber-600/10 border-amber-600/30'
-      default:
-        return 'text-gray-400 bg-gray-500/5 border-gray-500/20'
+      case 0: return '🥇'
+      case 1: return '🥈'
+      case 2: return '🥉'
+      default: return ''
+    }
+  }
+
+  const getRankBorderColor = (index: number) => {
+    switch (index) {
+      case 0: return 'border-yellow-500/50 bg-yellow-500/5'
+      case 1: return 'border-gray-400/50 bg-gray-400/5'
+      case 2: return 'border-amber-600/50 bg-amber-600/5'
+      default: return 'border-eve-border bg-eve-dark/20'
+    }
+  }
+
+  const getRankTextColor = (index: number) => {
+    switch (index) {
+      case 0: return 'text-yellow-400'
+      case 1: return 'text-gray-300'
+      case 2: return 'text-amber-500'
+      default: return 'text-gray-400'
     }
   }
 
   return (
-    <div className="space-y-1.5">
-      {data.slice(0, 3).map((item, index) => (
+    <div className="space-y-2">
+      {data.slice(0, 5).map((item, index) => (
         <div
           key={item.userId}
-          className="flex items-center gap-2 p-2 rounded-md border border-eve-border bg-eve-dark/30 text-xs"
+          className={`flex items-center gap-3 p-2.5 rounded-lg border ${getRankBorderColor(index)} transition-all hover:scale-[1.01]`}
         >
-          <div className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${getRankStyle(index)}`}>
-            {index + 1}
-          </div>
+          <span className="text-lg w-6 text-center">{getMedalEmoji(index)}</span>
+          
+          <Avatar className="h-9 w-9 border-2 border-eve-border">
+            <AvatarImage src={`https://images.evetech.net/characters/${item.characterId}/portrait?size=64`} />
+            <AvatarFallback className="bg-eve-dark text-xs">{item.characterName.slice(0, 2)}</AvatarFallback>
+          </Avatar>
+          
           <div className="flex-1 min-w-0">
-            <p className="text-white truncate font-medium">{item.characterName}</p>
+            <p className={`text-sm font-semibold truncate ${getRankTextColor(index)}`}>
+              {item.characterName}
+            </p>
+            <p className="text-[10px] text-gray-500">Rank {index + 1}</p>
           </div>
-          <p className="text-green-400 font-mono font-bold">
-            {formatISK(item.total)}
-          </p>
+          
+          <div className="text-right">
+            <p className={`text-sm font-bold font-mono ${getRankTextColor(index)}`}>
+              {formatISK(item.total)}
+            </p>
+            <p className="text-[9px] text-gray-500 uppercase tracking-wider">Total</p>
+          </div>
         </div>
       ))}
     </div>
