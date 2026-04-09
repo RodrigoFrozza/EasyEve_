@@ -78,7 +78,7 @@ export default async function DashboardPage() {
   const [dailyLeaderboard, weeklyLeaderboard, monthlyLeaderboard] = await Promise.all([
     prisma.activity.findMany({
       where: {
-        type: 'RATTING',
+        type: 'ratting',
         startTime: { gte: getStartOfDay(now) }
       },
       select: {
@@ -98,7 +98,7 @@ export default async function DashboardPage() {
     }),
     prisma.activity.findMany({
       where: {
-        type: 'RATTING',
+        type: 'ratting',
         startTime: { gte: getStartOfWeek(now) }
       },
       select: {
@@ -118,7 +118,7 @@ export default async function DashboardPage() {
     }),
     prisma.activity.findMany({
       where: {
-        type: 'RATTING',
+        type: 'ratting',
         startTime: { gte: getStartOfMonth(now) }
       },
       select: {

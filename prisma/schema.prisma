@@ -222,3 +222,63 @@ model DebugLog {
   @@index([userId])
   @@index([createdAt])
 }
+
+// === SDE: Ship Stats ===
+model ShipStats {
+  typeId          Int      @id
+  name            String
+  
+  // Slots
+  highSlots       Int      @default(0)
+  medSlots        Int      @default(0)
+  lowSlots        Int      @default(0)
+  rigSlots        Int      @default(0)
+  
+  // Requisitos
+  cpu             Float    @default(0)
+  powerGrid       Float    @default(0)
+  
+  // Capacidades
+  capacitor       Float    @default(0)
+  shieldCapacity  Float    @default(0)
+  armorHP         Float    @default(0)
+  hullHP          Float    @default(0)
+  
+  // Velocidade
+  maxVelocity     Float    @default(0)
+  agility         Float    @default(0)
+  warpSpeed       Float    @default(0)
+  
+  // Cargas
+  droneBay        Float    @default(0)
+  cargo           Float    @default(0)
+  
+  // Meta
+  syncedAt        DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// === SDE: Module Stats ===
+model ModuleStats {
+  typeId          Int      @id
+  name            String
+  groupId         Int?
+  groupName       String?
+  
+  // Requisitos
+  cpu             Float    @default(0)
+  powerGrid       Float    @default(0)
+  
+  // Slot type
+  slotType        String?  // "high", "med", "low", "rig"
+  
+  // Effects (JSON)
+  effects         Json     @default("{}")
+  
+  // Meta
+  syncedAt        DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([slotType])
+  @@index([groupId])
+}

@@ -26,6 +26,7 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
   })
   const [viewMode, setViewMode] = useState<'list' | 'table'>('list')
   const [logFilterChar, setLogFilterChar] = useState('all')
+  const [logFilterSystem, setLogFilterSystem] = useState('all')
   const [oreNames, setOreNames] = useState<Record<number, string>>({})
   const [systemNames, setSystemNames] = useState<Record<number, string>>({})
 
@@ -85,12 +86,24 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
     return Array.from(chars)
   }, [logs])
 
+  const uniqueSystems = useMemo(() => {
+    const systems = new Set<string>()
+    logs.forEach((l: any) => { 
+      if (l.solarSystemId) {
+        systems.add(systemNames[Number(l.solarSystemId)] || `System ${l.solarSystemId}`)
+      }
+    })
+    return Array.from(systems)
+  }, [logs, systemNames])
+
   const filteredLogs = useMemo(() => {
     return logs.filter((log: any) => {
       const matchChar = logFilterChar === 'all' || log.characterName === logFilterChar
-      return matchChar
+      const logSystem = log.solarSystemId ? (systemNames[Number(log.solarSystemId)] || `System ${log.solarSystemId}`) : null
+      const matchSystem = logFilterSystem === 'all' || logSystem === logFilterSystem
+      return matchChar && matchSystem
     })
-  }, [logs, logFilterChar])
+  }, [logs, logFilterChar, logFilterSystem, systemNames])
 
   const participantBreakdown = useMemo(() => {
     const breakdown: Record<number, { name: string; quantity: number; value: number }> = {}
@@ -105,17 +118,32 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
   }, [logs])
 
   const oreTypes = Object.keys(oreBreakdown)
-  const iskPerHour = miningTotalValue / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000)
-  const m3PerHour = miningTotalQuantity / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000)
+  
+  // Check if activity is still active (started less than 24h ago and no endTime)
+  const startTimeMs = new Date(activity.startTime).getTime()
+  const hoursElapsed = (Date.now() - startTimeMs) / 3600000
+  const isActivityActive = !activity.endTime && hoursElapsed < 24
+  
+  const iskPerHour = isActivityActive ? miningTotalValue / Math.max(0.01, hoursElapsed) : 0
+  const m3PerHour = isActivityActive ? miningTotalQuantity / Math.max(0.01, hoursElapsed) : 0
 
   const handleExportCSV = () => {
     if (logs.length === 0) return
     
-    const headers = ['Date', 'Character', 'Type ID', 'Quantity (m3)', 'Est. Value']
-    const csvContent = [
-      headers.join(','),
-      ...logs.map((log: any) => `${new Date(log.date).toISOString()},${log.characterName},${log.typeId},${log.quantity},${log.estimatedValue || 0}`)
-    ].join('\n')
+    const headers = ['Date', 'Character', 'Ore', 'System', 'Quantity (m3)', 'Est. Value (ISK)']
+    const csvRows = [headers.join(',')]
+    
+    for (const log of logs) {
+      const oreName = oreNames[Number(log.typeId)] || `Type ${log.typeId}`
+      const systemName = log.solarSystemId ? (systemNames[Number(log.solarSystemId)] || `System ${log.solarSystemId}`) : 'Unknown'
+      const dateStr = new Date(log.date).toLocaleDateString('en-CA')
+      const quantity = log.quantity
+      const value = Math.round(log.estimatedValue || 0)
+      
+      csvRows.push(`${dateStr},${log.characterName},"${oreName}","${systemName}",${quantity},${value}`)
+    }
+    
+    const csvContent = csvRows.join('\n')
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
@@ -231,7 +259,7 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
         {expandedSections.ledger && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             {/* Filters */}
-            <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2">
               <select 
                 value={logFilterChar} 
                 onChange={e => setLogFilterChar(e.target.value)}
@@ -240,6 +268,16 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
                 <option value="all">All Characters</option>
                 {uniqueChars.map(char => (
                   <option key={char} value={char}>{char}</option>
+                ))}
+              </select>
+              <select 
+                value={logFilterSystem} 
+                onChange={e => setLogFilterSystem(e.target.value)}
+                className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-gray-300 outline-none focus:border-zinc-500 flex-1"
+              >
+                <option value="all">All Systems</option>
+                {uniqueSystems.map(sys => (
+                  <option key={sys} value={sys}>{sys}</option>
                 ))}
               </select>
               <button

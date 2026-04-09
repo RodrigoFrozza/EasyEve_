@@ -2,6 +2,56 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getMarketPrices } from '@/lib/esi'
 import { getValidAccessToken } from '@/lib/token-manager'
+import { ESI_BASE_URL, USER_AGENT } from '@/lib/sde'
+
+const JITA_REGION_ID = 10000002
+
+interface MarketOrder {
+  price: number
+  volume_remain: number
+  type_id: number
+}
+
+// Cache for Jita prices (5 min TTL)
+let jitaPriceCache: { prices: Record<number, number>; timestamp: number } | null = null
+const JITA_PRICE_CACHE_TTL = 5 * 60 * 1000
+
+async function getJitaSellPrices(typeIds: number[]): Promise<Record<number, number>> {
+  const now = Date.now()
+  
+  // Return cached if valid
+  if (jitaPriceCache && (now - jitaPriceCache.timestamp < JITA_PRICE_CACHE_TTL)) {
+    return jitaPriceCache.prices
+  }
+  
+  const priceMap: Record<number, number> = {}
+  
+  // Fetch prices from Jita market for each type
+  for (const typeId of typeIds) {
+    try {
+      const response = await fetch(
+        `${ESI_BASE_URL}/markets/${JITA_REGION_ID}/orders/?type_id=${typeId}&order_type=sell`,
+        { headers: { 'X-User-Agent': USER_AGENT } }
+      )
+      
+      if (!response.ok) continue
+      
+      const orders: MarketOrder[] = await response.json()
+      const validOrders = orders.filter(o => o.volume_remain > 0)
+      
+      if (validOrders.length > 0) {
+        // Best sell price (lowest)
+        const bestPrice = Math.min(...validOrders.map(o => o.price))
+        priceMap[typeId] = bestPrice
+      }
+    } catch (e) {
+      console.error(`Error fetching Jita price for type ${typeId}:`, e)
+    }
+  }
+  
+  jitaPriceCache = { prices: priceMap, timestamp: now }
+  return priceMap
+}
 
 interface MiningLedgerEntry {
   date: string
@@ -22,7 +72,6 @@ function isValidMiningEntry(entry: any): entry is MiningLedgerEntry {
   )
 }
 
-const ESI_BASE_URL = 'https://esi.evetech.net/latest'
 const MAX_RETRIES = 3
 const RETRY_DELAY = 1000
 const MAX_CONCURRENT_PAGES = 5
@@ -307,24 +356,28 @@ export async function POST(request: Request) {
       }
     }
 
-    // Get prices
-    const priceMap = await getMarketPrices()
-    const typeIdsWithoutPrice = Object.keys(oreBreakdown)
-      .filter(id => !priceMap[Number(id)])
-      .map(Number)
+    // Get prices - prefer Jita sell prices, fallback to market prices, then base prices
+    const typeIdsList = Object.keys(oreBreakdown).map(Number)
+    const jitaPrices = await getJitaSellPrices(typeIdsList)
+    const marketPrices = await getMarketPrices()
     
+    const typeIdsWithoutPrice = typeIdsList.filter(id => !jitaPrices[id] && !marketPrices[id])
     const basePrices = typeIdsWithoutPrice.length > 0 
       ? await getBasePrices(typeIdsWithoutPrice)
       : {}
 
-    // Calculate values (single pass)
+    // Calculate values and save estimatedValue in each log (single pass)
     for (const log of allLogs) {
       const typeIdNum = Number(log.typeId)
-      const price = priceMap[typeIdNum] || basePrices[typeIdNum] || 0
+      // Priority: Jita sell > market average > base price > 0
+      const price = jitaPrices[typeIdNum] || marketPrices[typeIdNum] || basePrices[typeIdNum] || 0
+      const estimatedValue = log.quantity * price
       
-      oreBreakdown[typeIdNum].estimatedValue += log.quantity * price
+      // Save estimatedValue in log
+      log.estimatedValue = estimatedValue
       
-      participantBreakdown[log.characterId].estimatedValue += log.quantity * price
+      oreBreakdown[typeIdNum].estimatedValue += estimatedValue
+      participantBreakdown[log.characterId].estimatedValue += estimatedValue
       participantBreakdown[log.characterId].quantity += log.quantity
     }
 
