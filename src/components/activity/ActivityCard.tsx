@@ -52,6 +52,8 @@ import { SalvageField } from './SalvageField'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 
 import { RattingHelpModal } from './RattingHelpModal'
+import { MiningActivityContent } from './types/MiningActivityContent'
+import { RattingActivityContent } from './types/RattingActivityContent'
 
 export interface ActivityCardProps {
   activity: Activity
@@ -453,7 +455,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                       <span className="text-[9px] text-zinc-400/70 uppercase font-bold tracking-wider">ESS</span>
                     </div>
                     {essCountdown && activity.status === 'active' && (
-                      <span className="text-[8px] font-mono text-cyan-500/70">{essCountdown}</span>
+                      <span className="text-[9px] font-mono text-cyan-500 font-bold">Next Payout: {essCountdown}</span>
                     )}
                   </div>
                   <div className="text-sm font-bold text-zinc-300 font-mono">
@@ -767,7 +769,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                 <p className="text-[10px] text-gray-500 uppercase tracking-tighter">ESS</p>
                 <p className="text-sm font-bold text-yellow-400 font-mono">{formatISK(activity.data?.automatedEss || 0)}</p>
                 {essCountdown && activity.status === 'active' && (
-                  <p className="text-[8px] text-cyan-500/40 font-mono mt-0.5">{essCountdown}</p>
+                  <p className="text-[9px] text-cyan-500 font-mono mt-0.5 font-bold">Next Payout: {essCountdown}</p>
                 )}
               </div>
               <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-blue-500/30">
@@ -878,168 +880,27 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
           </>
         ) : displayMode === 'tabs' ? (
           <>
-            {/* Tabs Mode - Stats + Unified Metrics */}
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <div className="bg-green-500/5 border border-green-500/10 rounded-lg p-2.5 backdrop-blur-sm shadow-inner group/stat">
-                <p className="text-[9px] text-green-400/50 uppercase font-bold tracking-widest mb-1">Bounties</p>
-                <p className="text-lg font-bold text-green-400 font-mono tracking-tight">{formatISK(activity.data?.grossBounties || (activity.data?.automatedBounties || 0) + (activity.data?.automatedEss || 0) + (activity.data?.additionalBounties || 0))}</p>
+            {isMiningActivity ? (
+              <MiningActivityContent 
+                activity={activity} 
+                onSync={handleSyncFinancials}
+                isSyncing={isSyncing}
+                syncStatus={syncStatus}
+              />
+            ) : activity.type === 'ratting' ? (
+              <RattingActivityContent 
+                activity={activity} 
+                onSync={handleSyncFinancials}
+                isSyncing={isSyncing}
+                syncStatus={syncStatus}
+                essCountdown={essCountdown}
+              />
+) : (
+              /* Fallback for other activity types */
+              <div className="py-4 text-center text-zinc-500 text-sm">
+                Modo detalhado não disponível para este tipo de atividade.
               </div>
-              <div className="bg-yellow-500/5 border border-yellow-500/10 rounded-lg p-2.5 backdrop-blur-sm shadow-inner group/stat flex flex-col justify-between">
-                <div>
-                  <p className="text-[9px] text-yellow-400/50 uppercase font-bold tracking-widest mb-1">ESS</p>
-                  <p className="text-lg font-bold text-green-400 font-mono tracking-tight">{formatISK(activity.data?.automatedEss || 0)}</p>
-                </div>
-                {essCountdown && activity.status === 'active' && (
-                  <p className="text-[9px] font-mono text-cyan-400/40 mt-1">{essCountdown} left</p>
-                )}
-              </div>
-            </div>
-
-            {/* Financial Status Bar */}
-            <div className="mb-3 p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/10 backdrop-blur-md flex items-center justify-between shadow-lg">
-              <div className="space-y-0.5">
-                <p className="text-[8px] text-cyan-400/50 uppercase font-black tracking-[0.2em]">Net ISK Profit</p>
-                <p className="text-sm font-bold text-white font-mono leading-none">
-                  {formatISK(
-                    (activity.data?.automatedBounties || 0) + 
-                    (activity.data?.automatedEss || 0) + 
-                    (activity.data?.additionalBounties || 0) +
-                    estimatedLootValue +
-                    estimatedSalvageValue
-                  )}
-                </p>
-              </div>
-              <div className="h-8 w-[1px] bg-cyan-500/10" />
-              <div className="space-y-0.5 text-right">
-                <p className="text-[8px] text-zinc-500 uppercase font-black tracking-[0.2em]">Efficiency</p>
-                <p className="text-xs font-bold text-cyan-400 font-mono leading-none">
-                  {(() => {
-                    const start = new Date(activity.startTime).getTime()
-                    const end = activity.endTime ? new Date(activity.endTime).getTime() : Date.now()
-                    const hours = (end - start) / 3600000;
-                    const total = 
-                      (activity.data?.automatedBounties || 0) + 
-                      (activity.data?.automatedEss || 0) + 
-                      (activity.data?.additionalBounties || 0) +
-                      estimatedLootValue +
-                      estimatedSalvageValue;
-                    return hours > 0.01 ? formatISK(total / hours) : formatISK(0);
-                  })()}/h
-                </p>
-              </div>
-            </div>
-
-            {/* Tabs Navigation */}
-            <div className="flex gap-1.5 p-1 rounded-full bg-zinc-950/80 border border-zinc-900/50 mb-4 backdrop-blur-xl">
-              <button
-                onClick={() => toggleSection('fleet')}
-                className={cn(
-                  "flex-1 px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all duration-300",
-                  expandedSections.fleet 
-                    ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-[0_0_12px_rgba(6,182,212,0.1)]" 
-                    : "text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50"
-                )}
-              >
-                Fleet
-              </button>
-              <button
-                onClick={() => toggleSection('mtu')}
-                className={cn(
-                  "flex-1 px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all duration-300",
-                  expandedSections.mtu 
-                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_12px_rgba(59,130,246,0.1)]" 
-                    : "text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50"
-                )}
-              >
-                MTU
-              </button>
-              <button
-                onClick={() => toggleSection('salvage')}
-                className={cn(
-                  "flex-1 px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all duration-300",
-                  expandedSections.salvage 
-                    ? "bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-[0_0_12px_rgba(249,115,22,0.1)]" 
-                    : "text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50"
-                )}
-              >
-                Salvage
-              </button>
-            </div>
-
-            {/* Tab Content */}
-            <div className="min-h-[220px]">
-              {expandedSections.fleet && (
-                <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  {activity.participants.map(p => (
-                    <div key={p.characterId} className="flex items-center gap-3 p-2.5 bg-zinc-950/40 border border-zinc-900/50 rounded-lg backdrop-blur-sm group/p">
-                      <Avatar className="h-10 w-10 border border-zinc-800 group-hover/p:border-cyan-500/50 transition-colors">
-                        <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
-                        <AvatarFallback className="bg-zinc-900 text-[10px] tracking-tighter">{p.characterName?.slice(0, 2)}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-zinc-200 truncate tracking-tight">{p.characterName}</p>
-                        <p className="text-[10px] text-zinc-600 truncate uppercase font-bold tracking-widest">{p.fit || 'No fit recorded'}</p>
-                      </div>
-                      <div className="h-2 w-2 rounded-full bg-green-500/50 animate-pulse" />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {expandedSections.mtu && (
-                <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  <MTULootField 
-                    value={activity.data?.mtuContents || []} 
-                    activityId={activity.id}
-                    mtuValues={activity.data?.mtuValues || []}
-                    onChange={async (mtus) => {
-                      useActivityStore.getState().updateActivity(activity.id, {
-                        data: { ...activity.data, mtuContents: mtus }
-                      });
-                    }} 
-                  />
-                </div>
-              )}
-
-              {expandedSections.salvage && (
-                <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  <SalvageField 
-                    value={activity.data?.salvageContents || []} 
-                    activityId={activity.id}
-                    onChange={async (salvage) => {
-                      useActivityStore.getState().updateActivity(activity.id, {
-                        data: { ...activity.data, salvageContents: salvage }
-                      });
-                    }} 
-                  />
-                </div>
-              )}
-            </div>
-            
-            <div className="pt-4 mt-2 border-t border-zinc-900/50 flex gap-2">
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                disabled={isSyncing}
-                onClick={handleSyncFinancials}
-                className="flex-1 h-10 text-[10px] uppercase font-black tracking-[0.2em] rounded-xl bg-zinc-900/50 hover:bg-zinc-800 text-zinc-500 hover:text-white border border-zinc-800/50"
-              >
-                {isSyncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> :
-                 syncStatus === 'success' ? <CheckCircle className="h-4 w-4 mr-2 text-green-500" /> :
-                 syncStatus === 'error' ? <XCircle className="h-4 w-4 mr-2 text-red-500" /> :
-                 <RefreshCw className="h-4 w-4 mr-2" />}
-                {isSyncing ? 'Synchronizing...' : 'Sync ESI'}
-              </Button>
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                onClick={onEnd}
-                className="flex-1 h-10 text-[10px] uppercase font-black tracking-[0.2em] rounded-xl bg-red-950/10 hover:bg-red-950/30 text-red-500/70 hover:text-red-400 border border-red-900/20"
-              >
-                <StopCircle className="h-4 w-4 mr-2" />
-                Finalizar
-              </Button>
-            </div>
+            )}
           </>
         ) : (
           /* Expanded Mode - Full layout */
