@@ -798,7 +798,12 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
               <div className="text-right flex items-center gap-4">
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase font-black">Rate</p>
-                  <p className="text-sm font-bold text-cyan-400 font-mono leading-tight">{formatISK(totalIsk / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000))}/h</p>
+                  <p className="text-sm font-bold text-cyan-400 font-mono leading-tight">
+                    {isMiningActivity 
+                      ? formatNumber(Math.round(miningTotalQuantity / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000))) + ' m³/h'
+                      : formatISK(totalIsk / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000)) + '/h'
+                    }
+                  </p>
                 </div>
               {(activity.type === 'ratting' || activity.type === 'mining') && (
                 <Button 
