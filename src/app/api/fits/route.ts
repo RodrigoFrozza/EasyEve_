@@ -32,8 +32,15 @@ export async function GET() {
     
     return NextResponse.json(transformedFits)
   } catch (error) {
-    console.error('GET fits error:', error)
-    return NextResponse.json({ error: 'Failed to fetch fits' }, { status: 500 })
+    console.error('[API/FITS] GET error:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    })
+    return NextResponse.json({ 
+      error: 'Failed to fetch fits',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
@@ -85,7 +92,14 @@ export async function POST(request: Request) {
       createdAt: fit.createdAt?.toISOString()
     })
   } catch (error) {
-    console.error('POST fit error:', error)
-    return NextResponse.json({ error: 'Failed to create fit' }, { status: 500 })
+    console.error('[API/FITS] POST error:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    })
+    return NextResponse.json({ 
+      error: 'Failed to create fit',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }

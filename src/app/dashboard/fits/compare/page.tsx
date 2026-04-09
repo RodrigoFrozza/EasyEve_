@@ -55,12 +55,19 @@ export default function FitComparePage() {
   useEffect(() => {
     if (characters.length > 0) {
       fetch('/api/fits')
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
+          return res.json()
+        })
         .then(data => {
-          setFits(data)
+          setFits(Array.isArray(data) ? data : [])
           setLoading(false)
         })
-        .catch(() => setLoading(false))
+        .catch(err => {
+          console.error('Failed to fetch fits:', err)
+          setFits([])
+          setLoading(false)
+        })
     }
   }, [characters.length])
   
