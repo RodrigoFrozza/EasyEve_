@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { useSession } from '@/lib/session-client'
 import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
 import { cn, formatISK } from '@/lib/utils'
-import { Crown, Calendar, Info, Wallet, CheckCircle2, XCircle, AlertCircle, Copy, Check } from 'lucide-react'
+import { Crown, Calendar, Info, Wallet, CheckCircle2, XCircle, AlertCircle, Copy, Check, History } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function SubscriptionPage() {
