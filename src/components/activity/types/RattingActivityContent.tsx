@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { formatISK, cn, calculateNetProfit, timeAgo, formatNumber } from '@/lib/utils'
 import { useActivityStore } from '@/lib/stores/activity-store'
 import { FleetSection } from '../shared/FleetSection'
@@ -42,6 +42,22 @@ export function RattingActivityContent({
   const [salvageModalOpen, setSalvageModalOpen] = useState(false)
   const [confirmEndOpen, setConfirmEndOpen] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [iskPerHour, setIskPerHour] = useState(0)
+
+  useEffect(() => {
+    setMounted(true)
+    const update = () => {
+      const now = Date.now()
+      const start = new Date(activity.startTime).getTime()
+      const totalIsk = calculateNetProfit(activity.data)
+      const durationHours = Math.max(0.01, (now - start) / 3600000)
+      setIskPerHour(totalIsk / durationHours)
+    }
+    update()
+    const timer = setInterval(update, 1000)
+    return () => clearInterval(timer)
+  }, [activity.data, activity.startTime])
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
@@ -53,8 +69,7 @@ export function RattingActivityContent({
   const additionalBounties = activity.data?.additionalBounties || 0
 
   const totalIsk = calculateNetProfit(activity.data)
-  const durationHours = Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000)
-  const iskPerHour = totalIsk / durationHours
+  // Removed direct calculation of iskPerHour to avoid hydration errors
 
   const incomeHistory = (activity.data as any)?.incomeHistory || []
   const mtuContents = activity.data?.mtuContents || []
@@ -163,8 +178,8 @@ export function RattingActivityContent({
                 <p className="text-[8px] text-cyan-400/70 uppercase font-black tracking-wider">ISK/h</p>
                 <TrendIcon className={cn("h-2.5 w-2.5", trendColor)} />
               </div>
-              <p className="text-sm font-black text-white font-mono tracking-tight">
-                {formatISK(iskPerHour)}
+              <p className="text-sm font-black text-white font-mono tracking-tight" suppressHydrationWarning>
+                {mounted ? formatISK(iskPerHour) : formatISK(0)}
               </p>
             </div>
           </div>
@@ -312,8 +327,8 @@ export function RattingActivityContent({
             <p className="text-[9px] text-cyan-400/70 uppercase font-black tracking-wider">ISK/h</p>
             <TrendIcon className={cn("h-3 w-3", trendColor)} />
           </div>
-          <p className="text-xl font-black text-white font-mono tracking-tight">
-            {formatISK(iskPerHour)}
+          <p className="text-xl font-black text-white font-mono tracking-tight" suppressHydrationWarning>
+            {mounted ? formatISK(iskPerHour) : formatISK(0)}
           </p>
         </div>
       </div>

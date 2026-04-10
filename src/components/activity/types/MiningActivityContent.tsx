@@ -25,6 +25,9 @@ export function MiningActivityContent({
   const [isPaused, setIsPaused] = useState(false)
   const [oreNames, setOreNames] = useState<Record<number, string>>({})
   const [oreImages, setOreImages] = useState<Record<number, string>>({})
+  const [mounted, setMounted] = useState(false)
+  const [iskPerHour, setIskPerHour] = useState(0)
+  const [m3PerHour, setM3PerHour] = useState(0)
 
   const logs = (activity.data as any)?.logs || []
   const miningTotalQuantity = (activity.data?.totalQuantity || 0)
@@ -32,11 +35,24 @@ export function MiningActivityContent({
   const oreBreakdown = (activity.data?.oreBreakdown || {})
   
   const startTimeMs = new Date(activity.startTime).getTime()
-  const hoursElapsed = (Date.now() - startTimeMs) / 3600000
-  const isActivityActive = !activity.endTime && hoursElapsed < 24
   
-  const iskPerHour = isActivityActive ? miningTotalValue / Math.max(0.01, hoursElapsed) : 0
-  const m3PerHour = isActivityActive ? miningTotalQuantity / Math.max(0.01, hoursElapsed) : 0
+  useEffect(() => {
+    setMounted(true)
+    const update = () => {
+      const now = Date.now()
+      const hoursElapsed = (now - startTimeMs) / 3600000
+      const isActivityActive = !activity.endTime && hoursElapsed < 24
+      
+      const newIskPerHour = isActivityActive ? miningTotalValue / Math.max(0.01, hoursElapsed) : 0
+      const newM3PerHour = isActivityActive ? miningTotalQuantity / Math.max(0.01, hoursElapsed) : 0
+      
+      setIskPerHour(newIskPerHour)
+      setM3PerHour(newM3PerHour)
+    }
+    update()
+    const timer = setInterval(update, 2000) // Update every 2 seconds is enough for mining
+    return () => clearInterval(timer)
+  }, [activity.startTime, activity.endTime, miningTotalValue, miningTotalQuantity, startTimeMs])
 
   const m3Trend = (activity.data as any)?.m3Trend || 'stable'
   const TrendIcon = m3Trend === 'up' ? TrendingUp : m3Trend === 'down' ? TrendingDown : ActivityIcon
@@ -166,8 +182,8 @@ export function MiningActivityContent({
                 <p className="text-[8px] text-cyan-400/70 uppercase font-black tracking-wider">ISK/h</p>
                 <TrendIcon className={cn("h-2.5 w-2.5", trendColor)} />
               </div>
-              <p className="text-sm font-black text-white font-mono tracking-tight">
-                {formatISK(iskPerHour)}
+              <p className="text-sm font-black text-white font-mono tracking-tight" suppressHydrationWarning>
+                {mounted ? formatISK(iskPerHour) : formatISK(0)}
               </p>
             </div>
           </div>
@@ -297,7 +313,9 @@ export function MiningActivityContent({
           <p className="text-xl font-black text-white font-mono tracking-tight">
             {formatNumber(Math.round(miningTotalQuantity))}
           </p>
-          <p className="text-[9px] text-blue-400/50 mt-1">{formatNumber(Math.round(m3PerHour))} m³/h</p>
+          <p className="text-[9px] text-blue-400/50 mt-1" suppressHydrationWarning>
+            {mounted ? formatNumber(Math.round(m3PerHour)) : 0} m³/h
+          </p>
         </div>
 
         <div className="bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 rounded-xl p-4 relative overflow-hidden">
@@ -314,8 +332,8 @@ export function MiningActivityContent({
             <p className="text-[9px] text-cyan-400/70 uppercase font-black tracking-wider">ISK/h</p>
             <TrendIcon className={cn("h-3 w-3", trendColor)} />
           </div>
-          <p className="text-xl font-black text-white font-mono tracking-tight">
-            {formatISK(iskPerHour)}
+          <p className="text-xl font-black text-white font-mono tracking-tight" suppressHydrationWarning>
+            {mounted ? formatISK(iskPerHour) : formatISK(0)}
           </p>
         </div>
       </div>

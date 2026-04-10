@@ -43,6 +43,9 @@ export interface ActivityCardProps {
 
 export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   const [elapsed, setElapsed] = useState('')
+  const [mounted, setMounted] = useState(false)
+  const [iskPerHour, setIskPerHour] = useState<number | null>(null)
+  const [m3PerHour, setM3PerHour] = useState<number | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
   const [isAppraising, setIsAppraising] = useState(false)
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle')
@@ -188,9 +191,10 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
     ? miningTotalValue 
     : calculateNetProfit(activity.data)
 
-  // Elapsed Time Timer
+  // Elapsed Time Timer & Efficiency Metrics
   useEffect(() => {
-    const timer = setInterval(() => {
+    setMounted(true)
+    const updateMetrics = () => {
       const start = new Date(activity.startTime).getTime()
       const end = activity.endTime ? new Date(activity.endTime).getTime() : Date.now()
       const diff = end - start
@@ -200,9 +204,29 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
       const seconds = Math.floor((diff % (1000 * 60)) / 1000)
       
       setElapsed(`${hours > 0 ? `${hours}h ` : ''}${minutes}m ${seconds}s`)
-    }, 1000)
+
+      // Calculate ISK/h and m3/h
+      const hoursDecimal = Math.max(0.01, diff / 3600000)
+      
+      const totalIsk = (activity.data?.automatedBounties || 0) + 
+                       (activity.data?.automatedEss || 0) + 
+                       (activity.data?.additionalBounties || 0) +
+                       (activity.data?.miningValue || 0) +
+                       estimatedLootValue +
+                       estimatedSalvageValue
+      
+      setIskPerHour(totalIsk / hoursDecimal)
+
+      if (activity.type === 'mining') {
+        const totalM3 = (activity.data?.totalQuantity || 0)
+        setM3PerHour(totalM3 / hoursDecimal)
+      }
+    }
+
+    updateMetrics()
+    const timer = setInterval(updateMetrics, 1000)
     return () => clearInterval(timer)
-  }, [activity.startTime, activity.endTime])
+  }, [activity.startTime, activity.endTime, activity.type, estimatedLootValue, estimatedSalvageValue, activity.data])
 
   const [essCountdown, setEssCountdown] = useState<string>('')
   
@@ -483,20 +507,8 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                   </div>
                   <div className="space-y-1 text-right">
                     <p className="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Efficiency</p>
-                    <p className="text-2xl font-bold text-cyan-400 font-mono tracking-tighter leading-none">
-                      {(() => {
-                        const start = new Date(activity.startTime).getTime()
-                        const end = activity.endTime ? new Date(activity.endTime).getTime() : Date.now()
-                        const hours = (end - start) / 3600000;
-                        const total = 
-                          (activity.data?.automatedBounties || 0) + 
-                          (activity.data?.automatedEss || 0) + 
-                          (activity.data?.additionalBounties || 0) +
-                          (activity.data?.miningValue || 0) +
-                          estimatedLootValue +
-                          estimatedSalvageValue;
-                        return hours > 0.01 ? formatISK(total / hours) : formatISK(0);
-                      })()}/h
+                    <p className="text-2xl font-bold text-cyan-400 font-mono tracking-tighter leading-none" suppressHydrationWarning>
+                      {mounted && iskPerHour !== null ? formatISK(iskPerHour) : formatISK(0)}/h
                     </p>
                   </div>
                 </div>
