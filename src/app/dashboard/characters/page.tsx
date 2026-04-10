@@ -9,7 +9,6 @@ import { MapPin, Ship, Zap, Wallet, Plus, Users } from 'lucide-react'
 import { LinkCharacterButton, RefreshCharacterButton, RemoveCharacterButton, SetMainButton, CopyInviteLink, CharacterScopesDialog, ReloginButton } from '@/components/character-actions'
 import { getSession } from '@/lib/session'
 import { CharacterCard } from '@/components/character-card'
-import { getSession } from '@/lib/session'
 interface CharacterData {
   id: number
   name: string

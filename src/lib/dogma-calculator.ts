@@ -208,7 +208,8 @@ export interface ModuleBaseStats {
 const shipStatsCache = new Map<number, ShipBaseStats>()
 const moduleStatsCache = new Map<number, ModuleBaseStats>()
 
-// --- API Functions ---/**
+// --- API Functions ---
+/**
  * Fetches base ship statistics from the database with caching.
  * @param typeId The ESI type_id for the ship
  */
