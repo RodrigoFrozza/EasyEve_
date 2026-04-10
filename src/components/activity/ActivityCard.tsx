@@ -495,60 +495,85 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-2 relative z-10">
-                  <div className="p-3 rounded-xl bg-zinc-900/40 border border-zinc-900/50 group-hover/fin:border-zinc-800 transition-colors">
-                    <p className="text-[8px] text-zinc-600 uppercase font-black tracking-widest mb-1 leading-none">Space Tier</p>
-                    <p className="text-[11px] font-bold text-zinc-300 truncate">{activity.space || '—'}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-zinc-900/40 border border-zinc-900/50 group-hover/fin:border-zinc-800 transition-colors">
-                    <p className="text-[8px] text-zinc-600 uppercase font-black tracking-widest mb-1 leading-none">Activity Focus</p>
-                    <p className="text-[11px] font-bold text-zinc-300 truncate tracking-tight">
-                      {activity.data?.siteType || (activity.type === 'mining' ? 'Extraction Operations' : 'Combat Operations')}
-                    </p>
-                  </div>
+                <div className="pt-2 relative z-10">
+                  {activity.type === 'mining' ? (
+                    <div className="space-y-2">
+                       <p className="text-[9px] text-zinc-500 uppercase font-black tracking-widest leading-none">Extraction Summary</p>
+                       <div className="flex flex-wrap gap-2">
+                         {Object.entries(activity.data?.oreBreakdown || {}).slice(0, 4).map(([typeId, data]: [string, any]) => (
+                           <div key={typeId} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-zinc-900/60 border border-zinc-800/50 group/ore hover:border-blue-500/30 transition-colors">
+                             <img 
+                               src={`https://images.evetech.net/types/${typeId}/icon?size=32`} 
+                               alt="Ore"
+                               className="h-5 w-5 rounded-sm"
+                             />
+                             <div className="flex flex-col">
+                               <span className="text-[10px] font-bold text-zinc-100">{formatNumber(data.quantity)}</span>
+                               <span className="text-[8px] text-zinc-500 font-mono">m³</span>
+                             </div>
+                           </div>
+                         ))}
+                       </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-3 rounded-xl bg-zinc-900/40 border border-zinc-900/50 group-hover/fin:border-zinc-800 transition-colors">
+                        <p className="text-[8px] text-zinc-600 uppercase font-black tracking-widest mb-1 leading-none">Space Tier</p>
+                        <p className="text-[11px] font-bold text-zinc-300 truncate">{activity.space || '—'}</p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-zinc-900/40 border border-zinc-900/50 group-hover/fin:border-zinc-800 transition-colors">
+                        <p className="text-[8px] text-zinc-600 uppercase font-black tracking-widest mb-1 leading-none">Activity Focus</p>
+                        <p className="text-[11px] font-bold text-zinc-300 truncate tracking-tight">
+                          {activity.data?.siteType ||'Combat Operations'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Bottom Grid - Inventory Systems */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 px-2 mb-1">
-                  <div className="h-4 w-1 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.4)]" />
-                  <span className="text-[10px] uppercase font-black tracking-[0.2em] text-blue-400">Inventory Management</span>
+            {/* Bottom Grid - Inventory Systems (Only for non-mining) */}
+            {activity.type !== 'mining' && (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 px-2 mb-1">
+                    <div className="h-4 w-1 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.4)]" />
+                    <span className="text-[10px] uppercase font-black tracking-[0.2em] text-blue-400">Inventory Management</span>
+                  </div>
+                  <div className="bg-zinc-950/20 p-2 rounded-2xl border border-zinc-900/30 backdrop-blur-md">
+                    <MTULootField 
+                      value={activity.data?.mtuContents || []} 
+                      activityId={activity.id}
+                      mtuValues={activity.data?.mtuValues || []}
+                      onChange={async (mtus) => {
+                        useActivityStore.getState().updateActivity(activity.id, {
+                          data: { ...activity.data, mtuContents: mtus }
+                        });
+                      }} 
+                    />
+                  </div>
                 </div>
-                <div className="bg-zinc-950/20 p-2 rounded-2xl border border-zinc-900/30 backdrop-blur-md">
-                  <MTULootField 
-                    value={activity.data?.mtuContents || []} 
-                    activityId={activity.id}
-                    mtuValues={activity.data?.mtuValues || []}
-                    onChange={async (mtus) => {
-                      useActivityStore.getState().updateActivity(activity.id, {
-                        data: { ...activity.data, mtuContents: mtus }
-                      });
-                    }} 
-                  />
-                </div>
-              </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 px-2 mb-1">
-                  <div className="h-4 w-1 bg-orange-500 rounded-full shadow-[0_0_8px_rgba(249,115,22,0.4)]" />
-                  <span className="text-[10px] uppercase font-black tracking-[0.2em] text-orange-400">Reclamation Systems</span>
-                </div>
-                <div className="bg-zinc-950/20 p-2 rounded-2xl border border-zinc-900/30 backdrop-blur-md">
-                  <SalvageField 
-                    value={activity.data?.salvageContents || []} 
-                    activityId={activity.id}
-                    onChange={async (salvage) => {
-                      useActivityStore.getState().updateActivity(activity.id, {
-                        data: { ...activity.data, salvageContents: salvage }
-                      });
-                    }} 
-                  />
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 px-2 mb-1">
+                    <div className="h-4 w-1 bg-orange-500 rounded-full shadow-[0_0_8px_rgba(249,115,22,0.4)]" />
+                    <span className="text-[10px] uppercase font-black tracking-[0.2em] text-orange-400">Reclamation Systems</span>
+                  </div>
+                  <div className="bg-zinc-950/20 p-2 rounded-2xl border border-zinc-900/30 backdrop-blur-md">
+                    <SalvageField 
+                      value={activity.data?.salvageContents || []} 
+                      activityId={activity.id}
+                      onChange={async (salvage) => {
+                        useActivityStore.getState().updateActivity(activity.id, {
+                          data: { ...activity.data, salvageContents: salvage }
+                        });
+                      }} 
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div className="pt-2 flex gap-3">
               <Button 

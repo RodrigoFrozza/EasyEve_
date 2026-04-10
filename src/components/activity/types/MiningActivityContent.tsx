@@ -233,15 +233,45 @@ export function MiningActivityContent({
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="bg-zinc-900/40 p-2.5 rounded-lg border border-white/[0.02] flex items-center justify-between">
+          <div className="bg-zinc-900/40 p-2.5 rounded-lg border border-white/[0.02] flex items-center justify-between group/total">
             <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider">Total</span>
-            <span className="text-xs font-bold text-blue-400 font-mono">{formatNumber(miningTotalQuantity)} m³</span>
+            <span className="text-xs font-bold text-blue-400 font-mono italic">{formatNumber(miningTotalQuantity)} m³</span>
           </div>
-          <div className="bg-zinc-900/40 p-2.5 rounded-lg border border-white/[0.02] flex items-center justify-between">
-             <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider">Sync</span>
-             <span className="text-xs font-bold text-zinc-400 font-mono uppercase">{lastSyncFormatted || 'PENDING'}</span>
-          </div>
+          <button 
+            onClick={onSync}
+            disabled={isSyncing}
+            className="bg-zinc-900/40 p-2.5 rounded-lg border border-white/[0.02] flex items-center justify-between group/sync hover:bg-zinc-800/60 hover:border-blue-500/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+             <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider group-hover/sync:text-blue-400 transition-colors">Sync</span>
+             <div className="flex items-center gap-2">
+                {isSyncing && <Loader2 className="h-3 w-3 animate-spin text-blue-400" />}
+                <span className="text-xs font-bold text-zinc-400 font-mono uppercase group-hover/sync:text-white transition-colors">{lastSyncFormatted || 'PENDING'}</span>
+             </div>
+          </button>
         </div>
+
+        {/* Compact Ore Icons */}
+        {sortedOreTypes.length > 0 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+            {sortedOreTypes.slice(0, 5).map(typeId => (
+              <div key={typeId} className="flex-shrink-0 relative group/oreitem">
+                <img 
+                  src={`https://images.evetech.net/types/${typeId}/icon?size=32`} 
+                  alt="Ore"
+                  className="h-6 w-6 rounded-md border border-white/[0.05] bg-zinc-950 group-hover/oreitem:border-blue-500/50 transition-colors"
+                />
+                <div className="absolute -top-1 -right-1 bg-blue-600 text-[7px] text-white px-1 rounded-full font-bold opacity-0 group-hover/oreitem:opacity-100 transition-opacity">
+                  {formatNumber(oreBreakdown[typeId]?.quantity)}
+                </div>
+              </div>
+            ))}
+            {sortedOreTypes.length > 5 && (
+              <div className="h-6 w-6 rounded-md bg-zinc-900 border border-white/[0.05] flex items-center justify-center text-[8px] font-bold text-zinc-500">
+                +{sortedOreTypes.length - 5}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     )
   }
