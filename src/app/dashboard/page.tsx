@@ -264,16 +264,16 @@ export default async function DashboardPage() {
               </TabsList>
               
               <TabsContent value="daily">
-                <LeaderboardList data={dailyStats} currentUserId={session?.user?.id} />
+                <LeaderboardList data={dailyStats} currentUserId={session?.user?.id} period="daily" />
               </TabsContent>
               <TabsContent value="weekly">
-                <LeaderboardList data={weeklyStats} currentUserId={session?.user?.id} />
+                <LeaderboardList data={weeklyStats} currentUserId={session?.user?.id} period="weekly" />
               </TabsContent>
               <TabsContent value="monthly">
-                <LeaderboardList data={monthlyStats} currentUserId={session?.user?.id} />
+                <LeaderboardList data={monthlyStats} currentUserId={session?.user?.id} period="monthly" />
               </TabsContent>
               <TabsContent value="alltime">
-                <LeaderboardList data={allTimeStats} currentUserId={session?.user?.id} />
+                <LeaderboardList data={allTimeStats} currentUserId={session?.user?.id} period="alltime" />
               </TabsContent>
             </Tabs>
           </CardContent>

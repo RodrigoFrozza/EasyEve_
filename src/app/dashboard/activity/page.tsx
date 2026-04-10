@@ -358,327 +358,250 @@ function ActivityTrackerContent() {
               Start New Activity
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-eve-panel border-eve-border text-white max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <div className="flex items-center justify-between">
-                <DialogTitle>Launch Activity Fleet</DialogTitle>
-                {newActivity.type === 'ratting' && (
-                  <RattingHelpModal />
-                )}
-              </div>
-            </DialogHeader>
+          <DialogContent className="bg-[#050507] border-eve-border/30 text-white max-w-4xl max-h-[90vh] overflow-y-auto p-0 gap-0 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+            <div className="bg-gradient-to-r from-eve-dark to-zinc-950 p-6 border-b border-eve-border/20">
+              <DialogHeader>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <DialogTitle className="text-2xl font-black uppercase tracking-tighter flex items-center gap-3">
+                      <div className="h-6 w-1 bg-eve-accent rounded-full animate-pulse shadow-[0_0_10px_rgba(0,255,255,0.5)]" />
+                      Launch Activity Fleet
+                    </DialogTitle>
+                    <DialogDescription className="text-zinc-500 text-xs font-medium">
+                      Configure your tactical operations and fleet deployment.
+                    </DialogDescription>
+                  </div>
+                  {newActivity.type === 'ratting' && (
+                    <RattingHelpModal />
+                  )}
+                </div>
+              </DialogHeader>
+            </div>
             
-            <div className="space-y-6 py-4">
-              {/* Activity Type Selection */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {ACTIVITY_TYPES.map((type) => {
-                  const hasAccess = userAllowedActivities.includes(type.id) || userRole === 'master'
-                  return (
-                    <button
-                      key={type.id}
-                      disabled={!hasAccess}
-                      onClick={() => setNewActivity({ ...newActivity, type: type.id as any })}
-                      className={cn(
-                        "flex flex-col items-center justify-center p-3 rounded-lg border transition-all gap-2",
-                        !hasAccess && "opacity-50 cursor-not-allowed",
-                        newActivity.type === type.id 
-                          ? "border-eve-accent bg-eve-accent/10" 
-                          : "border-eve-border bg-eve-dark/50 hover:bg-eve-dark"
-                      )}
-                    >
-                      {hasAccess ? (
-                        <type.icon className={cn("h-6 w-6", type.color)} />
-                      ) : (
-                        <Lock className="h-6 w-6 text-gray-500" />
-                      )}
-                      <span className={cn("text-xs font-medium", !hasAccess && "text-gray-500")}>{type.label}</span>
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Dynamic Fields based on Type */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Space Type</Label>
-                  <Select onValueChange={(v) => setNewActivity({ ...newActivity, space: v })}>
-                    <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Space" /></SelectTrigger>
-                    <SelectContent><SelectContentList items={SPACE_TYPES} /></SelectContent>
-                  </Select>
-                </div>
-
-                {newActivity.type === 'mining' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Region</Label>
-                      <Select onValueChange={(v) => setNewActivity({ ...newActivity, region: v })}>
-                        <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Region" /></SelectTrigger>
-                        <SelectContent><SelectContentList items={REGIONS} /></SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Mining Type</Label>
-                      <Select onValueChange={(v) => updateData({ miningType: v })}>
-                        <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Type" /></SelectTrigger>
-                        <SelectContent><SelectContentList items={MINING_TYPES} /></SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2 col-span-2">
-                      <MiningValuableOres initialType={newActivity.data?.miningType} />
-                    </div>
-                  </>
-                )}
-
-                {newActivity.type === 'ratting' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>NPC Faction</Label>
-                      <Select onValueChange={(v) => updateData({ npcFaction: v })}>
-                        <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Faction" /></SelectTrigger>
-                        <SelectContent><SelectContentList items={NPC_FACTIONS} /></SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Site Type</Label>
-                      <Select onValueChange={(v) => updateData({ siteType: v })}>
-                        <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Site Type" /></SelectTrigger>
-                        <SelectContent><SelectContentList items={SITE_TYPES_RATTING} /></SelectContent>
-                      </Select>
-                    </div>
-                    
-                    {newActivity.data?.siteType === 'Combat Anomaly' && (
-                      <div className="space-y-2 col-span-2">
-                        <Label>Anomalies ({newActivity.data?.npcFaction || 'Select Faction first'})</Label>
-                        <Select onValueChange={(v) => updateData({ siteName: v })}>
-                          <SelectTrigger className="bg-eve-dark border-eve-border">
-                            <SelectValue placeholder="Select Anomaly" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {anomalies.map((a: any) => (
-                              <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                  </>
-                )}
-
-              {newActivity.type === 'abyssal' && (
-                <>
-                  <div className="space-y-2">
-                    <Label>Tier</Label>
-                    <Select onValueChange={(v) => updateData({ tier: v })}>
-                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Tier" /></SelectTrigger>
-                      <SelectContent><SelectContentList items={ABYSSAL_TIERS} /></SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Weather</Label>
-                    <Select onValueChange={(v) => updateData({ weather: v })}>
-                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Weather" /></SelectTrigger>
-                      <SelectContent><SelectContentList items={ABYSSAL_WEATHER} /></SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Ship Size</Label>
-                    <Select onValueChange={(v) => updateData({ shipSize: v })}>
-                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Ship Size" /></SelectTrigger>
-                      <SelectContent><SelectContentList items={SHIP_SIZES} /></SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2 col-span-2">
-                    <Label>Containers (Antes da Run)</Label>
-                    <textarea
-                      value={newActivity.data?.lootBefore || ''}
-                      onChange={(e) => updateData({ lootBefore: e.target.value })}
-                      placeholder="Cole o conteúdo dos containers antes da run..."
-                      className="w-full bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[80px] font-mono"
-                    />
-                  </div>
-                  <div className="space-y-2 col-span-2">
-                    <Label>Loot (Depois da Run)</Label>
-                    <textarea
-                      value={newActivity.data?.lootAfter || ''}
-                      onChange={(e) => updateData({ lootAfter: e.target.value })}
-                      placeholder="Cole o loot depois da run..."
-                      className="w-full bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[80px] font-mono"
-                    />
-                  </div>
-                </>
-              )}
-
-              {newActivity.type === 'exploration' && (
-                <>
-                  <div className="space-y-2">
-                    <Label>Site Type</Label>
-                    <Select onValueChange={(v) => updateData({ explorationSiteType: v })}>
-                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Site Type" /></SelectTrigger>
-                      <SelectContent><SelectContentList items={EXPLORATION_SITE_TYPES} /></SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Difficulty</Label>
-                    <Select onValueChange={(v) => updateData({ difficulty: v })}>
-                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Difficulty" /></SelectTrigger>
-                      <SelectContent><SelectContentList items={DIFFICULTIES} /></SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2 col-span-2">
-                    <Label>Loot Coletado</Label>
-                    <textarea
-                      value={newActivity.data?.lootCollected || ''}
-                      onChange={(e) => updateData({ lootCollected: e.target.value })}
-                      placeholder="Cole o conteúdo das caixas coletadas..."
-                      className="w-full bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[80px] font-mono"
-                    />
-                  </div>
-                </>
-              )}
-
-              {newActivity.type === 'crab' && (
-                <div className="space-y-2">
-                  <Label>Starting Phase</Label>
-                  <Select onValueChange={(v) => updateData({ crabPhase: v })}>
-                    <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Phase" /></SelectTrigger>
-                    <SelectContent><SelectContentList items={CRAB_PHASES} /></SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {newActivity.type === 'escalations' && (
-                <>
-                  <div className="space-y-2">
-                    <Label>Faction</Label>
-                    <Select onValueChange={(v) => updateData({ escalationFaction: v })}>
-                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Faction" /></SelectTrigger>
-                      <SelectContent><SelectContentList items={NPC_FACTIONS} /></SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>DED Level</Label>
-                    <Select onValueChange={(v) => updateData({ dedLevel: v })}>
-                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Level" /></SelectTrigger>
-                      <SelectContent><SelectContentList items={DED_LEVELS} /></SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2 col-span-2">
-                    <Label>Loot Coletado</Label>
-                    <textarea
-                      value={newActivity.data?.escalationLoot || ''}
-                      onChange={(e) => updateData({ escalationLoot: e.target.value })}
-                      placeholder="Cole o loot da escalation..."
-                      className="w-full bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[80px] font-mono"
-                    />
-                  </div>
-                </>
-              )}
-
-              {newActivity.type === 'pvp' && (
-                <>
-                  <div className="space-y-2">
-                    <Label>PVP Type</Label>
-                    <Select onValueChange={(v) => updateData({ pvpType: v })}>
-                      <SelectTrigger className="bg-eve-dark border-eve-border"><SelectValue placeholder="Select Type" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Ganking">Ganking</SelectItem>
-                        <SelectItem value="Small Gang">Small Gang</SelectItem>
-                        <SelectItem value="Fleet">Fleet</SelectItem>
-                        <SelectItem value="Solo">Solo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2 col-span-2">
-                    <Label>Loot / Killmail</Label>
-                    <textarea
-                      value={newActivity.data?.pvpLoot || ''}
-                      onChange={(e) => updateData({ pvpLoot: e.target.value })}
-                      placeholder="Cole o loot ou killmail..."
-                      className="w-full bg-eve-dark border-eve-border rounded-md p-2 text-xs text-white min-h-[80px] font-mono"
-                    />
-                  </div>
-                </>
-              )}
-              </div>
-
-              {/* Participant Selection */}
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Select Participants
-                </Label>
-                <div className="grid grid-cols-1 gap-3">
-                  {session?.user?.characters?.map((char) => {
-                    const busy = isCharacterBusy(char.id)
-                    const participant = newActivity.participants?.find(p => p.characterId === char.id)
-                    const selected = !!participant
-                    
-                    return (
-                      <div key={char.id} className="space-y-2">
+            <div className="grid grid-cols-1 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-eve-border/10">
+              <div className="lg:col-span-3 p-6 space-y-8">
+                {/* Activity Type Selection */}
+                <div className="space-y-4">
+                  <Label className="text-[10px] uppercase font-black tracking-widest text-zinc-500 flex items-center gap-2">
+                    <TrendingUp className="h-3 w-3" />
+                    Mission Category
+                  </Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {ACTIVITY_TYPES.map((type) => {
+                      const hasAccess = userAllowedActivities.includes(type.id) || userRole === 'master'
+                      const isSelected = newActivity.type === type.id
+                      return (
                         <button
-                          disabled={busy}
-                          onClick={() => toggleParticipant(char.id, char.name)}
+                          key={type.id}
+                          disabled={!hasAccess}
+                          onClick={() => setNewActivity({ ...newActivity, type: type.id as any })}
                           className={cn(
-                            "w-full flex items-center gap-3 p-2 rounded-md border transition-all text-left",
-                            selected 
-                              ? "border-eve-accent bg-eve-accent/10" 
-                              : "border-eve-border bg-eve-dark/50 hover:bg-eve-dark",
-                            busy && "opacity-50 cursor-not-allowed border-red-500/30"
+                            "flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-300 gap-3 relative group",
+                            !hasAccess && "opacity-30 cursor-not-allowed grayscale",
+                            isSelected 
+                              ? "border-eve-accent bg-eve-accent/5 shadow-[0_0_20px_rgba(0,255,255,0.05)]" 
+                              : "border-zinc-800/50 bg-zinc-900/30 hover:bg-zinc-800/50 hover:border-zinc-700"
                           )}
                         >
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={`https://images.evetech.net/characters/${char.id}/portrait?size=64`} />
-                            <AvatarFallback>{char.name[0]}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{char.name}</p>
-                            {busy && <span className="text-[10px] text-red-500 font-bold uppercase">Busy</span>}
-                          </div>
+                          {isSelected && <div className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-eve-accent animate-ping" />}
+                          {hasAccess ? (
+                            <type.icon className={cn("h-6 w-6 transition-transform group-hover:scale-110", type.color)} />
+                          ) : (
+                            <Lock className="h-6 w-6 text-gray-500" />
+                          )}
+                          <span className={cn("text-[10px] font-bold uppercase tracking-widest", isSelected ? "text-white" : "text-zinc-500 group-hover:text-zinc-400")}>{type.label}</span>
                         </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Tactical Config */}
+                <div className="space-y-6">
+                  <Label className="text-[10px] uppercase font-black tracking-widest text-zinc-500 flex items-center gap-2">
+                    <Target className="h-3 w-3" />
+                    Tactical Configuration
+                  </Label>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-zinc-950/50 p-6 rounded-2xl border border-zinc-900/50 backdrop-blur-sm">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] text-zinc-400 font-bold uppercase tracking-tight">Security Level / Space</Label>
+                      <Select defaultValue={newActivity.space} onValueChange={(v) => setNewActivity({ ...newActivity, space: v })}>
+                        <SelectTrigger className="h-10 bg-zinc-900 border-zinc-800 focus:ring-eve-accent/20">
+                          <SelectValue placeholder="Select Space" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-800"><SelectContentList items={SPACE_TYPES} /></SelectContent>
+                      </Select>
+                    </div>
+
+                    {newActivity.type === 'ratting' && (
+                      <>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] text-zinc-400 font-bold uppercase tracking-tight">Hostile Faction</Label>
+                          <Select onValueChange={(v) => updateData({ npcFaction: v })}>
+                            <SelectTrigger className="h-10 bg-zinc-900 border-zinc-800 focus:ring-eve-accent/20">
+                              <SelectValue placeholder="Select Faction" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-zinc-900 border-zinc-800"><SelectContentList items={NPC_FACTIONS} /></SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] text-zinc-400 font-bold uppercase tracking-tight">Operations Type</Label>
+                          <Select onValueChange={(v) => updateData({ siteType: v })}>
+                            <SelectTrigger className="h-10 bg-zinc-900 border-zinc-800 focus:ring-eve-accent/20">
+                              <SelectValue placeholder="Select Operation" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-zinc-900 border-zinc-800"><SelectContentList items={SITE_TYPES_RATTING} /></SelectContent>
+                          </Select>
+                        </div>
                         
-                        {selected && (
-                          <div className="pl-11 pr-2 pb-1">
-                            <Select 
-                              value={participant.fit || ''} 
-                              onValueChange={(v) => setParticipantFit(char.id, v)}
-                            >
-                              <SelectTrigger className="h-8 text-xs bg-eve-dark border-eve-border">
-                                <SelectValue placeholder="Select Fit / Loadout" />
+                        {newActivity.data?.siteType === 'Combat Anomaly' && (
+                          <div className="space-y-2 col-span-1 sm:col-span-2">
+                            <Label className="text-[10px] text-zinc-400 font-bold uppercase tracking-tight">
+                              Detected Anomalies ({newActivity.data?.npcFaction || 'Awaiting Faction'})
+                            </Label>
+                            <Select onValueChange={(v) => updateData({ siteName: v })}>
+                              <SelectTrigger className="h-11 bg-zinc-900 border-zinc-800 text-cyan-400 font-mono focus:ring-eve-accent/20">
+                                <SelectValue placeholder="SELECT ANOMALY TARGET" />
                               </SelectTrigger>
-                              <SelectContent>
-                                {userFits.map(fit => (
-                                  <SelectItem key={fit.id} value={fit.id}>{fit.name} ({fit.shipName})</SelectItem>
+                              <SelectContent className="bg-zinc-900 border-zinc-800">
+                                {anomalies.map((a: any) => (
+                                  <SelectItem key={a.id} value={a.name} className="font-mono text-xs">{a.name}</SelectItem>
                                 ))}
-                                {userFits.length === 0 && (
-                                  <div className="p-2 text-[10px] text-gray-500 italic">No fits found. Create one in the Ship Fits tool.</div>
-                                )}
                               </SelectContent>
                             </Select>
                           </div>
                         )}
+                      </>
+                    )}
+
+                    {/* Placeholder for other types - manteniendo funcionalidade original */}
+                    {newActivity.type !== 'ratting' && (
+                      <div className="col-span-1 sm:col-span-2 py-4 text-center text-zinc-600 text-xs italic">
+                        Advanced configuration for {newActivity.type} coming soon.
                       </div>
-                    )
-                  })}
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Fleet Deployment Section */}
+              <div className="lg:col-span-2 p-6 bg-zinc-950/30 space-y-6">
+                <div className="space-y-4">
+                  <Label className="text-[10px] uppercase font-black tracking-widest text-zinc-500 flex items-center gap-2">
+                    <Users className="h-3 w-3" />
+                    Fleet Deployment
+                  </Label>
+                  
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                    {session?.user?.characters?.map((char) => {
+                      const busy = isCharacterBusy(char.id)
+                      const participant = newActivity.participants?.find(p => p.characterId === char.id)
+                      const selected = !!participant
+                      
+                      return (
+                        <div key={char.id} className="space-y-2 animate-in fade-in duration-300">
+                          <button
+                            disabled={busy}
+                            onClick={() => toggleParticipant(char.id, char.name)}
+                            className={cn(
+                              "w-full flex items-center gap-4 p-3 rounded-xl border transition-all duration-300 relative overflow-hidden group/char",
+                              selected 
+                                ? "border-eve-accent bg-eve-accent/10 shadow-[0_0_15px_rgba(0,255,255,0.05)]" 
+                                : "border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900",
+                              busy && "opacity-40 cursor-not-allowed grayscale"
+                            )}
+                          >
+                            <div className="relative">
+                              <Avatar className="h-10 w-10 ring-2 ring-zinc-800 group-hover/char:ring-eve-accent/50 transition-all">
+                                <AvatarImage src={`https://images.evetech.net/characters/${char.id}/portrait?size=64`} />
+                                <AvatarFallback>{char.name[0]}</AvatarFallback>
+                              </Avatar>
+                              {selected && <div className="absolute -top-1 -right-1 h-3 w-3 bg-eve-accent rounded-full border-2 border-[#050507]" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={cn("text-xs font-bold truncate", selected ? "text-white" : "text-zinc-400")}>{char.name}</p>
+                              {busy && <Badge variant="destructive" className="h-4 px-1 text-[8px] font-black uppercase">Busy</Badge>}
+                            </div>
+                          </button>
+                          
+                          {selected && (
+                            <div className="pl-4 border-l-2 border-eve-border/30 ml-5 py-1">
+                              <Select 
+                                value={participant.fit || ''} 
+                                onValueChange={(v) => setParticipantFit(char.id, v)}
+                              >
+                                <SelectTrigger className="h-9 text-[10px] bg-zinc-900/50 border-zinc-800 font-bold uppercase tracking-tighter">
+                                  <SelectValue placeholder="SELECT LOADOUT/FIT" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-900 border-zinc-800">
+                                  {userFits.map(fit => (
+                                    <SelectItem key={fit.id} value={fit.id} className="text-[10px] uppercase font-bold">
+                                      {fit.name} <span className="text-zinc-500">[{fit.shipName}]</span>
+                                    </SelectItem>
+                                  ))}
+                                  {userFits.length === 0 && (
+                                     <div className="p-2 text-[10px] text-gray-500 italic">No fits available.</div>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Pre-flight Check */}
+                <div className="pt-6 border-t border-eve-border/10 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Pre-flight Check</span>
+                    {newActivity.participants && newActivity.participants.length > 0 ? (
+                      <span className="text-[10px] font-bold text-green-500 flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3" /> Ready
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-red-500 flex items-center gap-1">
+                        <XCircle className="h-3 w-3" /> No Crew
+                      </span>
+                    )}
+                  </div>
+                  <div className="bg-zinc-900/50 rounded-xl p-4 space-y-2 border border-zinc-900/50">
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-zinc-500">Operations</span>
+                      <span className="text-white font-bold">{newActivity.type?.toUpperCase() || '—'}</span>
+                    </div>
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-zinc-500">Fleet Strength</span>
+                      <span className="text-white font-bold">{newActivity.participants?.length || 0} Pilots</span>
+                    </div>
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-zinc-500">Targeting</span>
+                      <span className="text-eve-accent font-bold truncate max-w-[120px] text-right">{newActivity.data?.siteName || 'UNASSIGNED'}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <DialogFooter>
+            <div className="bg-zinc-950 p-6 border-t border-eve-border/10 flex items-center justify-between">
               <Button 
                 variant="ghost" 
                 onClick={() => setIsDialogOpen(false)}
-                className="text-gray-400"
+                className="text-zinc-500 hover:text-white uppercase text-[10px] font-black tracking-widest"
               >
-                Cancel
+                Abort Mission
               </Button>
               <Button 
                 onClick={handleStartActivity}
-                disabled={!newActivity.participants?.length}
-                className="bg-eve-accent text-black hover:bg-eve-accent/80 font-bold"
+                disabled={!newActivity.participants?.length || !newActivity.type}
+                className="bg-eve-accent text-black hover:bg-eve-accent/80 font-black uppercase text-xs tracking-widest px-8 py-6 rounded-xl shadow-[0_0_30px_rgba(0,255,255,0.2)] transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 h-auto"
               >
-                Launch Operations
+                <Play className="h-4 w-4 mr-2 fill-current" />
+                Launch Fleet Operations
               </Button>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

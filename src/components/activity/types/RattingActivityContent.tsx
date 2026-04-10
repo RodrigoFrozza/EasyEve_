@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { formatISK, cn, calculateNetProfit, timeAgo } from '@/lib/utils'
+import { formatISK, cn, calculateNetProfit, timeAgo, formatNumber } from '@/lib/utils'
 import { useActivityStore } from '@/lib/stores/activity-store'
 import { FleetSection } from '../shared/FleetSection'
 import { MTULootField } from '../MTULootField'
 import { SalvageField } from '../SalvageField'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Loader2 } from 'lucide-react'
+import { Loader2, RefreshCw } from 'lucide-react'
 
 interface RattingActivityContentProps {
   activity: any
@@ -63,72 +63,107 @@ export function RattingActivityContent({
 
   return (
     <div className="space-y-3">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        <div className="bg-green-500/5 border border-green-500/10 rounded-lg p-2 backdrop-blur-sm">
-          <p className="text-[8px] text-green-400/50 uppercase font-bold tracking-widest mb-1">Bounty</p>
-          <p className="text-xs font-bold text-green-400 font-mono tracking-tight">
-            {formatISK(automatedBounties + additionalBounties)}
-          </p>
-        </div>
-        <div className="bg-yellow-500/5 border border-yellow-500/10 rounded-lg p-2 backdrop-blur-sm flex flex-col justify-between">
-          <div>
-            <p className="text-[8px] text-yellow-400/50 uppercase font-bold tracking-widest mb-1">ESS</p>
-            <p className="text-xs font-bold text-yellow-400 font-mono tracking-tight text-green-400">{formatISK(automatedEss)}</p>
+      {/* Stats Grid - Instruments Style */}
+      <div className="space-y-4">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-zinc-950/40 border border-white/[0.03] rounded-2xl p-4 backdrop-blur-md relative overflow-hidden group/inst transition-all hover:border-eve-accent/20">
+            <div className="absolute top-0 right-0 p-4 bg-green-500/5 blur-2xl rounded-full" />
+            <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-2 flex items-center gap-1.5 font-mono">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+              BOUNTY
+            </p>
+            <div className="space-y-0.5 relative z-10">
+              <p className="text-xl font-black text-white font-mono tracking-tighter">
+                {formatISK(automatedBounties + additionalBounties)}
+              </p>
+              <div className="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
+                 <div className="h-full bg-green-500/50 w-[70%]" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-zinc-950/40 border border-white/[0.03] rounded-2xl p-4 backdrop-blur-md relative overflow-hidden group/inst transition-all hover:border-eve-accent/20">
+            <div className="absolute top-0 right-0 p-4 bg-yellow-500/5 blur-2xl rounded-full" />
+            <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-2 flex items-center gap-1.5 font-mono">
+              <span className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
+              ESS
+            </p>
+            <div className="space-y-0.5 relative z-10">
+              <p className="text-xl font-black text-white font-mono tracking-tighter">
+                {formatISK(automatedEss)}
+              </p>
+              {essCountdown && (
+                <p className="text-[9px] text-cyan-500 font-mono font-bold animate-pulse">{essCountdown}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-zinc-950/40 border border-white/[0.03] rounded-2xl p-4 backdrop-blur-md relative overflow-hidden group/inst transition-all hover:border-eve-accent/20">
+            <div className="absolute top-0 right-0 p-4 bg-red-500/5 blur-2xl rounded-full" />
+            <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-2 flex items-center gap-1.5 font-mono">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+              TAXES
+            </p>
+            <div className="space-y-0.5 relative z-10">
+              <p className="text-xl font-black text-zinc-400 font-mono tracking-tighter">
+                {formatISK(automatedTaxes)}
+              </p>
+              <div className="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
+                 <div className="h-full bg-red-500/30 w-[15%]" />
+              </div>
+            </div>
           </div>
         </div>
-        <div className="bg-red-500/5 border border-red-500/10 rounded-lg p-2 backdrop-blur-sm">
-          <p className="text-[8px] text-red-400/50 uppercase font-bold tracking-widest mb-1">Taxes</p>
-          <p className="text-xs font-bold text-red-400 font-mono tracking-tight">
-            {formatISK(automatedTaxes)}
-          </p>
-        </div>
-      </div>
 
-      {/* Status Bar */}
-      <div className="mb-3 p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/10 backdrop-blur-md flex items-center justify-between">
-        <div className="space-y-0.5">
-          <p className="text-[8px] text-cyan-400/50 uppercase font-black tracking-[0.2em]">Net ISK Profit</p>
-          <p className="text-sm font-bold text-white font-mono leading-none">{formatISK(totalIsk)}</p>
-        </div>
-        <div className="h-8 w-[1px] bg-cyan-500/10" />
-        <div className="space-y-0.5 text-right">
-          <p className="text-[8px] text-zinc-500 uppercase font-black tracking-[0.2em]">Efficiency</p>
-          <p className="text-xs font-bold text-cyan-400 font-mono leading-none">{formatISK(iskPerHour)}/h</p>
+        {/* Performance Summary HUD */}
+        <div className="p-5 rounded-2xl bg-gradient-to-r from-eve-accent/10 to-transparent border border-eve-accent/20 backdrop-blur-xl flex items-center justify-between shadow-[0_0_30px_rgba(0,255,255,0.05)]">
+          <div className="space-y-1">
+            <p className="text-[10px] text-eve-accent font-black tracking-[0.3em] uppercase opacity-70">METRIC ANALYTICS // PROFIT</p>
+            <p className="text-3xl font-black text-white font-mono tracking-tighter leading-none flex items-baseline gap-2">
+              {formatISK(totalIsk)}
+              <span className="text-sm text-zinc-600 font-black uppercase">ISK</span>
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] text-zinc-500 font-black tracking-[0.2em] uppercase mb-1">EFFICIENCY SCALE</p>
+            <div className="bg-black/40 px-4 py-2 rounded-xl border border-white/[0.05] shadow-inner">
+              <p className="text-lg font-black text-cyan-400 font-mono leading-none tracking-tighter">{formatISK(iskPerHour)}/h</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex gap-1.5 p-1 rounded-full bg-zinc-950/80 border border-zinc-900/50 mb-4 backdrop-blur-xl">
+      <div className="flex gap-1.5 p-1.5 rounded-2xl bg-zinc-950/60 border border-white/[0.03] mb-6 mt-4 backdrop-blur-xl shadow-inner">
         <button
-          onClick={() => toggleSection('fleet')}
+          onClick={() => setExpandedSections({ fleet: true, mtu: false, salvage: false })}
           className={cn(
-            "flex-1 px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all duration-300",
+            "flex-1 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all duration-500",
             expandedSections.fleet 
-              ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-[0_0_12px_rgba(6,182,212,0.1)]" 
-              : "text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50"
+              ? "bg-eve-accent text-black shadow-[0_0_20px_rgba(0,255,255,0.2)]" 
+              : "text-zinc-600 hover:text-zinc-400 hover:bg-white/[0.02]"
           )}
         >
           Fleet
         </button>
         <button
-          onClick={() => toggleSection('mtu')}
+          onClick={() => setExpandedSections({ fleet: false, mtu: true, salvage: false })}
           className={cn(
-            "flex-1 px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all duration-300",
+            "flex-1 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all duration-500",
             expandedSections.mtu 
-              ? "bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_12px_rgba(59,130,246,0.1)]" 
-              : "text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50"
+              ? "bg-blue-500 text-black shadow-[0_0_20px_rgba(59,130,246,0.2)]" 
+              : "text-zinc-600 hover:text-zinc-400 hover:bg-white/[0.02]"
           )}
         >
           MTU
         </button>
         <button
-          onClick={() => toggleSection('salvage')}
+          onClick={() => setExpandedSections({ fleet: false, mtu: false, salvage: true })}
           className={cn(
-            "flex-1 px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all duration-300",
+            "flex-1 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all duration-500",
             expandedSections.salvage 
-              ? "bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-[0_0_12px_rgba(249,115,22,0.1)]" 
-              : "text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50"
+              ? "bg-orange-500 text-black shadow-[0_0_20px_rgba(249,115,22,0.2)]" 
+              : "text-zinc-600 hover:text-zinc-400 hover:bg-white/[0.02]"
           )}
         >
           Salvage
@@ -136,21 +171,23 @@ export function RattingActivityContent({
       </div>
 
       {/* Tab Content */}
-      <div className="min-h-[220px]">
+      <div className="min-h-[220px] relative">
         {expandedSections.fleet && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="space-y-2">
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {activity.participants.map((p: any) => (
-                <div key={p.characterId} className="flex items-center gap-3 p-2.5 bg-zinc-950/40 border border-zinc-900/50 rounded-lg backdrop-blur-sm group/p">
-                  <Avatar className="h-10 w-10 border border-zinc-800 group-hover/p:border-cyan-500/50 transition-colors">
-                    <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
-                    <AvatarFallback className="bg-zinc-900 text-[10px] tracking-tighter">{p.characterName?.slice(0, 2)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-zinc-200 truncate tracking-tight">{p.characterName}</p>
-                    <p className="text-[10px] text-zinc-600 truncate uppercase font-bold tracking-widest">{p.fit || 'No fit recorded'}</p>
+                <div key={p.characterId} className="flex items-center gap-4 p-4 bg-zinc-950/40 border border-white/[0.03] rounded-2xl backdrop-blur-sm group/p transition-all hover:bg-zinc-900/60 hover:border-eve-accent/30 shadow-lg">
+                  <div className="relative">
+                    <Avatar className="h-12 w-12 border-2 border-zinc-800 transition-transform group-hover/p:scale-110 group-hover/p:border-eve-accent/50 duration-500 shadow-xl">
+                      <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
+                      <AvatarFallback className="bg-zinc-900 text-xs font-black">{p.characterName?.slice(0, 2)}</AvatarFallback>
+                    </Avatar>
+                    <div className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-green-500 rounded-full border-2 border-[#050507] shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
                   </div>
-                  <div className="h-2 w-2 rounded-full bg-green-500/50 animate-pulse" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black text-zinc-100 truncate tracking-tight group-hover/p:text-white transition-colors">{p.characterName}</p>
+                    <p className="text-[10px] text-zinc-600 truncate uppercase font-black tracking-widest leading-none mt-1.5 group-hover/p:text-eve-accent transition-colors">{p.fit || 'Awaiting Fit...'}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -179,26 +216,33 @@ export function RattingActivityContent({
         )}
       </div>
       
-      {/* Sync Button & Info */}
-      <div className="pt-4 mt-2 border-t border-zinc-900/50 space-y-2">
-        <div className="flex items-center justify-between px-1">
-          <p className="text-[8px] text-zinc-600 uppercase font-bold tracking-widest">
-            {activity.data?.lastSyncAt ? `Last Sync: ${timeAgo(activity.data.lastSyncAt)}` : 'No sync data'}
-          </p>
-          {essCountdown && activity.status === 'active' && (
-            <p className="text-[8px] text-cyan-500 font-mono font-bold uppercase tracking-wider">Next Payout: {essCountdown}</p>
-          )}
+      {/* Sync Footer */}
+      <div className="pt-6 mt-6 border-t border-white/[0.05] space-y-4">
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center gap-2">
+             <div className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
+             <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest font-mono">
+               {activity.data?.lastSyncAt ? `Telemetry Linked: ${timeAgo(activity.data.lastSyncAt)}` : 'ESI Data Pending...'}
+             </p>
+          </div>
         </div>
         <button 
           disabled={isSyncing}
           onClick={onSync}
-          className="w-full h-10 text-[10px] uppercase font-black tracking-[0.2em] rounded-xl bg-zinc-900/50 hover:bg-zinc-800 text-zinc-500 hover:text-white border border-zinc-800/50 flex items-center justify-center gap-2 transition-all"
+          className={cn(
+            "w-full h-14 text-[11px] uppercase font-black tracking-[0.3em] rounded-2xl transition-all duration-700 flex items-center justify-center gap-3 relative overflow-hidden group/sync",
+            isSyncing 
+              ? "bg-eve-accent/10 border-eve-accent/30 text-eve-accent animate-pulse" 
+              : "bg-zinc-950/60 border border-white/[0.05] hover:bg-zinc-900 text-zinc-500 hover:text-white hover:border-eve-accent/50 shadow-2xl"
+          )}
         >
-          {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> :
-           syncStatus === 'success' ? <span className="text-green-500">✓</span> :
-           syncStatus === 'error' ? <span className="text-red-500">✗</span> :
-           <span className="text-zinc-400">⟳</span>}
-          {isSyncing ? 'Syncing...' : 'Sync ESI'}
+          <div className="absolute inset-x-0 bottom-0 h-0.5 bg-eve-accent opacity-0 group-hover/sync:opacity-100 transition-opacity" />
+          {isSyncing ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <RefreshCw className={cn("h-5 w-5 transition-transform duration-700 group-hover/sync:rotate-180", syncStatus === 'success' && "text-green-500")} />
+          )}
+          <span>{isSyncing ? 'Linking Satellite Data...' : 'Synchronize ESI Assets'}</span>
         </button>
       </div>
     </div>

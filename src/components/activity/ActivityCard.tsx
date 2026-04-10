@@ -55,6 +55,8 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { RattingHelpModal } from './RattingHelpModal'
 import { MiningActivityContent } from './types/MiningActivityContent'
 import { RattingActivityContent } from './types/RattingActivityContent'
+import { Sparkline } from '@/components/ui/Sparkline'
+
 
 export interface ActivityCardProps {
   activity: Activity
@@ -255,6 +257,19 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
     return () => clearInterval(timer);
   }, [activity.type]);
 
+  const incomeHistory = useMemo(() => {
+    const logs = (activity.data as any)?.logs || []
+    if (logs.length === 0) return [0, 0]
+    let currentTotal = 0
+    // Use cumulative total for a growth chart, or just raw amounts for spikes
+    // Cumulative is better for "Total ISK" visualization
+    return logs.slice().reverse().map((l: any) => {
+      currentTotal += (l.amount || 0)
+      return currentTotal
+    })
+  }, [activity.data])
+
+
   const handleSyncFinancials = async () => {
     setIsSyncing(true)
     setSyncStatus('idle')
@@ -333,51 +348,61 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   }
 
   return (
-    <Card className="bg-[#0a0a0f] border-zinc-800/50 rounded-xl overflow-hidden shadow-2xl transition-all hover:border-zinc-700/50 group/card">
-      <CardHeader className="py-3 px-4 bg-zinc-950/50 border-b border-zinc-900/50">
+    <Card className="bg-[#0a0a0f]/80 backdrop-blur-xl border-zinc-800/40 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-500 hover:border-eve-accent/30 group/card relative">
+      <div className="absolute inset-0 bg-gradient-to-br from-eve-accent/5 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 pointer-events-none" />
+      
+      <CardHeader className="py-4 px-6 bg-zinc-950/40 border-b border-white/[0.03] relative z-10">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-6 w-1 bg-eve-accent rounded-full shadow-[0_0_8px_rgba(0,255,255,0.4)]" />
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <div className="h-10 w-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shadow-inner group-hover/card:border-eve-accent/50 transition-colors duration-500">
+                {typeInfo ? <typeInfo.icon className={cn("h-5 w-5", typeInfo.color)} /> : <ActivityIcon className="h-5 w-5 text-zinc-500" />}
+              </div>
+              <div className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full bg-green-500 border-2 border-[#0a0a10] animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+            </div>
+            
             <div className="flex flex-col">
-              <span className="text-[10px] items-center gap-2 flex text-zinc-500 font-bold uppercase tracking-widest leading-none mb-1">
-                <ActivityIcon className="h-3 w-3" />
-                {activity.type}
-              </span>
-              <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
-                <span className="truncate">{(activity as any).item?.name || activity.data?.siteName || 'Active Operations'}</span>
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                  Tactical Ops // {activity.type}
+                </span>
+              </div>
+              <h3 className="text-base font-black text-white tracking-tight flex items-center gap-2">
+                <span className="truncate max-w-[180px]">{(activity as any).item?.name || activity.data?.siteName || 'Active Operations'}</span>
               </h3>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-zinc-950 rounded-full p-1 border border-zinc-900 shadow-inner">
+
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-1 bg-black/40 rounded-full p-1 border border-white/[0.05] shadow-inner backdrop-blur-md">
               <button
                 onClick={() => setDisplayMode('compact')}
                 className={cn(
-                  "p-1.5 rounded-full transition-all duration-300",
-                  displayMode === 'compact' ? "bg-cyan-500/20 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.1)]" : "text-zinc-600 hover:text-zinc-400"
+                  "px-3 py-1 rounded-full transition-all duration-500 text-[10px] font-black uppercase tracking-widest",
+                  displayMode === 'compact' ? "bg-eve-accent text-black shadow-[0_0_15px_rgba(0,255,255,0.3)]" : "text-zinc-500 hover:text-zinc-300"
                 )}
-                title="Compact Mode"
               >
-                <LayoutGrid className="w-3.5 h-3.5" />
+                HUD
               </button>
               <button
                 onClick={() => setDisplayMode('tabs')}
                 className={cn(
-                  "p-1.5 rounded-full transition-all duration-300",
-                  displayMode === 'tabs' ? "bg-cyan-500/20 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.1)]" : "text-zinc-600 hover:text-zinc-400"
+                  "px-3 py-1 rounded-full transition-all duration-500 text-[10px] font-black uppercase tracking-widest",
+                  displayMode === 'tabs' ? "bg-eve-accent text-black shadow-[0_0_15px_rgba(0,255,255,0.3)]" : "text-zinc-500 hover:text-zinc-300"
                 )}
-                title="Tabs Mode"
               >
-                <AlignJustify className="w-3.5 h-3.5" />
+                DATA
               </button>
             </div>
-            <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-zinc-400 bg-zinc-950 px-2.5 py-1 rounded-full border border-zinc-900 shadow-inner">
-              <Clock className="h-3 w-3 text-cyan-500" />
-              {elapsed}
+            
+            <div className="flex items-center gap-2 bg-zinc-900/50 px-3 py-1.5 rounded-xl border border-white/[0.03] shadow-inner">
+              <div className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-ping" />
+              <span className="text-xs font-mono font-bold text-cyan-400 tracking-tighter">{elapsed}</span>
             </div>
           </div>
         </div>
       </CardHeader>
+
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-4 -mt-1 px-1">
           <div className="flex items-center gap-2">
@@ -400,151 +425,118 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
       
       <CardContent className="space-y-3 p-4">
         {displayMode === 'compact' ? (
-          <>
-            {/* Compact Stats Grid - Mining */}
-            {isMiningActivity ? (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-blue-500/30">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Mined</p>
-                  <p className="text-sm font-bold text-blue-400 font-mono">{formatNumber(miningTotalQuantity)} m3</p>
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {/* Ultra Compact Performance Display */}
+            <div className="grid grid-cols-1 gap-4">
+              <div className="relative bg-gradient-to-br from-zinc-900 to-black p-6 rounded-2xl border border-white/[0.03] overflow-hidden group/hud shadow-2xl">
+                {/* Background Sparkline */}
+                <div className="absolute inset-x-0 bottom-0 top-1/2 opacity-20 pointer-events-none transition-opacity group-hover/hud:opacity-40">
+                  <Sparkline 
+                    data={incomeHistory} 
+                    width={400} 
+                    height={80} 
+                    color="#00ffff" 
+                    className="w-full h-full"
+                    strokeWidth={3}
+                  />
                 </div>
-                <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-green-500/30">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Est. Value</p>
-                  <p className="text-sm font-bold text-green-400 font-mono">{formatISK(miningTotalValue)}</p>
-                </div>
-                <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-cyan-500/30">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-tighter">m3/hr</p>
-                  <p className="text-sm font-bold text-cyan-400 font-mono">{formatNumber(miningTotalQuantity / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000))}</p>
-                </div>
-                <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-yellow-500/30">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-tighter">ISK/hr</p>
-                  <p className="text-sm font-bold text-yellow-400 font-mono">{formatISK(miningTotalValue / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000))}</p>
-                </div>
-              </div>
-            ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-green-500/30">
-                <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Bounty</p>
-                <p className="text-sm font-bold text-green-400 font-mono">{formatISK(activity.data?.grossBounties || (activity.data?.automatedBounties || 0) + (activity.data?.automatedEss || 0) + (activity.data?.additionalBounties || 0))}</p>
-              </div>
-              <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-yellow-500/30 relative overflow-hidden">
-                <p className="text-[10px] text-gray-500 uppercase tracking-tighter">ESS</p>
-                <p className="text-sm font-bold text-yellow-400 font-mono">{formatISK(activity.data?.automatedEss || 0)}</p>
-                {essCountdown && activity.status === 'active' && (
-                  <p className="text-[9px] text-cyan-500 font-mono mt-0.5 font-bold">Next Payout: {essCountdown}</p>
-                )}
-              </div>
-              <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-blue-500/30">
-                <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Loot</p>
-                <p className="text-sm font-bold text-blue-400 font-mono">{formatISK(estimatedLootValue)}</p>
-              </div>
-              <div className="bg-[#12121a]/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg p-3 text-center transition-all hover:border-orange-500/30">
-                <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Salvage</p>
-                <p className="text-sm font-bold text-orange-400 font-mono">{formatISK(estimatedSalvageValue)}</p>
-              </div>
-            </div>
-            )}
 
-            {/* Summary Bar */}
-            <div className="flex items-center justify-between bg-[#12121a]/80 backdrop-blur-md border border-zinc-800/50 rounded-xl p-3 shadow-lg">
-              <div>
-                <p className="text-[10px] text-gray-500 uppercase font-black">{isMiningActivity ? 'Est. Value' : 'Total'}</p>
-                <p className="text-xl font-black text-green-400 font-mono leading-tight tracking-tighter">{isMiningActivity ? formatISK(miningTotalValue) : formatISK(totalIsk)}</p>
-              </div>
-              <div className="text-right flex items-center gap-4">
-                <div>
-                  <p className="text-[10px] text-gray-500 uppercase font-black">Rate</p>
-                  <p className="text-sm font-bold text-cyan-400 font-mono leading-tight">
-                    {isMiningActivity 
-                      ? formatNumber(Math.round(miningTotalQuantity / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000))) + ' m³/h'
-                      : formatISK(totalIsk / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000)) + '/h'
-                    }
-                  </p>
+                <div className="relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 flex items-center gap-2">
+                       <TrendingUp className="h-3 w-3 text-eve-accent" />
+                       Net Revenue
+                    </p>
+                    <p className="text-4xl font-black text-white font-mono tracking-tighter flex items-baseline gap-2">
+                      <span className="text-eve-accent drop-shadow-[0_0_10px_rgba(0,255,255,0.4)]">
+                        {isMiningActivity ? formatISK(miningTotalValue) : formatISK(totalIsk)}
+                      </span>
+                      <span className="text-xs text-zinc-600 font-bold uppercase tracking-widest">ISK</span>
+                    </p>
+                  </div>
+                  
+                  <div className="text-left sm:text-right space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Hourly Rate</p>
+                    <p className="text-xl font-black text-cyan-400 font-mono tracking-tighter">
+                      {isMiningActivity 
+                        ? formatNumber(Math.round(miningTotalQuantity / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000))) + ' m³/h'
+                        : formatISK(totalIsk / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000)) + '/h'
+                      }
+                    </p>
+                  </div>
                 </div>
-              {(activity.type === 'ratting' || activity.type === 'mining') && (
+              </div>
+
+              {/* Action Cluster */}
+              <div className="flex items-center gap-2">
                 <Button 
                   size="sm" 
                   variant="outline"
                   disabled={isSyncing}
                   onClick={handleSyncFinancials}
-                  className="h-8"
+                  className={cn(
+                    "flex-1 h-12 bg-white/[0.02] border-white/[0.05] hover:bg-eve-accent/10 hover:border-eve-accent/50 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-eve-accent transition-all duration-500 rounded-xl",
+                    isSyncing && "animate-pulse border-eve-accent/50 bg-eve-accent/5"
+                  )}
                 >
-                  {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  {isSyncing ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className={cn("h-4 w-4 mr-2", syncStatus === 'success' && "text-green-500")} />
+                  )}
+                  {isSyncing ? 'Linking ESI...' : 'Synchronize'}
                 </Button>
-              )}
-            </div>
+                
+                <ActivityDetailDialog 
+                  activity={activity} 
+                  trigger={
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="h-12 px-6 bg-white/[0.02] border-white/[0.05] hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl transition-all"
+                    >
+                      <History className="h-4 w-4" />
+                    </Button>
+                  }
+                />
+                
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  onClick={onEnd}
+                  className="h-12 px-6 bg-red-500/5 border-red-500/10 hover:bg-red-500 hover:text-black hover:border-red-500 rounded-xl text-red-500 transition-all group/end"
+                >
+                  <StopCircle className="h-4 w-4 group-hover/end:scale-110 transition-transform" />
+                </Button>
+              </div>
             </div>
 
             {/* Quick Fleet Preview */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between px-2 pt-2">
               <div className="flex -space-x-2">
-                {activity.participants.slice(0, 4).map(p => (
-                  <Avatar key={p.characterId} className="h-8 w-8 border-2 border-[#0a0a0f]">
+                {activity.participants.slice(0, 6).map(p => (
+                  <Avatar key={p.characterId} className="h-8 w-8 border-2 border-[#0a0a0f] ring-1 ring-white/5">
                     <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
-                    <AvatarFallback className="bg-[#12121a] text-[10px]">
+                    <AvatarFallback className="bg-zinc-900 text-[10px] font-black">
                       {p.characterName?.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 ))}
-                {activity.participants.length > 4 && (
-                  <div className="h-8 w-8 rounded-full bg-[#12121a] border-2 border-[#0a0a0f] flex items-center justify-center text-[10px] text-gray-400">
-                    +{activity.participants.length - 4}
+                {activity.participants.length > 6 && (
+                  <div className="h-8 w-8 rounded-full bg-zinc-900 border-2 border-[#0a0a0f] ring-1 ring-white/5 flex items-center justify-center text-[10px] font-black text-zinc-400">
+                    +{activity.participants.length - 6}
                   </div>
                 )}
               </div>
-<div className="flex items-center gap-2">
-              {activity.type === 'ratting' && (
-                <>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => {
-                      const newMTUs = [...mtuContents, { loot: '' }]
-                      handleMTUChange(newMTUs)
-                      setDisplayMode('tabs')
-                      setExpandedSections(prev => ({ ...prev, mtu: true }))
-                    }}
-                    className="text-xs text-blue-400 font-bold hover:text-blue-300 hover:bg-blue-400/10 rounded-full px-3"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    MTU
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => {
-                      const newSalvage = [...salvageContents, { loot: '' }]
-                      handleSalvageChange(newSalvage)
-                      setDisplayMode('tabs')
-                      setExpandedSections(prev => ({ ...prev, salvage: true }))
-                    }}
-                    className="text-xs text-orange-400 font-bold hover:text-orange-300 hover:bg-orange-400/10 rounded-full px-3"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Salvage
-                  </Button>
-                </>
-              )}
-              <Button 
-                variant="outline" 
-                 size="sm"
-                onClick={() => setDisplayMode('tabs')}
-                className="text-xs border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-full px-4"
-              >
-                View Details
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={onEnd}
-                className="text-xs border-red-500/30 text-red-500/70 hover:text-red-400 hover:bg-red-500/10 rounded-full px-3"
-                title="Finalizar Atividade"
-              >
-                <StopCircle className="h-3.5 w-3.5" />
-              </Button>
+              
+              <div className="flex items-center gap-2">
+                <div className="text-[10px] font-black uppercase tracking-widest text-zinc-600">
+                  Fleet Status: <span className="text-green-500">Optimal</span>
+                </div>
               </div>
             </div>
-          </>
+          </div>
+
         ) : displayMode === 'tabs' ? (
           <>
             {isMiningActivity ? (
