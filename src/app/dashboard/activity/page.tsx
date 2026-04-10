@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { ActivityCard } from '@/components/activity/ActivityCard'
@@ -331,8 +333,10 @@ function ActivityTrackerContent() {
   const totalDuration = useMemo(() => {
     if (!mounted) return 0
     return activities.reduce((sum, a) => {
+      const start = new Date(a.startTime).getTime()
+      if (isNaN(start)) return sum
       const end = a.endTime ? new Date(a.endTime).getTime() : new Date().getTime()
-      return sum + (end - new Date(a.startTime).getTime())
+      return sum + (end - start)
     }, 0)
   }, [activities, mounted])
 
@@ -740,10 +744,11 @@ function ActivityTrackerContent() {
             </CardContent>
           </Card>
         ) : (
-          activeActivities.map(activity => (
+          activeActivities.map((activity, idx) => (
             <ActivityCard 
               key={activity.id} 
               activity={activity} 
+              index={idx}
               onEnd={() => handleEndActivity(activity.id)}
             />
           ))

@@ -240,8 +240,8 @@ export function ActivityCard({ activity, index, onEnd }: ActivityCardProps) {
       const now = Date.now() + serverClockOffset
       const start = new Date(activity.startTime).getTime()
       
-      const accumulatedPaused = activity.accumulatedPausedTime || 0
-      const currentPauseDuration = activity.isPaused && activity.pausedAt 
+      const accumulatedPaused = Number(activity.accumulatedPausedTime) || 0
+      const currentPauseDuration = (activity.isPaused && activity.pausedAt) 
         ? Math.max(0, now - new Date(activity.pausedAt).getTime())
         : 0
       
