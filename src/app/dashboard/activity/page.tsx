@@ -124,7 +124,7 @@ function ActivityTrackerContent() {
   const userAllowedActivities = session?.user?.allowedActivities || ['ratting']
   const userRole = session?.user?.role || 'user'
   
-  const { activities, setActivities, addActivity, updateActivity, removeActivity, isCharacterBusy, fetchFromAPI, startPolling, stopPolling, startRattingAutoSync, stopRattingAutoSync } = useActivityStore()
+  const { activities, setActivities, addActivity, updateActivity, removeActivity, isCharacterBusy, fetchFromAPI, startPolling, stopPolling, startRattingAutoSync, stopRattingAutoSync, startMiningAutoSync, stopMiningAutoSync } = useActivityStore()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [userFits, setUserFits] = useState<any[]>([])
@@ -183,12 +183,16 @@ function ActivityTrackerContent() {
     // Start auto-sync for ratting activities (every 5 min)
     startRattingAutoSync(300000)
     
+    // Start auto-sync for mining activities (every 5 min)
+    startMiningAutoSync(300000)
+    
     // Cleanup on unmount
     return () => {
       stopPolling()
       stopRattingAutoSync()
+      stopMiningAutoSync()
     }
-  }, [setActivities, typeParam])
+  }, [setActivities, typeParam, startPolling, stopPolling, startRattingAutoSync, stopRattingAutoSync, startMiningAutoSync, stopMiningAutoSync])
 
   const handleStartActivity = async () => {
     if (!newActivity.type || !newActivity.participants?.length) return

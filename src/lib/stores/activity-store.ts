@@ -37,12 +37,14 @@ interface ActivityStore {
   isCharacterBusy: (characterId: number) => boolean
   
   fetchFromAPI: (type?: string) => Promise<void>
-  syncActivity: (id: string) => Promise<Activity | null>
+  syncActivity: (id: string, type?: string) => Promise<Activity | null>
   
   startPolling: (interval?: number) => void
   startRattingAutoSync: (interval?: number) => void
+  startMiningAutoSync: (interval?: number) => void
   stopPolling: () => void
   stopRattingAutoSync: () => void
+  stopMiningAutoSync: () => void
 }
 
 export const useActivityStore = create<ActivityStore>((set, get) => ({
@@ -50,6 +52,7 @@ export const useActivityStore = create<ActivityStore>((set, get) => ({
   isLoading: false,
   pollingInterval: null,
   rattingSyncInterval: null,
+  miningSyncInterval: null,
 
   setActivities: (activities) => set({ activities }),
 
@@ -94,9 +97,18 @@ export const useActivityStore = create<ActivityStore>((set, get) => ({
     }
   },
 
-  syncActivity: async (id: string) => {
+  syncActivity: async (id: string, type?: string) => {
     try {
-      const res = await fetch(`/api/activities/sync?id=${id}`, { method: 'POST' })
+      // Determine endpoint based on activity type if not provided
+      let syncType = type
+      if (!syncType) {
+        const { activities } = get()
+        syncType = activities.find(a => a.id === id)?.type
+      }
+
+      const endpoint = syncType === 'mining' ? 'sync-mining' : 'sync'
+      const res = await fetch(`/api/activities/${endpoint}?id=${id}`, { method: 'POST' })
+      
       if (res.ok) {
         const updated = await res.json()
         set((state) => ({
@@ -176,7 +188,54 @@ export const useActivityStore = create<ActivityStore>((set, get) => ({
     if (rattingSyncInterval) {
       clearInterval(rattingSyncInterval)
       set({ rattingSyncInterval: null })
-      console.log('[AUTO-SYNC] Stopped auto-sync')
+      console.log('[AUTO-SYNC] Stopped Ratting auto-sync')
+    }
+  },
+
+  startMiningAutoSync: (interval = 300000) => {
+    const { stopMiningAutoSync, syncActivity } = get()
+    stopMiningAutoSync()
+    
+    const syncId = setInterval(async () => {
+      const { activities } = get()
+      
+      const miningToSync = (activities || []).filter(a => {
+        if (a.type !== 'mining') return false
+        if (a.status === 'active') return true
+        
+        // If completed, keep syncing for 1 hour (60 minutes)
+        if (a.status === 'completed' && a.endTime) {
+          const end = new Date(a.endTime).getTime()
+          const now = Date.now()
+          const diffMinutes = (now - end) / (1000 * 60)
+          return diffMinutes <= 60 
+        }
+        
+        return false
+      })
+
+      if (miningToSync.length === 0) return
+      
+      console.log(`[AUTO-SYNC] Syncing ${miningToSync.length} mining activities (active + recently completed)...`)
+      for (const activity of miningToSync) {
+        try {
+          await syncActivity(activity.id, 'mining')
+        } catch (err) {
+          console.error(`[AUTO-SYNC] Error syncing mining activity ${activity.id}:`, err)
+        }
+      }
+    }, interval)
+    
+    set({ miningSyncInterval: syncId })
+    console.log(`[AUTO-SYNC] Started Mining auto-sync every ${interval/1000}s`)
+  },
+
+  stopMiningAutoSync: () => {
+    const { miningSyncInterval } = get()
+    if (miningSyncInterval) {
+      clearInterval(miningSyncInterval)
+      set({ miningSyncInterval: null })
+      console.log('[AUTO-SYNC] Stopped Mining auto-sync')
     }
   }
 }))

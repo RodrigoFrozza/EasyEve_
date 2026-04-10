@@ -120,6 +120,19 @@ The core value of the Ratting module is its **Automated Profit Tracking**:
     - **Gross & Net ISK**: No modelo atual, referem-se à soma de Bounties e ESS (impostos não são deduzidos).
     - **ISK/hr**: `(Lucro Total / Tempo Decorrido em Horas)`.
 
+#### D. Mining Logic
+1.  **Sync Trigger**: Auto-Sync a cada 5 minutos via `ActivityStore`.
+2.  **ESI Source**: Utiliza `/mining/ledger` (daily entries) de todos os participantes.
+3.  **Time-Boxing**:
+    -   **Início**: Filtra entradas do ledger a partir da data de início da atividade.
+    -   **Pós-Atividade**: Continua sincronizando por **1 hora (60 minutos)** após a finalização para capturar o atraso no ledger da ESI.
+4.  **Pricing (Jita Sell)**:
+    -   Calcula o valor baseando-se no menor preço de venda (`sell`) em Jita.
+    -   Cache de preços de 5 minutos para performance.
+5.  **Calculations**:
+    -   Lucro Bruto = `Quantidade Minerada * Preço de Jita`.
+    -   Impostos corporativos são ignorados.
+
 ---
 
 *This document is the official technical reference for the RodrigoFrozza/EasyEve_ project.*
