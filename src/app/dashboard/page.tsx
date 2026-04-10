@@ -100,8 +100,9 @@ export default async function DashboardPage() {
 
       const grouped: Record<string, { userId: string; bounty: number; ess: number; total: number; characterName: string; characterId: number }> = {}
       for (const a of activities) {
+        if (!a.user) continue
         const userId = a.user.id
-        const mainChar = a.user.characters[0]
+        const mainChar = a.user.characters?.[0]
         if (!grouped[userId]) {
           grouped[userId] = {
             userId,
@@ -123,12 +124,25 @@ export default async function DashboardPage() {
     }, 60 * 1000) // 1 min cache
   }
 
-  const [dailyStats, weeklyStats, monthlyStats, allTimeStats] = await Promise.all([
-    getLeaderboard('daily'),
-    getLeaderboard('weekly'),
-    getLeaderboard('monthly'),
-    getLeaderboard('alltime')
-  ])
+  let dailyStats: any[] = []
+  let weeklyStats: any[] = []
+  let monthlyStats: any[] = []
+  let allTimeStats: any[] = []
+
+  try {
+    const [d, w, m, a] = await Promise.all([
+      getLeaderboard('daily'),
+      getLeaderboard('weekly'),
+      getLeaderboard('monthly'),
+      getLeaderboard('alltime')
+    ])
+    dailyStats = d
+    weeklyStats = w
+    monthlyStats = m
+    allTimeStats = a
+  } catch (error) {
+    console.error('Failed to fetch leaderboard data:', error)
+  }
 
   const characters: Array<{ id: number; name: string; totalSp: number; walletBalance: number; location: string | null; ship: string | null }> = user?.characters || []
   const mainCharacter = characters[0]
