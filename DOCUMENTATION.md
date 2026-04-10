@@ -49,8 +49,8 @@ Tracking real character earnings involves a secure, multi-step flow:
 1.  **Trigger**: User clicks "Sync ESI" in the `ActivityCard`.
 2.  **Auth**: `fetchWithAuth` in `src/lib/esi.ts` retrieves a valid EVE SSO access token.
 3.  **Fetch**: Queries `GET /characters/{id}/wallet/journal/`.
-4.  **Process**: Filters entries (`bounty_payout`, `ess_payout`) based on the activity's `startTime`.
-5.  **Persistence**: Updates the `Activity` record in Prisma with `automatedBounties` and `automatedEss` fields.
+4.  **Process**: Filtra entradas baseadas no tipo (`bounty_payout`, `ess_payout`) e na janela de tempo ajustada (30m antes do início até 2.5h após o fim ou tempo atual).
+5.  **Persistence**: Atualiza o registro da `Activity` no Prisma com os totais de `automatedBounties` e `automatedEss`. (Nota: Impostos de corporação são ignorados por design).
 6.  **UI Update**: The Zustand store is refreshed, updating the dashboard's "Est. Value" cards.
 
 ### 🛡️ 3.3. Multi-Participant Logic
@@ -106,17 +106,19 @@ The Ratting module is designed to track fleet earnings from NPC bounties and ESS
 
 #### C. Financial Logic (The "Profit Engine")
 The core value of the Ratting module is its **Automated Profit Tracking**:
-1.  **Sync Trigger**: The "Sync ESI" button initiates a POST to `/api/activities/sync`.
-2.  **Wallet Polling**: The server iterates through all activity participants, fetching their `wallet/journal` via ESI.
-3.  **Time-Boxing**: Only journal entries with a timestamp *after* the activity's `startTime` are considered.
-4.  **Transaction Filters**:
-    - `bounty_payout`: Standard NPC kills (typically net amount).
-    - `ess_payout`: Payouts from the Encounter Surveillance System.
-    - `corporation_tax_payout`: Automatically detected and added back to calculate **Gross Earnings**.
-5.  **Calculations**:
-    - **Gross ISK**: Sum of automated bounties + automated taxes + automated ESS.
-    - **Net ISK**: Total liquid income deposited into character wallets.
-    - **ISK/hr**: `(Total Net ISK / Elapsed Time in Hours)`.
+1.  **Sync Trigger**: O botão "Sync ESI" ou o **Auto-Sync** (cada 5 min) iniciam o processo.
+2.  **Wallet Polling**: O servidor busca o `wallet/journal` de todos os participantes via ESI.
+3.  **Time-Boxing (Janelas)**:
+    - **Início**: Considera transações desde **30 minutos antes** do início da atividade (captura ticks atrasados ou preparação).
+    - **Fim**: Considera transações até agora (se ativa) ou até **2 horas e 30 minutos após** a finalização (captura pagamentos de ESS).
+4.  **Auto-Sync Prolongado**: Atividades marcadas como `Completed` continuam sendo sincronizadas automaticamente por 150 minutos (2.5h).
+5.  **Transaction Filters**:
+    - `bounty_payout`: Recompensas de NPCs.
+    - `ess_payout`: Pagamentos do ESS.
+    - `tax`: **Removido**. Impostos de corporação não são capturados nem subtraídos.
+6.  **Calculations**:
+    - **Gross & Net ISK**: No modelo atual, referem-se à soma de Bounties e ESS (impostos não são deduzidos).
+    - **ISK/hr**: `(Lucro Total / Tempo Decorrido em Horas)`.
 
 ---
 

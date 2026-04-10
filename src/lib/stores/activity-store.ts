@@ -138,13 +138,27 @@ export const useActivityStore = create<ActivityStore>((set, get) => ({
     stopRattingAutoSync()
     
     const syncId = setInterval(async () => {
-      // Get the LATEST activities from the store inside the interval
       const { activities } = get()
-      const activeRatting = (activities || []).filter(a => a.status === 'active' && a.type === 'ratting')
-      if (activeRatting.length === 0) return
       
-      console.log(`[AUTO-SYNC] Syncing ${activeRatting.length} ratting activities...`)
-      for (const activity of activeRatting) {
+      const rattingToSync = (activities || []).filter(a => {
+        if (a.type !== 'ratting') return false
+        if (a.status === 'active') return true
+        
+        // If completed, keep syncing for 2.5 hours (150 minutes) to catch ESS payouts
+        if (a.status === 'completed' && a.endTime) {
+          const end = new Date(a.endTime).getTime()
+          const now = Date.now()
+          const diffMinutes = (now - end) / (1000 * 60)
+          return diffMinutes <= 150 
+        }
+        
+        return false
+      })
+
+      if (rattingToSync.length === 0) return
+      
+      console.log(`[AUTO-SYNC] Syncing ${rattingToSync.length} ratting activities (active + recently completed)...`)
+      for (const activity of rattingToSync) {
         try {
           await syncActivity(activity.id)
         } catch (err) {

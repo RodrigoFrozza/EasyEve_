@@ -35,12 +35,12 @@ export async function POST(
     }
 
     // WINDOW LOGIC: 
-    // - Start: 1h before activity start (captures pre-run ticks or ESI delay)
-    // - End: Now or 4h after endTime (captures delayed ESS payouts)
+    // - Start: 30m before activity start (captures pre-run ticks or ESI delay)
+    // - End: Now or 2.5h after endTime (captures delayed ESS payouts)
     const startTimeManual = new Date(activity.startTime)
-    const startTime = new Date(startTimeManual.getTime() - (60 * 60 * 1000))
-    // ESS payouts can be delayed by up to 3 hours. We look 4h ahead of endTime if set.
-    const endTimeLimit = activity.endTime ? new Date(new Date(activity.endTime).getTime() + 4 * 60 * 60 * 1000) : new Date()
+    const startTime = new Date(startTimeManual.getTime() - (30 * 60 * 1000))
+    // ESS payouts can be delayed. We look 2.5h ahead of endTime if set.
+    const endTimeLimit = activity.endTime ? new Date(new Date(activity.endTime).getTime() + 2.5 * 60 * 60 * 1000) : new Date()
 
     console.log(`[SYNC] --- START INCREMENTAL SYNC for Activity ID: ${activityId} ---`)
     console.log(`[SYNC] Window (UTC): ${startTime.toISOString()} to ${endTimeLimit.toISOString()}`)
@@ -82,8 +82,6 @@ export async function POST(
                 type = 'bounty'
               } else if (ESI_REF_TYPES.ESS.some(t => refType === t || refType.includes(t))) {
                 type = 'ess'
-              } else if (ESI_REF_TYPES.TAX.some(t => refType === t || refType.includes(t))) {
-                type = 'tax'
               }
 
               if (type && refId) {
@@ -117,13 +115,11 @@ export async function POST(
     
     let totalBounties = 0
     let totalEss = 0
-    let totalTaxes = 0
     const participantEarnings: Record<number, number> = {}
 
     allLogs.forEach(log => {
       if (log.type === 'bounty') totalBounties += log.amount
       else if (log.type === 'ess') totalEss += log.amount
-      else if (log.type === 'tax') totalTaxes += log.amount
 
       if (!participantEarnings[log.charId]) participantEarnings[log.charId] = 0
       participantEarnings[log.charId] += log.amount
@@ -140,7 +136,7 @@ export async function POST(
     const hoursElapsed = (Date.now() - startTimeMs) / 3600000
     
     // Logic matches frontend calculateNetProfit
-    const currentTotalIsk = (totalBounties + additionalBounties + totalEss + (activityData.estimatedLootValue || 0) + (activityData.estimatedSalvageValue || 0)) - totalTaxes
+    const currentTotalIsk = (totalBounties + additionalBounties + totalEss + (activityData.estimatedLootValue || 0) + (activityData.estimatedSalvageValue || 0))
     const currentIskPerHour = currentTotalIsk / Math.max(0.1, hoursElapsed)
     
     const previousIskPerHour = activityData.currentIskPerHour || 0
@@ -157,7 +153,6 @@ export async function POST(
       ...activityData,
       automatedBounties: totalBounties,
       automatedEss: totalEss,
-      automatedTaxes: totalTaxes,
       grossBounties: totalBounties + totalEss + additionalBounties,
       participantEarnings,
       logs: allLogs,
@@ -166,7 +161,7 @@ export async function POST(
       lastSyncAt: new Date().toISOString()
     }
 
-    console.log(`[SYNC] --- END SYNC Summary: Bounty: ${totalBounties} | ESS: ${totalEss} | Tax: ${totalTaxes} | Total Logs: ${allLogs.length} ---`)
+    console.log(`[SYNC] --- END SYNC Summary: Bounty: ${totalBounties} | ESS: ${totalEss} | Total Logs: ${allLogs.length} ---`)
 
     const updatedActivity = await prisma.activity.update({
       where: { id: activityId },

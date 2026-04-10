@@ -33,6 +33,5 @@ export const DED_LEVELS = ['1/10', '2/10', '3/10', '4/10', '5/10', '6/10', '7/10
 
 export const ESI_REF_TYPES = {
   BOUNTY: ['bounty', 'bounty_prizes', 'bounty_payout', 'agent_mission_reward'],
-  ESS: ['ess_payout', 'ess_escrow'],
-  TAX: ['corporation_tax_payout']
+  ESS: ['ess_payout', 'ess_escrow']
 } as const
