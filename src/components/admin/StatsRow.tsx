@@ -1,3 +1,4 @@
+'use client'
 import { Card, CardContent } from "@/components/ui/card"
 import { Users, Zap, Wallet, Fingerprint } from "lucide-react"
 import { formatISK, cn } from "@/lib/utils"

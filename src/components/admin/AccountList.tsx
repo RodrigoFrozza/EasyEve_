@@ -1,3 +1,4 @@
+'use client'
 import { useState, useMemo } from 'react'
 import { 
   Table, 
@@ -168,7 +169,7 @@ export function AccountList({ accounts, onSelectAccount }: AccountListProps) {
                             </TableCell>
                             <TableCell>
                                 <div className="flex items-center gap-1">
-                                    <span className="text-xs font-bold text-white">{acc.allowedActivities.length}</span>
+                                    <span className="text-xs font-bold text-white">{acc.allowedActivities?.length || 0}</span>
                                     <span className="text-[10px] text-gray-500 uppercase font-bold px-1">Ativos</span>
                                 </div>
                             </TableCell>

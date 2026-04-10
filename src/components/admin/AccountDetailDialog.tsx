@@ -1,3 +1,4 @@
+'use client'
 import { useState } from 'react'
 import { 
   Dialog, 
@@ -144,7 +145,7 @@ export function AccountDetailDialog({ account, isOpen, onClose, onRefresh }: Acc
         <div className="relative h-32 bg-gradient-to-r from-eve-dark to-eve-accent/20">
             <div className="absolute -bottom-12 left-8">
                 <Avatar className="h-24 w-24 border-4 border-eve-panel shadow-2xl">
-                    <AvatarImage src={account.characters[0] ? `https://images.evetech.net/characters/${account.characters[0].id}/portrait?size=128` : ''} />
+                    <AvatarImage src={account.characters?.[0] ? `https://images.evetech.net/characters/${account.characters[0].id}/portrait?size=128` : ''} />
                     <AvatarFallback className="bg-eve-dark text-eve-accent text-2xl font-bold">
                         {account.name?.[0] || '?'}
                     </AvatarFallback>
@@ -229,7 +230,7 @@ export function AccountDetailDialog({ account, isOpen, onClose, onRefresh }: Acc
 
                         <div className="space-y-3">
                             {ACTIVITY_TYPES.map((activity) => {
-                                const isAllowed = account.allowedActivities.includes(activity.id)
+                                const isAllowed = account.allowedActivities?.includes(activity.id) || false
                                 return (
                                     <div key={activity.id} className="flex items-center justify-between group">
                                         <div className="flex items-center gap-3">
@@ -253,11 +254,11 @@ export function AccountDetailDialog({ account, isOpen, onClose, onRefresh }: Acc
 
                 <div className="space-y-4">
                     <div className="flex items-center gap-2 text-gray-400 text-[10px] font-bold uppercase tracking-widest">
-                        <Shield className="h-3 w-3" /> Personagens ({account.characters.length})
+                        <Shield className="h-3 w-3" /> Personagens ({account.characters?.length || 0})
                     </div>
                     
                     <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                        {account.characters.map((char) => (
+                        {account.characters?.map((char) => (
                             <div key={char.id} className="p-3 rounded-lg bg-eve-dark/30 border border-eve-border/30 flex items-center gap-3">
                                 <Avatar className="h-10 w-10 border border-eve-border">
                                     <AvatarImage src={`https://images.evetech.net/characters/${char.id}/portrait?size=64`} />
