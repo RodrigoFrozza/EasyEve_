@@ -283,6 +283,3 @@ export function LeaderboardList({
     </Tooltip.Provider>
   )
 }
-er>
-  )
-}
