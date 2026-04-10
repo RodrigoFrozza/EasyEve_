@@ -60,7 +60,6 @@ interface MiningLedgerEntry {
   date: string
   quantity: number
   type_id: number
-  corporation_id: number
   solar_system_id: number
 }
 
@@ -71,7 +70,7 @@ function isValidMiningEntry(entry: any): entry is MiningLedgerEntry {
     typeof entry.quantity === 'number' &&
     entry.quantity > 0 &&
     typeof entry.type_id === 'number' &&
-    typeof entry.corporation_id === 'number'
+    typeof entry.solar_system_id === 'number'
   )
 }
 

@@ -9,7 +9,6 @@ interface MiningLedgerEntry {
   date: string
   quantity: number
   type_id: number
-  corporation_id: number
 }
 
 export async function POST(request: Request) {
