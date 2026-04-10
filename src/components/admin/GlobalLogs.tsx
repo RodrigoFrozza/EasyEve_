@@ -68,19 +68,19 @@ export function GlobalLogs() {
       </div>
 
       <div className="grid gap-2">
-        {loading && memoizedLogs.length === 0 ? (
+        {loading && (memoizedLogs?.length || 0) === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 bg-eve-panel rounded-xl border border-eve-border border-dashed">
             <Loader2 className="h-8 w-8 animate-spin text-eve-accent mb-2" />
             <p className="text-gray-500 text-sm">Escaneando logs...</p>
           </div>
-        ) : memoizedLogs.length === 0 ? (
+        ) : (memoizedLogs?.length || 0) === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 bg-eve-panel rounded-xl border border-eve-border border-dashed">
             <Info className="h-8 w-8 text-gray-600 mb-2" />
             <p className="text-gray-500 text-sm font-medium">Nenhum erro registrado recentemente.</p>
             <p className="text-xs text-gray-600">O sistema está operando normalmente conforme o esperado.</p>
           </div>
         ) : (
-          memoizedLogs.map((log) => (
+          (memoizedLogs || []).map((log) => (
             <Card key={log.id} className="bg-eve-panel border-eve-border hover:bg-eve-dark/30 transition-all group">
               <CardContent className="p-4">
                 <div className="flex items-start gap-4">

@@ -134,11 +134,13 @@ export const useActivityStore = create<ActivityStore>((set, get) => ({
   },
 
   startRattingAutoSync: (interval = 300000) => {
-    const { stopRattingAutoSync, activities, syncActivity } = get()
+    const { stopRattingAutoSync, syncActivity } = get()
     stopRattingAutoSync()
     
     const syncId = setInterval(async () => {
-      const activeRatting = activities.filter(a => a.status === 'active' && a.type === 'ratting')
+      // Get the LATEST activities from the store inside the interval
+      const { activities } = get()
+      const activeRatting = (activities || []).filter(a => a.status === 'active' && a.type === 'ratting')
       if (activeRatting.length === 0) return
       
       console.log(`[AUTO-SYNC] Syncing ${activeRatting.length} ratting activities...`)

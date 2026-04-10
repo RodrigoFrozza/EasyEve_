@@ -155,10 +155,11 @@ function AdminContent() {
       const payRes = await fetch(`/api/admin/payments?search=${encodeURIComponent(paymentSearch)}`)
       if (payRes.ok) {
         const data = await payRes.json()
-        setPayments(data.items || [])
+        setPayments(data?.items || [])
       }
     } catch (err) {
       console.error('Failed to fetch payments:', err)
+      setPayments([])
     }
   }
 
@@ -173,10 +174,16 @@ function AdminContent() {
       
       if (accRes.ok) {
         const accData = await accRes.json()
-        setAccounts(accData.accounts || [])
+        setAccounts(accData?.accounts || [])
       }
-      if (priceRes.ok) setPrices(await priceRes.json())
-      if (statsRes.ok) setServerStats(await statsRes.json())
+      if (priceRes.ok) {
+        const pData = await priceRes.json()
+        setPrices(pData || [])
+      }
+      if (statsRes.ok) {
+        const sData = await statsRes.json()
+        setServerStats(sData || serverStats)
+      }
       
       await fetchPayments()
     } catch (err) {
@@ -308,8 +315,8 @@ function AdminContent() {
             </CardHeader>
             <CardContent className="p-6">
               <div className="grid gap-3">
-                {ACTIVITY_TYPES.map(type => {
-                  const dbPrice = prices.find(p => p.module === type.id)
+                {(ACTIVITY_TYPES || []).map(type => {
+                  const dbPrice = (prices || []).find(p => p.module === type.id)
                   return (
                     <div key={type.id} className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-xl bg-eve-dark/40 border border-eve-border/50 hover:bg-eve-dark/60 transition-colors gap-4">
                       <div className="flex items-center gap-4 flex-1">
@@ -397,14 +404,14 @@ function AdminContent() {
                          </tr>
                       </thead>
                       <tbody className="divide-y divide-eve-border/30">
-                         {payments.length === 0 ? (
+                         {(payments?.length || 0) === 0 ? (
                             <tr>
                                <td colSpan={5} className="px-6 py-12 text-center text-gray-500 italic">
                                   Nenhum registro de pagamento encontrado.
                                </td>
                             </tr>
                          ) : (
-                            payments.map(payment => (
+                            (payments || []).map(payment => (
                                <tr key={payment.id} className="hover:bg-eve-dark/10 transition-colors">
                                   <td className="px-6 py-4 text-gray-400 text-xs">
                                      <p className="font-bold text-gray-300">{new Date(payment.createdAt).toLocaleDateString()}</p>
@@ -423,7 +430,7 @@ function AdminContent() {
                                                <SelectValue placeholder="Vincular à conta..." />
                                             </SelectTrigger>
                                             <SelectContent className="bg-eve-panel border-eve-border">
-                                               {accounts.map(acc => (
+                                               {(accounts || []).map(acc => (
                                                   <SelectItem key={acc.id} value={acc.id} className="text-[10px]">
                                                      {acc.name || acc.accountCode} ({acc.accountCode})
                                                   </SelectItem>
@@ -508,7 +515,7 @@ function AdminContent() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-2">
-              {ACTIVITY_TYPES.map((activity) => (
+              {(ACTIVITY_TYPES || []).map((activity) => (
                 <div 
                   key={activity.id}
                   onClick={() => {
