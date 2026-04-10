@@ -373,6 +373,9 @@ export async function POST(request: Request) {
           effectiveQuantity = Math.max(0, entry.quantity - baselineQty)
         }
         
+        // Skip if nothing was mined during the session
+        if (effectiveQuantity <= 0) continue
+
         if (!logMap.has(compositeKey)) {
           logMap.set(compositeKey, {
             date: entry.date,
@@ -394,7 +397,8 @@ export async function POST(request: Request) {
       }
     }
     // Initialize breakdowns and collect logs
-    const allLogs = Array.from(logMap.values())
+    // Filter out any entries that might have remained with 0 quantity
+    const allLogs = Array.from(logMap.values()).filter(log => log.quantity > 0)
     const oreBreakdown: Record<number, any> = {}
     const participantBreakdown: Record<number, any> = {}
 
