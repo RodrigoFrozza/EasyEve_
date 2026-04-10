@@ -195,7 +195,7 @@ export function CharacterScopesDialog({ scopes }: { scopes: string[] }) {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-2 py-4 max-h-[60vh] overflow-y-auto pr-2">
-          {scopes.length === 0 ? (
+          {(scopes?.length || 0) === 0 ? (
             <p className="text-sm text-gray-500">No active scopes found. Please re-authorize.</p>
           ) : (
             scopes.map((scope, index) => (

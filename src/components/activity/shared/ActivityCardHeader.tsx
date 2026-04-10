@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Clock, Activity as ActivityIcon } from 'lucide-react'
 import { cn, formatISK, formatNumber } from '@/lib/utils'
 import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
+import { ACTIVITY_UI_MAPPING } from '@/lib/constants/activity-ui'
 import { type Activity } from '@/lib/stores/activity-store'
 import { Loader2, LayoutGrid, AlignJustify } from 'lucide-react'
 
@@ -32,10 +33,12 @@ export function ActivityCardHeader({ activity }: ActivityCardHeaderProps) {
     return () => clearInterval(timer)
   }, [activity.startTime, activity.endTime])
   
+  const ui = ACTIVITY_UI_MAPPING[activity.type]
+    
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <div className={cn("h-1 w-1 rounded-full", typeInfo?.color || "bg-gray-400", "shadow-[0_0_8px_current]")} />
+        <div className={cn("h-1 w-1 rounded-full", ui?.color || "bg-gray-400", "shadow-[0_0_8px_current]")} />
         <div className="flex flex-col">
           <span className="text-[10px] items-center gap-2 flex text-zinc-500 font-bold uppercase tracking-widest leading-none mb-1">
             <ActivityIcon className="h-3 w-3" />

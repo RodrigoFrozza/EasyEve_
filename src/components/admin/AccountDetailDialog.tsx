@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { cn, formatISK } from '@/lib/utils'
 import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
+import { ACTIVITY_UI_MAPPING } from '@/lib/constants/activity-ui'
 import { toast } from 'sonner'
 
 interface Character {
@@ -231,10 +232,13 @@ export function AccountDetailDialog({ account, isOpen, onClose, onRefresh }: Acc
                         <div className="space-y-3">
                             {ACTIVITY_TYPES.map((activity) => {
                                 const isAllowed = account.allowedActivities?.includes(activity.id) || false
+                                const ui = ACTIVITY_UI_MAPPING[activity.id]
+                                const Icon = ui?.icon
+
                                 return (
                                     <div key={activity.id} className="flex items-center justify-between group">
                                         <div className="flex items-center gap-3">
-                                            <activity.icon className={cn("h-4 w-4", isAllowed ? activity.color : "text-gray-600")} />
+                                            {Icon && <Icon className={cn("h-4 w-4", isAllowed ? ui.color : "text-gray-600")} />}
                                             <span className={cn("text-xs transition-colors", isAllowed ? "text-white" : "text-gray-600")}>
                                                 {activity.label}
                                             </span>

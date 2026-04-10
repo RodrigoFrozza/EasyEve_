@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dialog'
 import { cn, formatISK, formatNumber, calculateNetProfit } from '@/lib/utils'
 import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
+import { ACTIVITY_UI_MAPPING } from '@/lib/constants/activity-ui'
 import { type Activity, useActivityStore } from '@/lib/stores/activity-store'
 import { ActivityDetailDialog } from './ActivityDetailDialog'
 import { MTULootField } from './MTULootField'
@@ -334,7 +335,11 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
           <div className="flex items-center gap-4">
             <div className="relative">
               <div className="h-10 w-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shadow-inner group-hover/card:border-eve-accent/50 transition-colors duration-500">
-                {typeInfo ? <typeInfo.icon className={cn("h-5 w-5", typeInfo.color)} /> : <ActivityIcon className="h-5 w-5 text-zinc-500" />}
+                {(() => {
+                  const ui = ACTIVITY_UI_MAPPING[activity.type]
+                  const Icon = ui?.icon || ActivityIcon
+                  return <Icon className={cn("h-5 w-5", ui?.color || "text-zinc-500")} />
+                })()}
               </div>
               <div className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full bg-green-500 border-2 border-[#0a0a10] animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
             </div>

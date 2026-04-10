@@ -1,23 +1,11 @@
-'use client'
-
-import { 
-  Gem, 
-  Crosshair, 
-  Zap, 
-  Compass, 
-  ShieldCheck, 
-  AlertTriangle, 
-  Target 
-} from 'lucide-react'
-
 export const ACTIVITY_TYPES = [
-  { id: 'mining', label: 'Mining', icon: Gem, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-  { id: 'ratting', label: 'Ratting', icon: Crosshair, color: 'text-red-400', bg: 'bg-red-500/10' },
-  { id: 'abyssal', label: 'Abyssal', icon: Zap, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-  { id: 'exploration', label: 'Exploration', icon: Compass, color: 'text-green-400', bg: 'bg-green-500/10' },
-  { id: 'crab', label: 'Crab Beacon', icon: ShieldCheck, color: 'text-orange-400', bg: 'bg-orange-500/10' },
-  { id: 'escalations', label: 'Escalations', icon: AlertTriangle, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
-  { id: 'pvp', label: 'PVP', icon: Target, color: 'text-pink-400', bg: 'bg-pink-500/10' },
+  { id: 'mining', label: 'Mining' },
+  { id: 'ratting', label: 'Ratting' },
+  { id: 'abyssal', label: 'Abyssal' },
+  { id: 'exploration', label: 'Exploration' },
+  { id: 'crab', label: 'Crab Beacon' },
+  { id: 'escalations', label: 'Escalations' },
+  { id: 'pvp', label: 'PVP' },
 ]
 
 export const REGIONS = ['Minmatar', 'Gallente', 'Caldari', 'Amarr', 'Jove', 'Wormhole']
