@@ -195,9 +195,10 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   useEffect(() => {
     setMounted(true)
     const updateMetrics = () => {
+      const { serverClockOffset } = useActivityStore.getState()
       const start = new Date(activity.startTime).getTime()
-      const end = activity.endTime ? new Date(activity.endTime).getTime() : Date.now()
-      const diff = end - start
+      const end = activity.endTime ? new Date(activity.endTime).getTime() : (Date.now() + serverClockOffset)
+      const diff = Math.max(0, end - start)
       
       const hours = Math.floor(diff / (1000 * 60 * 60))
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))

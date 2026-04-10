@@ -24,6 +24,7 @@ export interface Activity {
 
 interface ActivityStore {
   activities: Activity[]
+  serverClockOffset: number // ms difference between client and server
   isLoading: boolean
   pollingInterval: NodeJS.Timeout | null
   rattingSyncInterval: NodeJS.Timeout | null
@@ -49,6 +50,7 @@ interface ActivityStore {
 
 export const useActivityStore = create<ActivityStore>((set, get) => ({
   activities: [],
+  serverClockOffset: 0,
   isLoading: false,
   pollingInterval: null,
   rattingSyncInterval: null,
@@ -84,14 +86,22 @@ export const useActivityStore = create<ActivityStore>((set, get) => ({
     try {
       const url = type ? `/api/activities?type=${type}` : '/api/activities'
       const res = await fetch(url)
+      
+      // Calculate clock offset from server 'Date' header
+      const serverDateStr = res.headers.get('Date')
+      if (serverDateStr) {
+        const serverTime = new Date(serverDateStr).getTime()
+        const localTime = Date.now()
+        set({ serverClockOffset: serverTime - localTime })
+      }
+
       if (res.ok) {
         const data = await res.json()
-        if (Array.isArray(data)) {
-          set({ activities: data })
-        }
+        set({ activities: Array.isArray(data) ? data : [] })
       }
     } catch (error) {
-      console.error('Failed to fetch activities:', error)
+      console.error('Failed to fetch from API:', error)
+      set({ activities: [] })
     } finally {
       set({ isLoading: false })
     }

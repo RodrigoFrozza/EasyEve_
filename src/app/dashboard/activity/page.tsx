@@ -156,26 +156,8 @@ function ActivityTrackerContent() {
 
   // Fetch activities on load + start polling
   useEffect(() => {
-    const url = typeParam ? `/api/activities?type=${typeParam}` : '/api/activities'
-    fetch(url)
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
-        return res.json()
-      })
-      .then(data => {
-        if (Array.isArray(data)) {
-          setActivities(data)
-        } else {
-          console.error('Activities data is not an array:', data)
-          setActivities([])
-        }
-        setIsLoading(false)
-      })
-      .catch(err => {
-        console.error('Failed to fetch activities:', err)
-        setActivities([])
-        setIsLoading(false)
-      })
+    fetchFromAPI(typeParam)
+    setIsLoading(false)
     
     // Start polling for active activities (every 30s)
     startPolling(30000)
