@@ -8,7 +8,7 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { FleetSection } from '../shared/FleetSection'
 import { Button } from '@/components/ui/button'
-import { Loader2, Gem, Download, MapPin, Clock, Users, Layers, TrendingUp, Activity as ActivityIcon } from 'lucide-react'
+import { Loader2, Gem, Download, MapPin, Clock, Users, Layers, TrendingUp, TrendingDown, Activity as ActivityIcon, ChevronRight } from 'lucide-react'
 import { Sparkline } from '@/components/ui/Sparkline'
 
 interface MiningActivityContentProps {
@@ -42,6 +42,10 @@ export function MiningActivityContent({
   const oreBreakdown = (activity.data?.oreBreakdown || {})
   const participantEarnings = (activity.data?.participantEarnings || {})
   const lastSyncAt = (activity.data as any)?.lastSyncAt
+  const m3Trend = (activity.data as any)?.m3Trend || 'stable'
+  
+  const TrendIcon = m3Trend === 'up' ? TrendingUp : m3Trend === 'down' ? TrendingDown : ActivityIcon
+  const trendColor = m3Trend === 'up' ? 'text-green-400' : m3Trend === 'down' ? 'text-red-400' : 'text-zinc-500'
 
   // Fetch ore names when logs change
   useEffect(() => {
@@ -208,7 +212,10 @@ export function MiningActivityContent({
               <Gem className="h-5 w-5 text-blue-400" />
             </div>
             <div>
-              <p className="text-[10px] text-blue-400/50 uppercase font-bold tracking-widest mb-0.5">Yield Actual</p>
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <p className="text-[10px] text-blue-400/50 uppercase font-bold tracking-widest">Yield Actual</p>
+                <TrendIcon className={cn("h-2.5 w-2.5 opacity-50", trendColor)} />
+              </div>
               <p className="text-lg font-black text-white font-mono leading-none">{formatNumber(Math.round(m3PerHour))}<span className="text-xs text-blue-400 ml-1">m³/h</span></p>
             </div>
           </div>
@@ -253,7 +260,7 @@ export function MiningActivityContent({
         {/* Compact Ore Icons */}
         {sortedOreTypes.length > 0 && (
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-            {sortedOreTypes.slice(0, 5).map(typeId => (
+            {sortedOreTypes.slice(0, 3).map(typeId => (
               <div key={typeId} className="flex-shrink-0 relative group/oreitem">
                 <img 
                   src={`https://images.evetech.net/types/${typeId}/icon?size=32`} 
@@ -265,9 +272,9 @@ export function MiningActivityContent({
                 </div>
               </div>
             ))}
-            {sortedOreTypes.length > 5 && (
+            {sortedOreTypes.length > 3 && (
               <div className="h-6 w-6 rounded-md bg-zinc-900 border border-white/[0.05] flex items-center justify-center text-[8px] font-bold text-zinc-500">
-                +{sortedOreTypes.length - 5}
+                +{sortedOreTypes.length - 3}
               </div>
             )}
           </div>
@@ -285,7 +292,11 @@ export function MiningActivityContent({
           <p className="text-xl font-bold text-blue-400 font-mono tracking-tight">{formatNumber(miningTotalQuantity)} m³</p>
           <p className="text-[9px] text-blue-400/30 mt-1">{formatNumber(Math.round(m3PerHour))} m³/h</p>
         </div>
-        <div className="bg-green-500/5 border border-green-500/10 rounded-lg p-3 backdrop-blur-sm">
+        <div className="bg-green-500/5 border border-green-500/10 rounded-lg p-3 backdrop-blur-sm relative overflow-hidden group">
+          <div className="absolute top-2 right-2 flex items-center gap-1">
+            <span className="text-[7px] text-green-400/40 uppercase font-bold">Trend</span>
+            <TrendIcon className={cn("h-3 w-3", trendColor)} />
+          </div>
           <p className="text-[9px] text-green-400/50 uppercase font-bold tracking-widest mb-1">Valor Estimado</p>
           <p className="text-xl font-bold text-green-400 font-mono tracking-tight">{formatISK(miningTotalValue)}</p>
           <p className="text-[9px] text-green-400/30 mt-1">{formatISK(iskPerHour)}/h</p>
@@ -325,7 +336,33 @@ export function MiningActivityContent({
             {sortedOreTypes.length === 0 ? (
               <p className="text-center text-[10px] text-gray-600 italic py-8">No mining data yet. Click Sync to fetch from ESI.</p>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-3">
+                {/* Composition Bar */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-widest">Extraction Mix</span>
+                    <span className="text-[9px] text-zinc-600 font-mono">{formatNumber(miningTotalQuantity)} m³ total</span>
+                  </div>
+                  <div className="h-2 w-full flex rounded-full overflow-hidden bg-zinc-900 border border-white/[0.05]">
+                    {sortedOreTypes.map((typeId, idx) => {
+                      const volume = oreBreakdown[typeId]?.volumeValue || 0
+                      const percent = (volume / Math.max(1, miningTotalQuantity)) * 100
+                      // Palette: blue-500, green-500, purple-500, yellow-500, cyan-500, pink-500
+                      const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500', 'bg-cyan-500', 'bg-pink-500']
+                      if (percent < 1) return null
+                      return (
+                        <div 
+                          key={typeId}
+                          className={cn("h-full transition-all duration-1000", colors[idx % colors.length])}
+                          style={{ width: `${percent}%` }}
+                          title={`${oreNames[Number(typeId)] || typeId}: ${Math.round(percent)}%`}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
                 {sortedOreTypes.map((typeId, idx) => {
                   const quantity = oreBreakdown[typeId]?.quantity || 0
                   const value = oreBreakdown[typeId]?.estimatedValue || 0

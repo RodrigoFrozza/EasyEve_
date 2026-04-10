@@ -401,6 +401,21 @@ export async function POST(request: Request) {
     // Sort logs by date descending
     allLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
+    // Calculate Yield Trend
+    const startTimeMs = new Date(activity.startTime).getTime()
+    const hoursElapsed = (Date.now() - startTimeMs) / 3600000
+    const currentM3PerHour = totalQuantity / Math.max(0.1, hoursElapsed)
+    
+    const previousM3PerHour = activityData.currentM3PerHour || 0
+    let m3Trend = 'stable'
+    
+    if (previousM3PerHour > 0) {
+      const diff = currentM3PerHour - previousM3PerHour
+      const threshold = previousM3PerHour * 0.02 // 2% change threshold to avoid jitter
+      if (diff > threshold) m3Trend = 'up'
+      else if (diff < -threshold) m3Trend = 'down'
+    }
+
     const updatedData = {
       ...activityData,
       oreBreakdown,
@@ -409,6 +424,8 @@ export async function POST(request: Request) {
       participantBreakdown,
       participantEarnings,
       logs: allLogs,
+      currentM3PerHour,
+      m3Trend,
       lastSyncAt: new Date().toISOString()
     }
 

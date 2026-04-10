@@ -23,7 +23,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { getSession } from '@/lib/session'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { LeaderboardList } from '@/components/dashboard/LeaderboardList'
+import { LeaderboardWrapper } from '@/components/dashboard/LeaderboardWrapper'
 import { withCache } from '@/lib/cache'
 import { 
   startOfDay, 
@@ -109,7 +109,7 @@ export default async function DashboardPage() {
         grouped[userId].total += actBounty + actEss
       }
       return Object.values(grouped).sort((a, b) => b.total - a.total).slice(0, 5)
-    }, 15 * 60 * 1000) // 15 min cache
+    }, 60 * 1000) // 1 min cache
   }
 
   const [dailyStats, weeklyStats, monthlyStats, allTimeStats] = await Promise.all([
@@ -264,16 +264,16 @@ export default async function DashboardPage() {
               </TabsList>
               
               <TabsContent value="daily">
-                <LeaderboardList data={dailyStats} currentUserId={session?.user?.id} period="daily" />
+                <LeaderboardWrapper initialData={dailyStats} currentUserId={session?.user?.id} period="daily" refreshInterval={60000} />
               </TabsContent>
               <TabsContent value="weekly">
-                <LeaderboardList data={weeklyStats} currentUserId={session?.user?.id} period="weekly" />
+                <LeaderboardWrapper initialData={weeklyStats} currentUserId={session?.user?.id} period="weekly" refreshInterval={60000} />
               </TabsContent>
               <TabsContent value="monthly">
-                <LeaderboardList data={monthlyStats} currentUserId={session?.user?.id} period="monthly" />
+                <LeaderboardWrapper initialData={monthlyStats} currentUserId={session?.user?.id} period="monthly" refreshInterval={60000} />
               </TabsContent>
               <TabsContent value="alltime">
-                <LeaderboardList data={allTimeStats} currentUserId={session?.user?.id} period="alltime" />
+                <LeaderboardWrapper initialData={allTimeStats} currentUserId={session?.user?.id} period="alltime" refreshInterval={60000} />
               </TabsContent>
             </Tabs>
           </CardContent>
