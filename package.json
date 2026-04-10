@@ -10,7 +10,8 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "sync:mining": "ts-node scripts/sync-mining-data.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.10.0",
@@ -53,6 +54,7 @@
     "postcss": "^8.4.35",
     "prisma": "^5.10.0",
     "tailwindcss": "^3.4.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5.3.0"
   }
 }
