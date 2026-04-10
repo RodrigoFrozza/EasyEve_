@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useSession } from '@/lib/session-client'
 import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
+import { ACTIVITY_UI_MAPPING } from '@/lib/constants/activity-ui'
 import { cn, formatISK } from '@/lib/utils'
 import { Crown, Calendar, Info, Wallet, CheckCircle2, XCircle, AlertCircle, Copy, Check, History } from 'lucide-react'
 import { toast } from 'sonner'
@@ -109,6 +110,9 @@ export default function SubscriptionPage() {
             <div className="space-y-3">
               {ACTIVITY_TYPES.map(module => {
                 const isAllowed = session?.user?.allowedActivities?.includes(module.id)
+                const ui = ACTIVITY_UI_MAPPING[module.id]
+                const Icon = ui?.icon
+                
                 return (
                   <div key={module.id} className={cn(
                     "flex items-center justify-between p-3 rounded-lg border transition-all",
@@ -118,7 +122,7 @@ export default function SubscriptionPage() {
                   )}>
                     <div className="flex items-center gap-3">
                       <div className={cn("p-2 rounded", isAllowed ? "bg-green-500/10" : "bg-gray-500/10")}>
-                        {module.icon && <module.icon className={cn("h-4 w-4", isAllowed ? "text-green-400" : "text-gray-500")} />}
+                        {Icon && <Icon className={cn("h-4 w-4", isAllowed ? "text-green-400" : "text-gray-500")} />}
                       </div>
                       <span className={cn("font-medium", isAllowed ? "text-white" : "text-gray-500")}>
                         {module.label}

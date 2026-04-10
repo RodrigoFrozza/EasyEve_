@@ -13,6 +13,7 @@ import {
 import { useSession } from '@/lib/session-client'
 import { formatISK, cn } from '@/lib/utils'
 import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
+import { ACTIVITY_UI_MAPPING } from '@/lib/constants/activity-ui'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Dialog, 
@@ -317,12 +318,15 @@ function AdminContent() {
               <div className="grid gap-3">
                 {(ACTIVITY_TYPES || []).map(type => {
                   const dbPrice = (prices || []).find(p => p.module === type.id)
-                  return (
-                    <div key={type.id} className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-xl bg-eve-dark/40 border border-eve-border/50 hover:bg-eve-dark/60 transition-colors gap-4">
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className={cn("p-2 rounded-lg bg-eve-dark", type.color.replace('text-', 'bg-') + '/10')}>
-                          <type.icon className={cn("h-6 w-6", type.color)} />
-                        </div>
+                    const ui = ACTIVITY_UI_MAPPING[type.id]
+                    const Icon = ui?.icon
+                    
+                    return (
+                      <div key={type.id} className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-xl bg-eve-dark/40 border border-eve-border/50 hover:bg-eve-dark/60 transition-colors gap-4">
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className={cn("p-2 rounded-lg bg-eve-dark", (ui?.color || "text-gray-400").replace('text-', 'bg-') + '/10')}>
+                            {Icon && <Icon className={cn("h-6 w-6", ui?.color)} />}
+                          </div>
                         <div>
                            <p className="text-white font-bold">{type.label}</p>
                            <p className="text-[10px] text-gray-500 uppercase tracking-widest leading-none mt-1">{type.id}</p>
@@ -515,27 +519,30 @@ function AdminContent() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-2">
-              {(ACTIVITY_TYPES || []).map((activity) => (
-                <div 
-                  key={activity.id}
-                  onClick={() => {
-                    setSelectedModules(prev => 
-                      prev.includes(activity.id) 
-                        ? prev.filter(m => m !== activity.id)
-                        : [...prev, activity.id]
-                    )
-                  }}
-                  className={cn(
-                    "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
-                    selectedModules.includes(activity.id) 
-                      ? "bg-eve-accent/10 border-eve-accent text-eve-accent shadow-[0_0_15px_rgba(255,255,255,0.05)]" 
-                      : "bg-eve-dark border-eve-border hover:border-gray-500"
-                  )}
-                >
-                  <activity.icon className={cn("h-5 w-5", activity.color)} />
-                  <span className="text-sm font-medium">{activity.label}</span>
-                </div>
-              ))}
+                const ui = ACTIVITY_UI_MAPPING[activity.id]
+                const Icon = ui?.icon
+
+                return (
+                  <div 
+                    key={activity.id}
+                    onClick={() => {
+                      setSelectedModules(prev => 
+                        prev.includes(activity.id) 
+                          ? prev.filter(m => m !== activity.id)
+                          : [...prev, activity.id]
+                      )
+                    }}
+                    className={cn(
+                      "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+                      selectedModules.includes(activity.id) 
+                        ? "bg-eve-accent/10 border-eve-accent text-eve-accent shadow-[0_0_15px_rgba(255,255,255,0.05)]" 
+                        : "bg-eve-dark border-eve-border hover:border-gray-500"
+                    )}
+                  >
+                    {Icon && <Icon className={cn("h-5 w-5", ui?.color)} />}
+                    <span className="text-sm font-medium">{activity.label}</span>
+                  </div>
+                )
             </div>
           </div>
           <DialogFooter className="bg-eve-dark/30 p-4 -m-6 mt-4 border-t border-eve-border/50">
