@@ -135,6 +135,24 @@ export async function POST(
     // 4. Update activity data
     const additionalBounties = activityData.additionalBounties || 0
     
+    // Calculate Combat Performance Trend
+    const startTimeMs = new Date(activity.startTime).getTime()
+    const hoursElapsed = (Date.now() - startTimeMs) / 3600000
+    
+    // Logic matches frontend calculateNetProfit
+    const currentTotalIsk = (totalBounties + additionalBounties + totalEss + (activityData.estimatedLootValue || 0) + (activityData.estimatedSalvageValue || 0)) - totalTaxes
+    const currentIskPerHour = currentTotalIsk / Math.max(0.1, hoursElapsed)
+    
+    const previousIskPerHour = activityData.currentIskPerHour || 0
+    let iskTrend = 'stable'
+    
+    if (previousIskPerHour > 0) {
+      const diff = currentIskPerHour - previousIskPerHour
+      const threshold = previousIskPerHour * 0.05 // 5% threshold for combat (volatile ticks)
+      if (diff > threshold) iskTrend = 'up'
+      else if (diff < -threshold) iskTrend = 'down'
+    }
+
     const updatedData = {
       ...activityData,
       automatedBounties: totalBounties,
@@ -143,6 +161,8 @@ export async function POST(
       grossBounties: totalBounties + totalEss + additionalBounties,
       participantEarnings,
       logs: allLogs,
+      currentIskPerHour,
+      iskTrend,
       lastSyncAt: new Date().toISOString()
     }
 

@@ -8,7 +8,7 @@ import { MTULootField } from '../MTULootField'
 import { SalvageField } from '../SalvageField'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Loader2, RefreshCw, TrendingUp, StopCircle, History } from 'lucide-react'
+import { Loader2, RefreshCw, TrendingUp, TrendingDown, StopCircle, History, Activity as ActivityIcon, ShieldAlert } from 'lucide-react'
 import { Sparkline } from '@/components/ui/Sparkline'
 import { ActivityDetailDialog } from '../ActivityDetailDialog'
 
@@ -55,6 +55,10 @@ export function RattingActivityContent({
   const incomeHistory = (activity.data as any)?.incomeHistory || []
   const mtuContents = activity.data?.mtuContents || []
   const salvageContents = activity.data?.salvageContents || []
+  const iskTrend = (activity.data as any)?.iskTrend || 'stable'
+  
+  const TrendIcon = iskTrend === 'up' ? TrendingUp : iskTrend === 'down' ? TrendingDown : ActivityIcon
+  const trendColor = iskTrend === 'up' ? 'text-green-400' : iskTrend === 'down' ? 'text-red-400' : 'text-zinc-500'
 
   const handleMTUChange = (newMTUs: any[]) => {
     useActivityStore.getState().updateActivity(activity.id, {
@@ -87,23 +91,27 @@ export function RattingActivityContent({
 
             <div className="relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 flex items-center gap-2">
-                   <TrendingUp className="h-3 w-3 text-eve-accent" />
-                   Net Revenue
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">
+                    COMBAT TELEMETRY // REVENUE
+                  </p>
+                  <TrendIcon className={cn("h-3 w-3", trendColor)} />
+                </div>
                 <p className="text-4xl font-black text-white font-mono tracking-tighter flex items-baseline gap-2">
-                  <span className="text-eve-accent drop-shadow-[0_0_10px_rgba(0,255,255,0.4)]">
+                  <span className="text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.3)]">
                     {formatISK(totalIsk)}
                   </span>
                   <span className="text-xs text-zinc-600 font-bold uppercase tracking-widest">ISK</span>
                 </p>
               </div>
               
-              <div className="text-left sm:text-right space-y-1">
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Hourly Rate</p>
-                <p className="text-xl font-black text-cyan-400 font-mono tracking-tighter">
-                  {formatISK(iskPerHour)}/h
-                </p>
+              <div className="text-left sm:text-right space-y-1 bg-zinc-950/40 p-3 rounded-xl border border-white/[0.03] backdrop-blur-sm">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Efficiency Scale</p>
+                <div className="flex items-center gap-2 justify-end">
+                  <p className="text-xl font-black text-white font-mono tracking-tighter">
+                    {formatISK(iskPerHour)}<span className="text-[10px] text-zinc-600 ml-1">/H</span>
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -116,16 +124,17 @@ export function RattingActivityContent({
               disabled={isSyncing}
               onClick={onSync}
               className={cn(
-                "flex-1 h-12 bg-white/[0.02] border-white/[0.05] hover:bg-eve-accent/10 hover:border-eve-accent/50 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-eve-accent transition-all duration-500 rounded-xl",
-                isSyncing && "animate-pulse border-eve-accent/50 bg-eve-accent/5"
+                "flex-1 h-12 bg-zinc-950/80 border-white/[0.05] hover:bg-cyan-500/10 hover:border-cyan-500/50 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-cyan-400 transition-all duration-500 rounded-xl relative overflow-hidden group/btn",
+                isSyncing && "animate-pulse border-cyan-500/50 bg-cyan-500/5"
               )}
             >
+              <div className="absolute inset-x-0 bottom-0 h-0.5 bg-cyan-500 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
               {isSyncing ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <RefreshCw className={cn("h-4 w-4 mr-2", syncStatus === 'success' && "text-green-500")} />
               )}
-              {isSyncing ? 'Linking ESI...' : 'Synchronize'}
+              {isSyncing ? 'Linking Satellite...' : 'Satellite Uplink'}
             </Button>
             
             <ActivityDetailDialog 
@@ -210,18 +219,24 @@ export function RattingActivityContent({
         </div>
 
         {/* Performance Summary HUD */}
-        <div className="p-5 rounded-2xl bg-gradient-to-r from-eve-accent/10 to-transparent border border-eve-accent/20 backdrop-blur-xl flex items-center justify-between shadow-[0_0_30px_rgba(0,255,255,0.05)]">
+        <div className="p-5 rounded-2xl bg-gradient-to-r from-cyan-500/10 to-transparent border border-white/[0.05] backdrop-blur-xl flex items-center justify-between shadow-2xl relative overflow-hidden group/hud">
+          <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500 opacity-50 shadow-[0_0_15px_rgba(34,211,238,0.5)]" />
           <div className="space-y-1">
-            <p className="text-[10px] text-eve-accent font-black tracking-[0.3em] uppercase opacity-70">METRIC ANALYTICS // PROFIT</p>
+            <p className="text-[10px] text-cyan-400 font-black tracking-[0.3em] uppercase opacity-70 flex items-center gap-2">
+              TACTICAL PERFORMANCE HUD
+              <TrendIcon className={cn("h-2.5 w-2.5", trendColor)} />
+            </p>
             <p className="text-3xl font-black text-white font-mono tracking-tighter leading-none flex items-baseline gap-2">
               {formatISK(totalIsk)}
               <span className="text-sm text-zinc-600 font-black uppercase">ISK</span>
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] text-zinc-500 font-black tracking-[0.2em] uppercase mb-1">EFFICIENCY SCALE</p>
-            <div className="bg-black/40 px-4 py-2 rounded-xl border border-white/[0.05] shadow-inner">
-              <p className="text-lg font-black text-cyan-400 font-mono leading-none tracking-tighter">{formatISK(iskPerHour)}/h</p>
+            <p className="text-[10px] text-zinc-500 font-black tracking-[0.2em] uppercase mb-1">Combat Efficiency</p>
+            <div className="bg-black/60 px-4 py-2 rounded-xl border border-white/[0.05] shadow-inner">
+              <p className="text-lg font-black text-white font-mono leading-none tracking-tighter">
+                {formatISK(iskPerHour)}<span className="text-xs text-zinc-600 ml-1">/H</span>
+              </p>
             </div>
           </div>
         </div>
@@ -336,7 +351,7 @@ export function RattingActivityContent({
           ) : (
             <RefreshCw className={cn("h-5 w-5 transition-transform duration-700 group-hover/sync:rotate-180", syncStatus === 'success' && "text-green-500")} />
           )}
-          <span>{isSyncing ? 'Linking Satellite Data...' : 'Synchronize ESI'}</span>
+          <span>{isSyncing ? 'Acquiring Target Data...' : 'Synchronize Satellite Uplink'}</span>
         </button>
       </div>
     </div>
