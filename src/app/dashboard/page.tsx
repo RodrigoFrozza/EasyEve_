@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { formatSP, formatISK, timeAgo } from '@/lib/utils'
+import { TimeAgo } from '@/components/time-ago'
 import { 
   Users, 
   Wallet, 
@@ -314,7 +315,7 @@ export default async function DashboardPage() {
                     </p>
                   </div>
                   <div className="text-right shrink-0 mt-1 sm:mt-0">
-                    <span className="text-gray-500 text-xs">{timeAgo(activity.timestamp)}</span>
+                    <TimeAgo date={activity.timestamp} className="text-gray-500 text-xs" />
                   </div>
                 </div>
               ))

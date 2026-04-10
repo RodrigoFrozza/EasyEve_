@@ -8,6 +8,7 @@ import { formatSP, formatISK, timeAgo } from '@/lib/utils'
 import { MapPin, Ship, Zap, Wallet, Plus, Users } from 'lucide-react'
 import { LinkCharacterButton, RefreshCharacterButton, RemoveCharacterButton, SetMainButton, CopyInviteLink, CharacterScopesDialog, ReloginButton } from '@/components/character-actions'
 import { getSession } from '@/lib/session'
+import { TimeAgo } from '@/components/time-ago'
 
 interface CharacterData {
   id: number
@@ -34,13 +35,17 @@ interface PrismaCharacter {
 }
 
 function parseScopesFromJwt(token: string | null): string[] {
-  if (!token) return []
+  if (!token || !token.includes('.')) return []
   try {
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
+    const segments = token.split('.')
+    if (segments.length < 2) return []
+    
+    const payload = JSON.parse(Buffer.from(segments[1], 'base64').toString())
     if (Array.isArray(payload.scp)) return payload.scp
     if (typeof payload.scp === 'string') return [payload.scp]
     return []
   } catch (error) {
+    console.warn('Failed to parse scopes from token:', error)
     return []
   }
 }
@@ -246,7 +251,7 @@ function CharacterCard({ character, accountCode, detailed = false }: { character
         {detailed && (
           <div className="pt-4 border-t border-eve-border">
             <p className="text-xs text-gray-500">
-              Last updated: {character.lastFetchedAt ? timeAgo(character.lastFetchedAt) : 'Never'}
+              Last updated: <TimeAgo date={character.lastFetchedAt} />
             </p>
           </div>
         )}
