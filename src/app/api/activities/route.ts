@@ -112,6 +112,21 @@ export async function POST(request: Request) {
       }
     })
 
+    // Trigger initial mining sync to capture baselines if needed
+    if (type === 'mining') {
+      try {
+        const host = request.headers.get('host')
+        const protocol = host?.includes('localhost') ? 'http' : 'https'
+        const syncUrl = `${protocol}://${host}/api/activities/sync-mining?id=${activity.id}&mode=initial`
+        
+        console.log(`[ACTIVITY] Triggering initial mining sync: ${syncUrl}`)
+        // We await to ensure the baseline is set before the frontend starts its auto-sync loop
+        await fetch(syncUrl, { method: 'POST' })
+      } catch (e) {
+        console.error('[ACTIVITY] Initial mining sync trigger failed:', e)
+      }
+    }
+
     return NextResponse.json(activity)
   } catch (error: any) {
     console.error('Error creating activity:', error)

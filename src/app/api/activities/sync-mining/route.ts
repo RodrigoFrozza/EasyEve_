@@ -238,6 +238,7 @@ export async function POST(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const activityId = searchParams.get('id')
+    const mode = searchParams.get('mode') // 'initial' or 'regular'
     
     const syncId = `sync-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     
@@ -268,6 +269,7 @@ export async function POST(request: Request) {
     console.log(JSON.stringify({
       event: 'sync_mining_start',
       syncId,
+      mode: mode || 'regular',
       activityId,
       activityStartTime: activity.startTime,
       participantCount: participants.length,
@@ -302,8 +304,53 @@ export async function POST(request: Request) {
     
     const results = await Promise.all(fetchPromises)
 
+    // --- MODE: INITIAL SNAPSHOT ---
+    if (mode === 'initial') {
+      const baselines: Record<string, number> = {}
+      let totalEntriesFetched = 0
+      
+      for (const result of results) {
+        const { entries, charId } = result
+        totalEntriesFetched += entries.length
+        
+        const validEntries = entries.filter(isValidMiningEntry)
+        for (const entry of validEntries) {
+          // Only baseline for the day the activity started
+          if (entry.date === activityDateOnly) {
+            const compositeKey = `${charId}-${entry.type_id}-${entry.solar_system_id}`
+            // Store the quantity found at the start of the session
+            baselines[compositeKey] = entry.quantity
+          }
+        }
+      }
+
+      console.log(JSON.stringify({
+        event: 'mining_baseline_captured',
+        syncId,
+        activityId,
+        totalEntriesFetched,
+        baselineCount: Object.keys(baselines).length
+      }))
+
+      const updatedActivity = await prisma.activity.update({
+        where: { id: activityId },
+        data: { 
+          data: { 
+            ...activityData, 
+            baselines,
+            hasInitialBaseline: true,
+            lastSyncAt: new Date().toISOString()
+          } 
+        }
+      })
+
+      return NextResponse.json(updatedActivity)
+    }
+
+    // --- MODE: REGULAR SYNC ---
     let totalFetched = 0
     let totalNew = 0
+    const baselines = activityData.baselines || {}
 
     // Process results
     for (const result of results) {
@@ -319,10 +366,17 @@ export async function POST(request: Request) {
 
         const compositeKey = `${charId}-${entry.type_id}-${entry.solar_system_id}`
         
+        // Calculate Effective Quantity (Subtract baseline if it exists and it's the same day)
+        let effectiveQuantity = entry.quantity
+        if (entry.date === activityDateOnly) {
+          const baselineQty = baselines[compositeKey] || 0
+          effectiveQuantity = Math.max(0, entry.quantity - baselineQty)
+        }
+        
         if (!logMap.has(compositeKey)) {
           logMap.set(compositeKey, {
             date: entry.date,
-            quantity: entry.quantity,
+            quantity: effectiveQuantity,
             typeId: entry.type_id,
             characterId: charId,
             characterName: charName,
@@ -331,7 +385,7 @@ export async function POST(request: Request) {
           totalNew++
         } else {
           const existing = logMap.get(compositeKey)
-          existing.quantity = Math.max(existing.quantity, entry.quantity)
+          existing.quantity = Math.max(existing.quantity, effectiveQuantity)
           if (entry.date > existing.date) {
             existing.date = entry.date
           }
@@ -447,6 +501,7 @@ export async function POST(request: Request) {
     console.log(JSON.stringify({
       event: 'sync_mining_complete',
       syncId,
+      mode: 'regular',
       totalQuantity,
       totalEstimatedValue,
       logsCount: allLogs.length,
