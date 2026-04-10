@@ -122,7 +122,10 @@ export default function SubscriptionPage() {
                   )}>
                     <div className="flex items-center gap-3">
                       <div className={cn("p-2 rounded", isAllowed ? "bg-green-500/10" : "bg-gray-500/10")}>
-                        {Icon && <Icon className={cn("h-4 w-4", isAllowed ? "text-green-400" : "text-gray-500")} />}
+                        {(() => {
+                          const Icon = ui?.icon || ActivityIcon
+                          return <Icon className={cn("h-4 w-4", isAllowed ? "text-green-400" : "text-gray-500")} />
+                        })()}
                       </div>
                       <span className={cn("font-medium", isAllowed ? "text-white" : "text-gray-500")}>
                         {module.label}

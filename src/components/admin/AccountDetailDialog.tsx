@@ -238,7 +238,10 @@ export function AccountDetailDialog({ account, isOpen, onClose, onRefresh }: Acc
                                 return (
                                     <div key={activity.id} className="flex items-center justify-between group">
                                         <div className="flex items-center gap-3">
-                                            {Icon && <Icon className={cn("h-4 w-4", isAllowed ? ui.color : "text-gray-600")} />}
+                                            {(() => {
+                                                const Icon = ui?.icon || Activity
+                                                return <Icon className={cn("h-4 w-4", isAllowed ? (ui?.color || "text-eve-accent") : "text-gray-600")} />
+                                            })()}
                                             <span className={cn("text-xs transition-colors", isAllowed ? "text-white" : "text-gray-600")}>
                                                 {activity.label}
                                             </span>

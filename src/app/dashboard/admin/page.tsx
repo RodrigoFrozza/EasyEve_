@@ -325,7 +325,11 @@ function AdminContent() {
                       <div key={type.id} className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-xl bg-eve-dark/40 border border-eve-border/50 hover:bg-eve-dark/60 transition-colors gap-4">
                         <div className="flex items-center gap-4 flex-1">
                           <div className={cn("p-2 rounded-lg bg-eve-dark", (ui?.color || "text-gray-400").replace('text-', 'bg-') + '/10')}>
-                            {Icon && <Icon className={cn("h-6 w-6", ui?.color)} />}
+                            {(() => {
+                              const FallbackIcon = Activity
+                              const Icon = ui?.icon || FallbackIcon
+                              return <Icon className={cn("h-6 w-6", ui?.color || "text-eve-accent")} />
+                            })()}
                           </div>
                         <div>
                            <p className="text-white font-bold">{type.label}</p>
@@ -540,7 +544,13 @@ function AdminContent() {
                         : "bg-eve-dark border-eve-border hover:border-gray-500"
                     )}
                   >
-                    {Icon && <Icon className={cn("h-5 w-5", ui?.color)} />}
+                    <div className={cn("p-2 rounded-lg", selectedModules.includes(activity.id) ? "bg-eve-accent/10" : "bg-black/20")}>
+                      {(() => {
+                        const FallbackIcon = Activity
+                        const Icon = ui?.icon || FallbackIcon
+                        return <Icon className={cn("h-5 w-5", ui?.color || (selectedModules.includes(activity.id) ? "text-eve-accent" : "text-gray-500"))} />
+                      })()}
+                    </div>
                     <span className="text-sm font-medium">{activity.label}</span>
                   </div>
                 )

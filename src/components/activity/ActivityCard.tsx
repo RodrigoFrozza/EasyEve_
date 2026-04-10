@@ -337,6 +337,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
               <div className="h-10 w-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shadow-inner group-hover/card:border-eve-accent/50 transition-colors duration-500">
                 {(() => {
                   const ui = ACTIVITY_UI_MAPPING[activity.type]
+                  // Use specific icon if available, otherwise fallback to ActivityIcon (from lucide-react)
                   const Icon = ui?.icon || ActivityIcon
                   return <Icon className={cn("h-5 w-5", ui?.color || "text-zinc-500")} />
                 })()}

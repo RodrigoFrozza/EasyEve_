@@ -58,7 +58,10 @@ export function StatsRow({ totalAccounts, activeSubscriptions, pendingIsk, total
           <CardContent className="p-6 relative z-10">
             <div className="flex items-center justify-between mb-4">
               <div className={`p-2.5 rounded-lg ${stat.bg} border border-white/5`}>
-                <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                {(() => {
+                  const Icon = stat.icon
+                  return Icon ? <Icon className={`h-5 w-5 ${stat.color}`} /> : null
+                })()}
               </div>
               <div className="flex flex-col items-end">
                 <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em]">{stat.label}</p>
