@@ -406,7 +406,7 @@ export function ActivityDetailDialog({ activity, trigger, open, onOpenChange }: 
                                     </p>
                                     <span className="text-zinc-800 font-black">•</span>
                                     <p className="text-[9px] text-zinc-600 font-black font-mono">
-                                      {isMiningActivity ? `UNT_${formatNumber(log.quantity)} • ${formatNumber(log.volumeValue)}m³` : `HASH_${Math.random().toString(36).substring(7).toUpperCase()}`}
+                                      {isMiningActivity ? `UNT_${formatNumber(log.quantity)} • ${formatNumber(log.volumeValue)}m³` : `HASH_${idx}_${new Date(log.date).getTime().toString(36).toUpperCase()}`}
                                     </p>
                                  </div>
                               </div>

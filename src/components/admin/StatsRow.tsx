@@ -84,7 +84,7 @@ export function StatsRow({ totalAccounts, activeSubscriptions, pendingIsk, total
                   </linearGradient>
                 </defs>
                 <path
-                  d={`M 0 ${20 + Math.random() * 10} Q 25 ${10 + Math.random() * 20}, 50 ${20 + Math.random() * 10} T 100 ${15 + Math.random() * 15}`}
+                  d={`M 0 ${20 + (i % 5)} Q 25 ${10 + (i % 8)}, 50 ${20 + (i % 6)} T 100 ${15 + (i % 4)}`}
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
@@ -92,7 +92,7 @@ export function StatsRow({ totalAccounts, activeSubscriptions, pendingIsk, total
                   strokeLinecap="round"
                 />
                 <path
-                  d={`M 0 ${20 + Math.random() * 10} Q 25 ${10 + Math.random() * 20}, 50 ${20 + Math.random() * 10} T 100 ${15 + Math.random() * 15} L 100 40 L 0 40 Z`}
+                  d={`M 0 ${20 + (i % 5)} Q 25 ${10 + (i % 8)}, 50 ${20 + (i % 6)} T 100 ${15 + (i % 4)} L 100 40 L 0 40 Z`}
                   fill={`url(#grad-${i})`}
                   className={stat.color}
                 />

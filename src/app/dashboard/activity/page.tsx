@@ -65,6 +65,7 @@ import {
   Lock,
   History
 } from 'lucide-react'
+import { ACTIVITY_UI_MAPPING } from '@/lib/constants/activity-ui'
 import { useActivityStore, type Activity, type ActivityParticipant } from '@/lib/stores/activity-store'
 import { useSession } from '@/lib/session-client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -332,10 +333,8 @@ function ActivityTrackerContent() {
     .filter(a => a.type === 'mining')
     .reduce((sum, a) => sum + (Number(a.data?.quantity) || 0), 0)
     
-  const totalDuration = activities.reduce((sum, a) => {
-    const end = a.endTime ? new Date(a.endTime).getTime() : new Date().getTime()
-    return sum + (end - new Date(a.startTime).getTime())
-  }, 0)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
   const formatDuration = (ms: number) => {
     const hours = Math.floor(ms / 3600000)
@@ -343,12 +342,24 @@ function ActivityTrackerContent() {
     return `${hours}h ${mins}m`
   }
 
+  const totalDuration = useMemo(() => {
+    if (!mounted) return 0
+    return activities.reduce((sum, a) => {
+      const end = a.endTime ? new Date(a.endTime).getTime() : new Date().getTime()
+      return sum + (end - new Date(a.startTime).getTime())
+    }, 0)
+  }, [activities, mounted])
+
   return (
     <div className="space-y-6 pb-20">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            {currentTypeInfo && <currentTypeInfo.icon className={cn("h-5 w-5", currentTypeInfo.color)} />}
+            {(() => {
+              const ui = ACTIVITY_UI_MAPPING[typeParam || '']
+              const Icon = ui?.icon
+              return Icon ? <Icon className={cn("h-5 w-5", ui?.color)} /> : null
+            })()}
             <h1 className="text-3xl font-bold text-white flex items-center gap-3">
               {currentTypeInfo ? `${currentTypeInfo.label} Tracker` : 'Activity Tracker'}
               <UTCClock />
@@ -409,12 +420,14 @@ function ActivityTrackerContent() {
                               : "border-zinc-800/50 bg-zinc-900/30 hover:bg-zinc-800/50 hover:border-zinc-700"
                           )}
                         >
-                          {isSelected && <div className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-eve-accent animate-ping" />}
-                          {hasAccess ? (
-                            <type.icon className={cn("h-6 w-6 transition-transform group-hover:scale-110", type.color)} />
-                          ) : (
-                            <Lock className="h-6 w-6 text-gray-500" />
-                          )}
+                          <div className="relative">
+                            {(() => {
+                              const ui = ACTIVITY_UI_MAPPING[type.id]
+                              const Icon = ui?.icon
+                              if (!hasAccess) return <Lock className="h-6 w-6 text-gray-500" />
+                              return Icon ? <Icon className={cn("h-6 w-6 transition-transform group-hover:scale-110", ui?.color)} /> : <Activity className="h-6 w-6 text-gray-500" />
+                            })()}
+                          </div>
                           <span className={cn("text-[10px] font-bold uppercase tracking-widest", isSelected ? "text-white" : "text-zinc-500 group-hover:text-zinc-400")}>{type.label}</span>
                         </button>
                       )
@@ -666,7 +679,9 @@ function ActivityTrackerContent() {
               </div>
               <div>
                 <p className="text-sm text-gray-400">Total Duration</p>
-                <p className="text-2xl font-bold text-white">{formatDuration(totalDuration)}</p>
+                <p className="text-2xl font-bold text-white" suppressHydrationWarning>
+                  {mounted ? formatDuration(totalDuration) : '--h --m'}
+                </p>
               </div>
             </div>
           </CardContent>

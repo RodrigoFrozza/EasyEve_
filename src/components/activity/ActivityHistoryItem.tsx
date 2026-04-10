@@ -24,6 +24,9 @@ interface ActivityHistoryItemProps {
 }
 
 export function ActivityHistoryItem({ activity, onDelete }: ActivityHistoryItemProps) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   const [isDetailOpen, setIsDetailOpen] = useState(false)
 
   const startTime = new Date(activity.startTime)
@@ -126,8 +129,12 @@ export function ActivityHistoryItem({ activity, onDelete }: ActivityHistoryItemP
             </div>
             
             <div className="text-right shrink-0 min-w-[70px]">
-              <p className="text-xs font-bold text-zinc-300 mb-0.5">{getRelativeTime(startTime)}</p>
-              <p className="text-[9px] text-zinc-600 font-mono">{startTime.toLocaleDateString()}</p>
+              <p className="text-xs font-bold text-zinc-300 mb-0.5" suppressHydrationWarning>
+                {mounted ? getRelativeTime(startTime) : '--'}
+              </p>
+              <p className="text-[9px] text-zinc-600 font-mono" suppressHydrationWarning>
+                {mounted ? startTime.toLocaleDateString() : '--/--/----'}
+              </p>
             </div>
             
             <div className="flex items-center gap-2">
