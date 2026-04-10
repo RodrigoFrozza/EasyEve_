@@ -144,6 +144,11 @@ model Activity {
   
   participants     Json         @default("[]") // [{"characterId": 123, "fit": "optional"}]
 
+  // Pause States for time tracking
+  isPaused         Boolean      @default(false)
+  pausedAt         DateTime?
+  accumulatedPausedTime Int       @default(0) // in milliseconds
+
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 

@@ -15,6 +15,9 @@ export interface Activity {
   status: 'active' | 'completed'
   startTime: string | Date
   endTime?: string | Date
+  isPaused?: boolean
+  pausedAt?: string | Date
+  accumulatedPausedTime?: number // in ms
   typeId?: number
   region?: string
   space?: string

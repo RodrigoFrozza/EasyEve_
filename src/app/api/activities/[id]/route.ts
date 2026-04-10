@@ -40,7 +40,7 @@ export async function PATCH(
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await request.json()
-    const { status, endTime, data, space, participants } = body
+    const { status, endTime, data, space, participants, isPaused, pausedAt, accumulatedPausedTime } = body
 
     const existingActivity = await prisma.activity.findFirst({
       where: { id: params.id, userId: user.id }
@@ -145,7 +145,10 @@ export async function PATCH(
         ...(endTime && { endTime: new Date(endTime) }),
         ...(space && { space }),
         data: updatedData,
-        ...(participants && { participants })
+        ...(participants && { participants }),
+        ...(typeof isPaused === 'boolean' && { isPaused }),
+        ...(pausedAt !== undefined && { pausedAt: pausedAt ? new Date(pausedAt) : null }),
+        ...(accumulatedPausedTime !== undefined && { accumulatedPausedTime })
       }
     })
 
