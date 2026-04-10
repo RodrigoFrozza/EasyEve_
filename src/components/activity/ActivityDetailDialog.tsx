@@ -129,81 +129,90 @@ export function ActivityDetailDialog({ activity: initialActivity, trigger, open,
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent className="bg-[#050507] border-white/5 sm:max-w-[850px] max-h-[92vh] overflow-hidden flex flex-col p-0 gap-0 shadow-[0_0_80px_rgba(0,0,0,0.8)]">
+      <DialogContent className="bg-[#050507] border-white/5 lg:max-w-[900px] md:max-w-[80vw] sm:max-w-[95vw] max-h-[92vh] overflow-hidden flex flex-col p-0 gap-0 shadow-[0_0_80px_rgba(0,0,0,0.8)]">
         
         {/* Header Section */}
-        <div className="bg-zinc-900/50 border-b border-white/5 p-8 relative">
-          <div className="absolute top-0 right-0 p-8 flex flex-col items-end gap-2">
-            <span className="text-[10px] text-zinc-500 font-black tracking-widest uppercase opacity-40">Elapsed Time</span>
-            <div className="bg-black/30 border border-white/5 px-4 py-2 rounded-xl">
-              <span className="text-2xl font-black font-mono text-eve-accent tracking-tighter tabular-nums">{elapsed}</span>
-            </div>
-            <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 mt-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setViewMode('detailed')}
-                className={cn(
-                  "h-8 px-4 text-[10px] font-black uppercase tracking-widest gap-2 rounded-lg transition-all",
-                  viewMode === 'detailed' ? "bg-eve-accent text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300"
+        <div className="bg-zinc-900/50 border-b border-white/5 p-4 sm:p-6 lg:p-8 relative">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+            <DialogHeader className="p-0 text-left flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-3 sm:mb-4">
+                <Badge variant="outline" className="px-2 sm:px-3 py-0.5 sm:py-1 text-[9px] sm:text-[10px] uppercase font-black tracking-[0.2em] border-eve-accent/30 text-eve-accent bg-eve-accent/5 rounded-md">
+                  {activity.type} OPERATION
+                </Badge>
+                <div className="h-4 w-[1px] bg-white/10 hidden sm:block" />
+                <div className="text-[9px] sm:text-[10px] font-black font-mono text-zinc-600 uppercase tracking-widest truncate">
+                  SES_ID: {activity.id.slice(0, 12)}
+                </div>
+              </div>
+              
+              <DialogTitle className="text-xl sm:text-3xl lg:text-4xl font-black text-white tracking-tighter flex items-center gap-3 sm:gap-4 flex-wrap">
+                <span className="truncate">{data.siteName || (activity.type || 'Activity').toUpperCase()}</span>
+                {activity.status === 'completed' && (
+                  <Badge className="bg-zinc-800 text-zinc-400 hover:bg-zinc-800 border-none font-black text-[8px] sm:text-[9px] uppercase tracking-widest whitespace-nowrap">
+                    Finished
+                  </Badge>
                 )}
-              >
-                Detailed View
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setViewMode('compact')}
-                className={cn(
-                  "h-8 px-4 text-[10px] font-black uppercase tracking-widest gap-2 rounded-lg transition-all",
-                  viewMode === 'compact' ? "bg-eve-accent text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300"
+              </DialogTitle>
+              
+              <DialogDescription className="text-[10px] sm:text-xs text-zinc-500 font-bold uppercase tracking-wider mt-3 sm:mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-3 w-3" />
+                  SESSION START: <span className="text-zinc-400">{new Date(activity.startTime).toLocaleString()}</span>
+                </div>
+                {activity.endTime && (
+                  <div className="flex items-center gap-2">
+                     <ArrowRight className="h-3 w-3 text-zinc-800" />
+                     TERMINATED: <span className="text-zinc-400">{new Date(activity.endTime).toLocaleString()}</span>
+                  </div>
                 )}
-              >
-                Reduced View
-              </Button>
-            </div>
-          </div>
+              </DialogDescription>
+            </DialogHeader>
 
-          <DialogHeader className="p-0 text-left">
-            <div className="flex items-center gap-3 mb-4">
-              <Badge variant="outline" className="px-3 py-1 text-[10px] uppercase font-black tracking-[0.2em] border-eve-accent/30 text-eve-accent bg-eve-accent/5 rounded-md">
-                {activity.type} OPERATION
-              </Badge>
-              <div className="h-4 w-[1px] bg-white/10" />
-              <div className="text-[10px] font-black font-mono text-zinc-600 uppercase tracking-widest">
-                SES_ID: {activity.id.slice(0, 12)}
+            <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-start gap-4 flex-shrink-0">
+              <div className="flex flex-col items-end gap-1 sm:gap-2">
+                <span className="text-[9px] sm:text-[10px] text-zinc-500 font-black tracking-widest uppercase opacity-40">Elapsed Time</span>
+                <div className="bg-black/30 border border-white/5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl">
+                  <span className="text-xl sm:text-2xl font-black font-mono text-eve-accent tracking-tighter tabular-nums">{elapsed}</span>
+                </div>
+              </div>
+              
+              <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewMode('detailed')}
+                  className={cn(
+                    "h-7 sm:h-8 px-2 sm:px-4 text-[9px] sm:text-[10px] font-black uppercase tracking-widest gap-2 rounded-lg transition-all",
+                    viewMode === 'detailed' ? "bg-eve-accent text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300"
+                  )}
+                >
+                  <span className="hidden sm:inline">Detailed View</span>
+                  <span className="sm:hidden">DET</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewMode('compact')}
+                  className={cn(
+                    "h-7 sm:h-8 px-2 sm:px-4 text-[9px] sm:text-[10px] font-black uppercase tracking-widest gap-2 rounded-lg transition-all",
+                    viewMode === 'compact' ? "bg-eve-accent text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300"
+                  )}
+                >
+                  <span className="hidden sm:inline">Reduced View</span>
+                  <span className="sm:hidden">RED</span>
+                </Button>
               </div>
             </div>
-            
-            <DialogTitle className="text-4xl font-black text-white tracking-tighter flex items-center gap-4">
-              {data.siteName || (activity.type || 'Activity').toUpperCase()}
-              {activity.status === 'completed' && (
-                <Badge className="bg-zinc-800 text-zinc-400 hover:bg-zinc-800 border-none font-black text-[9px] uppercase tracking-widest">
-                  Finished
-                </Badge>
-              )}
-            </DialogTitle>
-            
-            <DialogDescription className="text-xs text-zinc-500 font-bold uppercase tracking-wider mt-4 flex items-center gap-2">
-              <Clock className="h-3 w-3" />
-              SESSION START: <span className="text-zinc-400">{new Date(activity.startTime).toLocaleString()}</span>
-              {activity.endTime && (
-                <>
-                   <ArrowRight className="h-3 w-3 mx-1 text-zinc-800" />
-                   TERMINATED: <span className="text-zinc-400">{new Date(activity.endTime).toLocaleString()}</span>
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
+          </div>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-8">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
           
           {/* Top Performance Indicators */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-zinc-950/60 border border-white/5 rounded-2xl p-6 relative overflow-hidden group">
-              <div className="relative z-10 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className="bg-zinc-950/60 border border-white/5 rounded-2xl p-4 sm:p-5 lg:p-6 relative overflow-hidden group">
+              <div className="relative z-10 space-y-3 sm:space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-green-500/10 rounded-lg">
                     <Wallet className="h-4 w-4 text-green-500" />
@@ -211,15 +220,15 @@ export function ActivityDetailDialog({ activity: initialActivity, trigger, open,
                   <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Profit</span>
                 </div>
                 <div>
-                  <p className="text-3xl font-black text-white font-mono tracking-tighter">{formatISK(totalRevenue)}</p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-black text-white font-mono tracking-tighter truncate">{formatISK(totalRevenue)}</p>
                   <p className="text-[10px] text-green-500/50 font-bold mt-1 uppercase">Total</p>
                 </div>
               </div>
               <div className="absolute bottom-0 left-0 h-1 w-full bg-green-500/20" />
             </div>
 
-            <div className="bg-zinc-950/60 border border-white/5 rounded-2xl p-6 relative overflow-hidden">
-               <div className="relative z-10 space-y-4">
+            <div className="bg-zinc-950/60 border border-white/5 rounded-2xl p-4 sm:p-5 lg:p-6 relative overflow-hidden">
+               <div className="relative z-10 space-y-3 sm:space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-500/10 rounded-lg">
                     <TrendingUp className="h-4 w-4 text-blue-500" />
@@ -233,7 +242,7 @@ export function ActivityDetailDialog({ activity: initialActivity, trigger, open,
                     const hours = (end - start) / 3600000
                     const iskh = hours > 0.01 ? formatISK(netProfit / hours) : formatISK(0)
                     return (
-                      <p className="text-3xl font-black text-white font-mono tracking-tighter">
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-white font-mono tracking-tighter truncate">
                         {iskh}<span className="text-xs text-zinc-600 ml-1">/H</span>
                       </p>
                     )
@@ -245,8 +254,8 @@ export function ActivityDetailDialog({ activity: initialActivity, trigger, open,
             </div>
 
             {isMiningActivity ? (
-              <div className="bg-zinc-950/60 border border-white/5 rounded-2xl p-6 relative overflow-hidden">
-                <div className="relative z-10 space-y-4">
+              <div className="bg-zinc-950/60 border border-white/5 rounded-2xl p-4 sm:p-5 lg:p-6 relative overflow-hidden sm:col-span-2 lg:col-span-1">
+                <div className="relative z-10 space-y-3 sm:space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-eve-accent/10 rounded-lg">
                       <Package className="h-4 w-4 text-eve-accent" />
@@ -254,7 +263,7 @@ export function ActivityDetailDialog({ activity: initialActivity, trigger, open,
                     <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Total Volume</span>
                   </div>
                   <div>
-                    <p className="text-3xl font-black text-white font-mono tracking-tighter">
+                    <p className="text-xl sm:text-2xl lg:text-3xl font-black text-white font-mono tracking-tighter truncate">
                       {formatNumber(miningTotalQuantity)}<span className="text-xs text-zinc-600 ml-1">m³</span>
                     </p>
                     <p className="text-[10px] text-eve-accent/30 font-bold mt-1 uppercase">Consolidated extraction</p>
