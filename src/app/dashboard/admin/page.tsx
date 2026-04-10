@@ -519,6 +519,7 @@ function AdminContent() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-2">
+              {(ACTIVITY_TYPES || []).map((activity) => {
                 const ui = ACTIVITY_UI_MAPPING[activity.id]
                 const Icon = ui?.icon
 
@@ -543,6 +544,7 @@ function AdminContent() {
                     <span className="text-sm font-medium">{activity.label}</span>
                   </div>
                 )
+              })}
             </div>
           </div>
           <DialogFooter className="bg-eve-dark/30 p-4 -m-6 mt-4 border-t border-eve-border/50">
