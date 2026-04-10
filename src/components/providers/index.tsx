@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { I18nProvider } from '@/i18n/client'
 
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
@@ -21,8 +23,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <I18nProvider locale="en">
-        <LogManager />
-        {children}
+        <ErrorBoundary name="GlobalApp">
+          <LogManager />
+          {children}
+        </ErrorBoundary>
       </I18nProvider>
     </QueryClientProvider>
   )

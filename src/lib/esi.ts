@@ -13,7 +13,17 @@ import {
   getTypeIconUrl,
 } from './sde'
 
+import axios, { AxiosInstance } from 'axios'
 import { getValidAccessToken } from './token-manager'
+import { 
+  EsiCharacter, 
+  CharacterPublicInfo, 
+  CharacterSkills, 
+  CharacterLocationSchema,
+  CharacterShipSchema,
+  WalletJournalSchema,
+  EsiCharacterSchema
+} from '../types/esi'
 
 export {
   getTypeName,
@@ -28,46 +38,70 @@ export {
   getAllianceLogoUrl,
   getTypeRenderUrl,
   getTypeIconUrl,
-}
+} from './sde'
 
 export * from './sde'
-
-import { 
-  EsiCharacter, 
-  CharacterPublicInfo, 
-  CharacterSkills, 
-  CharacterLocationSchema,
-  CharacterShipSchema,
-  WalletJournalSchema,
-  EsiCharacterSchema
-} from '../types/esi'
 
 const EVE_SSO_BASE_URL = 'https://login.eveonline.com/v2/oauth'
 const ESI_BASE_URL = 'https://esi.evetech.net/latest'
 const USER_AGENT = 'EasyEve/1.0.0 (https://github.com/RodrigoFrozza/EasyEve_)'
 
+// --- Cache Implementation ---
+const cache = new Map<string, { data: any; expires: number }>()
+
+function getCachedData<T>(key: string): T | null {
+  const item = cache.get(key)
+  if (!item) return null
+  if (Date.now() > item.expires) {
+    cache.delete(key)
+    return null
+  }
+  return item.data as T
+}
+
+function setCachedData(key: string, data: any, ttlMs: number = 3600000): void {
+  cache.set(key, { data, expires: Date.now() + ttlMs })
+}
+
+// --- Axios Client ---
+const esiClient: AxiosInstance = axios.create({
+  baseURL: ESI_BASE_URL,
+  headers: {
+    'User-Agent': USER_AGENT,
+    'Content-Type': 'application/json',
+  },
+  timeout: 10000,
+})
+
+// Request Interceptor for retries or logging could be added here
+esiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Standardized error logging
+    console.error(`[ESI Error] ${error.config?.method?.toUpperCase()} ${error.config?.url}:`, error.response?.status, error.response?.data)
+    return Promise.reject(error)
+  }
+)
+
 export type { EveCharacter as EveCharacterLegacy } from '../types/esi'
 
 export async function getAccessToken(code: string) {
-  const response = await fetch(`${EVE_SSO_BASE_URL}/token`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': `Basic ${Buffer.from(
-        `${process.env.EVE_CLIENT_ID}:${process.env.EVE_CLIENT_SECRET}`
-      ).toString('base64')}`,
-    },
-    body: new URLSearchParams({
+  const response = await axios.post(`${EVE_SSO_BASE_URL}/token`, 
+    new URLSearchParams({
       grant_type: 'authorization_code',
       code,
     }),
-  })
+    {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${Buffer.from(
+          `${process.env.EVE_CLIENT_ID}:${process.env.EVE_CLIENT_SECRET}`
+        ).toString('base64')}`,
+      },
+    }
+  )
 
-  if (!response.ok) {
-    throw new Error('Failed to get access token')
-  }
-
-  return response.json()
+  return response.data
 }
 
 export async function getCharacterInfo(accessToken: string): Promise<EveCharacter> {
@@ -149,40 +183,40 @@ export async function fetchCharacterData(characterId: number, accessToken: strin
 }
 
 async function getCharacterSkillsSummary(characterId: number, accessToken: string): Promise<{ total_sp?: number }> {
+  const cacheKey = `skills-summary-${characterId}`
+  const cached = getCachedData<{ total_sp?: number }>(cacheKey)
+  if (cached) return cached
+
   try {
-    const response = await fetch(`${ESI_BASE_URL}/characters/${characterId}/skills/`, {
+    const response = await esiClient.get(`/characters/${characterId}/skills/`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
-    if (!response.ok) return {}
-    const data = await response.json()
-    return { total_sp: data.total_sp }
+    const result = { total_sp: response.data.total_sp }
+    setCachedData(cacheKey, result, 600000) // 10 minutes cache
+    return result
   } catch {
     return {}
   }
 }
 
-async function getCharacterPublicInfo(characterId: number): Promise<Partial<CharacterInfo>> {
-  const response = await fetch(`${ESI_BASE_URL}/characters/${characterId}/`)
-  
-  if (!response.ok) {
-    throw new Error('Failed to get character info')
-  }
+async function getCharacterPublicInfo(characterId: number): Promise<Partial<CharacterPublicInfo>> {
+  const cacheKey = `char-public-${characterId}`
+  const cached = getCachedData<Partial<CharacterPublicInfo>>(cacheKey)
+  if (cached) return cached
 
-  return response.json()
+  const response = await esiClient.get(`/characters/${characterId}/`)
+  const result = response.data
+  setCachedData(cacheKey, result, 3600000) // 1 hour cache for public info
+  return result
 }
 
 async function getCharacterLocation(characterId: number, accessToken: string) {
   try {
-    const response = await fetch(`${ESI_BASE_URL}/characters/${characterId}/location/`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
+    const response = await esiClient.get(`/characters/${characterId}/location/`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
     })
 
-    if (!response.ok) return {}
-
-    const data = await response.json()
-    
+    const data = response.data
     const solarSystemName = await getSolarSystemName(data.solar_system_id)
     
     return {
@@ -197,16 +231,11 @@ async function getCharacterLocation(characterId: number, accessToken: string) {
 
 async function getCharacterShip(characterId: number, accessToken: string) {
   try {
-    const response = await fetch(`${ESI_BASE_URL}/characters/${characterId}/ship/`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
+    const response = await esiClient.get(`/characters/${characterId}/ship/`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
     })
 
-    if (!response.ok) return {}
-
-    const data = await response.json()
-    
+    const data = response.data
     const shipName = await getTypeName(data.ship_type_id)
     
     return {
@@ -220,15 +249,10 @@ async function getCharacterShip(characterId: number, accessToken: string) {
 
 async function getCharacterWallet(characterId: number, accessToken: string) {
   try {
-    const response = await fetch(`${ESI_BASE_URL}/characters/${characterId}/wallet/`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
+    const response = await esiClient.get(`/characters/${characterId}/wallet/`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
     })
-
-    if (!response.ok) return 0
-
-    return response.json()
+    return response.data
   } catch {
     return 0
   }
@@ -236,16 +260,16 @@ async function getCharacterWallet(characterId: number, accessToken: string) {
 
 export async function getCharacterSkills(characterId: number, accessToken: string): Promise<CharacterSkills> {
   const [skillsResponse, queueResponse] = await Promise.all([
-    fetch(`${ESI_BASE_URL}/characters/${characterId}/skills/`, {
+    esiClient.get(`/characters/${characterId}/skills/`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     }),
-    fetch(`${ESI_BASE_URL}/characters/${characterId}/skillqueue/`, {
+    esiClient.get(`/characters/${characterId}/skillqueue/`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     }),
   ])
 
-  const skills = await skillsResponse.json()
-  const queue = await queueResponse.json()
+  const skills = skillsResponse.data
+  const queue = queueResponse.data
 
   return {
     total_sp: skills.total_sp,
@@ -256,26 +280,36 @@ export async function getCharacterSkills(characterId: number, accessToken: strin
 }
 
 export async function getCorporationInfo(corpId: number) {
+  const cacheKey = `corp-info-${corpId}`
+  const cached = getCachedData<{ name: string; ticker?: string; alliance_id?: number }>(cacheKey)
+  if (cached) return cached
+
   try {
-    const response = await fetch(`${ESI_BASE_URL}/corporations/${corpId}/`)
-    if (!response.ok) return { name: `Corp ${corpId}` }
-    const data = await response.json()
-    return {
+    const response = await esiClient.get(`/corporations/${corpId}/`)
+    const data = response.data
+    const result = {
       name: data.name,
       ticker: data.ticker,
       alliance_id: data.alliance_id,
     }
+    setCachedData(cacheKey, result, 86400000) // 24 hours cache for static corp info
+    return result
   } catch {
     return { name: `Corp ${corpId}` }
   }
 }
 
 export async function getAllianceInfo(allianceId: number) {
+  const cacheKey = `alliance-info-${allianceId}`
+  const cached = getCachedData<{ name: string; ticker: string }>(cacheKey)
+  if (cached) return cached
+
   try {
-    const response = await fetch(`${ESI_BASE_URL}/alliances/${allianceId}/`)
-    if (!response.ok) return { name: `Alliance ${allianceId}` }
-    const data = await response.json()
-    return { name: data.name, ticker: data.ticker }
+    const response = await esiClient.get(`/alliances/${allianceId}/`)
+    const data = response.data
+    const result = { name: data.name, ticker: data.ticker }
+    setCachedData(cacheKey, result, 86400000) // 24 hours cache
+    return result
   } catch {
     return { name: `Alliance ${allianceId}` }
   }
@@ -295,65 +329,61 @@ export async function getCharacterMiningLedger(
   after?: string
 ): Promise<MiningLedgerEntry[]> {
   try {
-    const params = new URLSearchParams()
-    if (before) params.set('before', before)
-    if (after) params.set('after', after)
+    const params: Record<string, string> = {}
+    if (before) params.before = before
+    if (after) params.after = after
 
-    const url = `${ESI_BASE_URL}/characters/${characterId}/mining/${params.toString() ? '?' + params.toString() : ''}`
-    
-    const response = await fetch(url, {
+    const response = await esiClient.get(`/characters/${characterId}/mining/`, {
+      params,
       headers: { Authorization: `Bearer ${accessToken}` },
     })
 
-    if (!response.ok) return []
-
-    return response.json()
+    return response.data
   } catch {
     return []
   }
 }
 
 export async function getCategoryGroups(categoryId: number): Promise<number[]> {
+  const cacheKey = `cat-groups-${categoryId}`
+  const cached = getCachedData<number[]>(cacheKey)
+  if (cached) return cached
+
   try {
-    const response = await fetch(`${ESI_BASE_URL}/universe/categories/${categoryId}/`)
-    if (!response.ok) return []
-    const data = await response.json()
-    return data.groups || []
+    const response = await esiClient.get(`/universe/categories/${categoryId}/`)
+    const result = response.data.groups || []
+    setCachedData(cacheKey, result, 86400000)
+    return result
   } catch {
     return []
   }
 }
 
 export async function getGroupTypes(groupId: number): Promise<number[]> {
+  const cacheKey = `group-types-${groupId}`
+  const cached = getCachedData<number[]>(cacheKey)
+  if (cached) return cached
+
   try {
-    const response = await fetch(`${ESI_BASE_URL}/universe/groups/${groupId}/`)
-    if (!response.ok) return []
-    const data = await response.json()
-    return data.types || []
+    const response = await esiClient.get(`/universe/groups/${groupId}/`)
+    const result = response.data.types || []
+    setCachedData(cacheKey, result, 86400000)
+    return result
   } catch {
     return []
   }
 }
 
-export interface TypeDetails {
-  type_id: number
-  name: string
-  description: string
-  group_id: number
-  volume?: number
-  capacity?: number
-  portion_size?: number
-  published: boolean
-  market_group_id?: number
-  mass?: number
-  icon_id?: number
-}
-
 export async function getTypeDetails(typeId: number): Promise<TypeDetails | null> {
+  const cacheKey = `type-details-${typeId}`
+  const cached = getCachedData<TypeDetails>(cacheKey)
+  if (cached) return cached
+
   try {
-    const response = await fetch(`${ESI_BASE_URL}/universe/types/${typeId}/`)
-    if (!response.ok) return null
-    return response.json()
+    const response = await esiClient.get(`/universe/types/${typeId}/`)
+    const result = response.data
+    setCachedData(cacheKey, result, 86400000)
+    return result
   } catch {
     return null
   }
@@ -372,64 +402,52 @@ const MARKET_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 export async function getMarketPrices(): Promise<Record<number, number>> {
   const now = Date.now()
   
-  // Return cached prices if still valid
   if (marketPriceCache && (now - marketPriceCache.timestamp < MARKET_CACHE_TTL)) {
     return marketPriceCache.prices
   }
 
   try {
-    const response = await fetch(`${ESI_BASE_URL}/markets/prices/`)
-    if (!response.ok) {
-      // Return stale cache if fetch fails
-      return marketPriceCache?.prices || {}
-    }
-    const data: MarketPrice[] = await response.json()
+    const response = await esiClient.get('/markets/prices/')
+    const data: MarketPrice[] = response.data
     
-    // Convert to easy lookup map
-    // Use average_price if available, otherwise fall back to adjusted_price
-    // For rare ores (like Ytirium variants), adjusted_price is more stable
     const priceMap: Record<number, number> = {}
     data.forEach(item => {
       if (item.average_price) {
         priceMap[item.type_id] = item.average_price
       } else if (item.adjusted_price) {
-        // Fallback to adjusted_price for items without average_price
         priceMap[item.type_id] = item.adjusted_price
       }
     })
     
-    // Update cache
     marketPriceCache = { prices: priceMap, timestamp: now }
-    
     return priceMap
   } catch {
-    // Return stale cache on error
     return marketPriceCache?.prices || {}
   }
 }
 
 // --- Authenticated ESI Helpers ---
 
-export async function fetchWithAuth(endpoint: string, characterId: number): Promise<Response> {
+export async function fetchWithAuth(endpoint: string, characterId: number): Promise<any> {
   const { accessToken } = await getValidAccessToken(characterId)
   
   if (!accessToken) {
     throw new Error('No valid access token available')
   }
   
-  return fetch(`${ESI_BASE_URL}${endpoint}`, {
+  const response = await esiClient.get(endpoint, {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'X-User-Agent': USER_AGENT,
     },
   })
+  
+  return response.data
 }
 
 export async function getCharacterFits(characterId: number) {
   try {
-    const response = await fetchWithAuth(`/characters/${characterId}/fits/`, characterId)
-    if (!response.ok) return []
-    return response.json()
+    return await fetchWithAuth(`/characters/${characterId}/fits/`, characterId)
   } catch (error) {
     console.error('Failed to fetch fits:', error)
     return []
@@ -438,9 +456,7 @@ export async function getCharacterFits(characterId: number) {
 
 export async function getCharacterAssets(characterId: number) {
   try {
-    const response = await fetchWithAuth(`/characters/${characterId}/assets/`, characterId)
-    if (!response.ok) return []
-    return response.json()
+    return await fetchWithAuth(`/characters/${characterId}/assets/`, characterId)
   } catch (error) {
     console.error('Failed to fetch assets:', error)
     return []
@@ -449,9 +465,7 @@ export async function getCharacterAssets(characterId: number) {
 
 export async function getCharacterWalletTransactions(characterId: number) {
   try {
-    const response = await fetchWithAuth(`/characters/${characterId}/wallet/transactions/`, characterId)
-    if (!response.ok) return []
-    return response.json()
+    return await fetchWithAuth(`/characters/${characterId}/wallet/transactions/`, characterId)
   } catch (error) {
     console.error('Failed to fetch wallet transactions:', error)
     return []
@@ -460,9 +474,7 @@ export async function getCharacterWalletTransactions(characterId: number) {
 
 export async function getCharacterIndustryJobs(characterId: number) {
   try {
-    const response = await fetchWithAuth(`/characters/${characterId}/industry/jobs/`, characterId)
-    if (!response.ok) return []
-    return response.json()
+    return await fetchWithAuth(`/characters/${characterId}/industry/jobs/`, characterId)
   } catch (error) {
     console.error('Failed to fetch industry jobs:', error)
     return []
@@ -471,9 +483,7 @@ export async function getCharacterIndustryJobs(characterId: number) {
 
 export async function getCharacterContracts(characterId: number) {
   try {
-    const response = await fetchWithAuth(`/characters/${characterId}/contracts/`, characterId)
-    if (!response.ok) return []
-    return response.json()
+    return await fetchWithAuth(`/characters/${characterId}/contracts/`, characterId)
   } catch (error) {
     console.error('Failed to fetch contracts:', error)
     return []
@@ -482,9 +492,7 @@ export async function getCharacterContracts(characterId: number) {
 
 export async function getCharacterNotifications(characterId: number) {
   try {
-    const response = await fetchWithAuth(`/characters/${characterId}/notifications/`, characterId)
-    if (!response.ok) return []
-    return response.json()
+    return await fetchWithAuth(`/characters/${characterId}/notifications/`, characterId)
   } catch (error) {
     console.error('Failed to fetch notifications:', error)
     return []
@@ -494,33 +502,25 @@ export async function getCharacterNotifications(characterId: number) {
 export async function getCharacterWalletJournal(characterId: number, untilDate?: Date) {
   try {
     const results: any[] = []
+    const { accessToken } = await getValidAccessToken(characterId)
     
-    // We paginate up to 20 pages (1000 entries) to prevent infinite loops 
-    // but ensure we cover activities that might have many transactions.
+    if (!accessToken) throw new Error('No valid token')
+
     for (let page = 1; page <= 20; page++) {
-      const response = await fetchWithAuth(`/characters/${characterId}/wallet/journal/?page=${page}`, characterId)
+      const response = await esiClient.get(`/characters/${characterId}/wallet/journal/`, {
+        params: { page },
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
       
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error(`[ESI] Wallet Journal Error (Page ${page}, Char ${characterId}): ${response.status} ${errorText}`)
-        break
-      }
-      
-      const data = await response.json()
+      const data = response.data
       if (Array.isArray(data) && data.length > 0) {
         results.push(...data)
         
-        // If an untilDate is provided, check if the last entry of this page is already older 
-        // than our threshold. If so, we can stop fetching pages.
         if (untilDate) {
           const lastEntry = data[data.length - 1]
-          if (new Date(lastEntry.date) < untilDate) {
-            console.log(`[ESI] Reached untilDate (${untilDate.toISOString()}) at page ${page}. Stopping.`)
-            break
-          }
+          if (new Date(lastEntry.date) < untilDate) break
         }
 
-        // If we got less than 50, it's the last page in existence
         if (data.length < 50) break
       } else {
         break
@@ -533,24 +533,21 @@ export async function getCharacterWalletJournal(characterId: number, untilDate?:
     return []
   }
 }
+
 export async function getCorporationWalletJournal(corporationId: number, characterId: number, division: number = 1) {
   try {
     const results: any[] = []
+    const { accessToken } = await getValidAccessToken(characterId)
     
-    // We paginate up to 20 pages (1000 entries)
+    if (!accessToken) throw new Error('No valid token')
+
     for (let page = 1; page <= 20; page++) {
-      const response = await fetchWithAuth(
-        `/corporations/${corporationId}/wallets/${division}/journal/?page=${page}`, 
-        characterId
-      )
+      const response = await esiClient.get(`/corporations/${corporationId}/wallets/${division}/journal/`, {
+        params: { page },
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
       
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error(`[ESI] Corp Wallet Journal Error (Page ${page}, Corp ${corporationId}): ${response.status} ${errorText}`)
-        break
-      }
-      
-      const data = await response.json()
+      const data = response.data
       if (Array.isArray(data) && data.length > 0) {
         results.push(...data)
         if (data.length < 50) break

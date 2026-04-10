@@ -148,8 +148,10 @@ model Activity {
   updatedAt        DateTime     @updatedAt
 
   @@index([userId])
+  @@index([characterId])
   @@index([status])
   @@index([type])
+  @@index([typeId])
 }
 
 // --- NEW UNIFIED SDE INFRASTRUCTURE ---
@@ -221,6 +223,7 @@ model DebugLog {
   createdAt   DateTime @default(now())
 
   @@index([userId])
+  @@index([characterId])
   @@index([createdAt])
 }
 

@@ -14,9 +14,20 @@ interface LogData {
 }
 
 class RemoteLogger {
-  private async sendLog(data: LogData) {
-    // Restriction: User requested only errors, never warnings
-    if (data.level !== 'error') return
+  private queue: LogData[] = []
+  private timer: NodeJS.Timeout | null = null
+  private batchSize = 10
+  private flushInterval = 5000 // 5 seconds
+
+  private async flush() {
+    if (this.queue.length === 0) return
+
+    const logsToSend = [...this.queue]
+    this.queue = []
+    if (this.timer) {
+      clearTimeout(this.timer)
+      this.timer = null
+    }
 
     try {
       await fetch('/api/logs', {
@@ -25,14 +36,26 @@ class RemoteLogger {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...data,
+          batch: logsToSend,
           url: window.location.href,
           userAgent: navigator.userAgent,
         }),
       })
     } catch (err) {
-      // Fail silently to avoid infinite loops if the logging itself fails
-      console.warn('[RemoteLogger] Failed to send log to server', err)
+      console.warn('[RemoteLogger] Failed to send bached logs', err)
+    }
+  }
+
+  private enqueue(data: LogData) {
+    // Restriction: User requested only errors, never warnings
+    if (data.level !== 'error') return
+
+    this.queue.push(data)
+
+    if (this.queue.length >= this.batchSize) {
+      this.flush()
+    } else if (!this.timer) {
+      this.timer = setTimeout(() => this.flush(), this.flushInterval)
     }
   }
 
@@ -49,7 +72,7 @@ class RemoteLogger {
       stack = JSON.stringify(error)
     }
 
-    this.sendLog({
+    this.enqueue({
       level: 'error',
       message: finalMessage || 'Unknown error',
       stack,

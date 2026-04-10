@@ -9,33 +9,41 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { level, message, stack, url, userAgent, context, characterId } = await req.json()
+    const body = await req.json()
+    const { batch, url: commonUrl, userAgent: commonUserAgent } = body
 
-    // Restriction: Only Errors, never warnings or info
-    if (level !== 'error') {
+    // Support both single logs and batches
+    const logs = batch ? batch : [body]
+    
+    // Filter out everything that is not an error
+    const errorsOnly = logs.filter((log: any) => log.level === 'error')
+
+    if (errorsOnly.length === 0) {
       return NextResponse.json({ success: true, message: 'Filtered by policy' })
     }
 
-    // Save log
-    await prisma.debugLog.create({
-      data: {
-        userId: session.user.id,
-        characterId: characterId || session.user.characterId,
-        level,
-        message,
-        stack,
-        url,
-        userAgent,
-        context: context || {}
-      }
+    // Prepare data for Prisma
+    const logEntries = errorsOnly.map((log: any) => ({
+      userId: session.user.id,
+      characterId: log.characterId || session.user.characterId,
+      level: log.level,
+      message: log.message,
+      stack: log.stack,
+      url: log.url || commonUrl,
+      userAgent: log.userAgent || commonUserAgent,
+      context: log.context || {}
+    }))
+
+    // Save logs in bulk
+    await prisma.debugLog.createMany({
+      data: logEntries
     })
 
     // Restriction: 7-day retention (cleanup)
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
     
-    // We can run this async without awaiting if we want to improve response time, 
-    // but a cleanup on every error is safe for now.
+    // Cleanup old logs
     await prisma.debugLog.deleteMany({
       where: {
         createdAt: {
@@ -44,9 +52,9 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, count: logEntries.length })
   } catch (error) {
-    console.error('[API/LOGS] Failed to save log:', error)
+    console.error('[API/LOGS] Failed to save logs:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

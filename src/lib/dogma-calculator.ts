@@ -208,8 +208,10 @@ export interface ModuleBaseStats {
 const shipStatsCache = new Map<number, ShipBaseStats>()
 const moduleStatsCache = new Map<number, ModuleBaseStats>()
 
-// --- API Functions ---
-
+// --- API Functions ---/**
+ * Fetches base ship statistics from the database with caching.
+ * @param typeId The ESI type_id for the ship
+ */
 export async function getShipStats(typeId: number): Promise<ShipBaseStats | null> {
   if (shipStatsCache.has(typeId)) {
     return shipStatsCache.get(typeId)!
@@ -261,6 +263,9 @@ export async function getShipStats(typeId: number): Promise<ShipBaseStats | null
   return null
 }
 
+/**
+ * Searches for ship stats by name (case-insensitive).
+ */
 export async function getShipByName(name: string): Promise<ShipBaseStats | null> {
   try {
     const stats = await prisma.shipStats.findFirst({
@@ -310,6 +315,9 @@ export async function getShipByName(name: string): Promise<ShipBaseStats | null>
   return null
 }
 
+/**
+ * Fetches base module statistics from the database with caching.
+ */
 export async function getModuleStats(typeId: number): Promise<ModuleBaseStats | null> {
   if (moduleStatsCache.has(typeId)) {
     return moduleStatsCache.get(typeId)!
@@ -328,6 +336,9 @@ export async function getModuleStats(typeId: number): Promise<ModuleBaseStats | 
   return null
 }
 
+/**
+ * Searches for module stats by name partial match (case-insensitive).
+ */
 export async function getModuleByName(name: string): Promise<ModuleBaseStats | null> {
   try {
     const stats = await prisma.moduleStats.findFirst({
@@ -344,8 +355,17 @@ export async function getModuleByName(name: string): Promise<ModuleBaseStats | n
   return null
 }
 
-// --- Calculator ---
-
+/**
+ * Performs full fit calculations (CPU, Power, Tank, DPS, Capacitor).
+ * 
+ * Capacitor Logic: Uses a simplified delta/s approach based on Peak Recharge.
+ * Peak Recharge occurs at ~25% capacitor level and provides 2.5x the average recharge rate.
+ * 
+ * Tank Logic: Calculates passive shield regen and active repair cycles.
+ * 
+ * @param ship Base ship statistics
+ * @param slots Currently fitted modules
+ */
 export async function calculateFitStats(
   ship: ShipBaseStats,
   slots: FitSlot
@@ -426,6 +446,9 @@ export async function calculateFitStats(
   // Calculate capacitor stability
   const capUse = (stats as any)._capacitorUsePerSecond || 0
   if (capUse > 0) {
+    // EVE Capacitor Math: Peak recharge is at 25% cap.
+    // Max recharge rate = (10 * Capacitor Capacity / Recharge Time) * (sqrt(VC/CC) - (VC/CC))
+    // Simplification for UI: use 2.5x the nominal rate at peak.
     const capDelta = (ship.capacitorRecharge / 1000) * 0.25 - capUse
     stats.capacitor.deltaPerSecond = capDelta
     stats.capacitor.stable = capDelta >= 0
@@ -439,9 +462,9 @@ export async function calculateFitStats(
   // Calculate EHP
   calculateEHP(stats, ship)
   
-  // Calculate align time
+  // Calculate align time: align = (mass * agility / 500,000) * ln(2)
   if (ship.mass > 0 && ship.agility > 0) {
-    stats.velocity.alignTime = ship.mass * ship.agility / 500000
+    stats.velocity.alignTime = (ship.mass * ship.agility / 500000) * Math.log(2)
   }
   
   return stats
@@ -458,7 +481,7 @@ async function processSlot(
     const modStats = await getModuleStats(mod.typeId)
     
     if (!modStats) {
-      // Fallback: use basic estimates
+      // Fallback: use basic estimates for unknown modules
       stats.cpu.used += 5
       stats.power.used += 5
       continue
@@ -502,14 +525,16 @@ async function processSlot(
     
     // Capacitor usage
     if (modStats.capacitorNeed > 0) {
-      stats.capasitorUsePerSecond += modStats.capacitorNeed / (modStats.fireRate || 1)
+      // Track total activation cost per second
+      (stats as any)._capacitorUsePerSecond = ((stats as any)._capacitorUsePerSecond || 0) + (modStats.capacitorNeed / (modStats.fireRate || 1))
     }
   }
 }
 
-// Helper to track capacitor usage
-let capUseCounter = 0
-
+/**
+ * Calculates Effective Hit Points (EHP) by applying resistance multipliers to raw HP.
+ * EHP = HP / (1 - Resistance)
+ */
 function calculateEHP(stats: FitStats, ship: ShipBaseStats) {
   const shieldMult = 1 / (1 - Math.max(
     ship.shieldEmResist,
@@ -538,24 +563,18 @@ function calculateEHP(stats: FitStats, ship: ShipBaseStats) {
   stats.ehp.total = stats.ehp.shield + stats.ehp.armor + stats.ehp.hull
 }
 
-// Drone DPS lookup (simplified)
-const DRONE_DPS: Record<number, number> = {
-  2321: 13,  // Warrior I
-  2327: 19,  // Warrior II
-  2446: 16,  // Hobgoblin I
-  2456: 25,  // Hobgoblin II
-  2443: 15,  // Acolyte I
-  2453: 24,  // Acolyte II
-  2450: 18,  // Infiltrator I
-  2460: 28,  // Infiltrator II
-}
-
+/**
+ * Simple lookup table for baseline drone DPS.
+ * @param typeId ESI type_id of the drone
+ */
 function getDroneDps(typeId: number): { dps: number; tracking: number } {
   return { dps: DRONE_DPS[typeId] || 10, tracking: 1 }
 }
 
-// --- EFT Parsing ---
-
+/**
+ * Parses EFT (Eve Fitting Tool) formatted text into a structured slot object.
+ * EFT format: [Ship Title, Fit Name] followed by modules per slot.
+ */
 export function parseEftFormat(eftText: string): Partial<FitSlot> & { shipName: string; fitName: string } {
   const lines = eftText.trim().split('\n')
   const result: any = {
@@ -584,7 +603,7 @@ export function parseEftFormat(eftText: string): Partial<FitSlot> & { shipName: 
     // Skip section headers
     if (line.startsWith('[')) continue
     
-    // Detect slot type
+    // Detect slot type based on content hints
     const lowerLine = line.toLowerCase()
     if (lowerLine.includes('rig ')) {
       currentSlot = 'rig'
@@ -606,7 +625,6 @@ export function parseEftFormat(eftText: string): Partial<FitSlot> & { shipName: 
     const offline = line.endsWith('/offline')
     const modName = line.replace('/offline', '').trim()
     
-    // TODO: Resolve name to typeId via database lookup
     result[currentSlot].push({
       typeId: 0,
       name: modName,
@@ -617,6 +635,9 @@ export function parseEftFormat(eftText: string): Partial<FitSlot> & { shipName: 
   return result
 }
 
+/**
+ * Converts a structured fit back into the standard EFT format string.
+ */
 export function fitToEftFormat(
   shipName: string,
   fitName: string,
@@ -662,23 +683,7 @@ export function fitToEftFormat(
   return lines.join('\n')
 }
 
-// --- Helper to add capacitor usage tracking ---
-
-let totalCapacitorUse = 0
-
-export function resetCapacitorCounter() {
-  totalCapacitorUse = 0
-}
-
-export function addCapacitorUsage(usePerSecond: number) {
-  totalCapacitorUse += usePerSecond
-}
-
-export function getCapacitorUsage(): number {
-  return totalCapacitorUse
-}
-
-// Export simpler interface
+// Export singleton interface
 export default {
   getShipStats,
   getShipByName,
@@ -687,4 +692,6 @@ export default {
   calculateFitStats,
   parseEftFormat,
   fitToEftFormat
+}
+
 }

@@ -45,32 +45,20 @@ export function LinkCharacterButton({ accountCode }: { accountCode?: string | nu
   )
 }
 
+import { useCharacterData } from '@/lib/hooks/use-esi'
+
 export function RefreshCharacterButton({ characterId }: { characterId: number }) {
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
-  
-  async function handleRefresh() {
-    setLoading(true)
-    try {
-      const response = await fetch(`/api/characters/${characterId}`, { method: 'POST' })
-      if (response.ok) {
-        router.refresh()
-      }
-    } catch (error) {
-      console.error('Refresh error:', error)
-    }
-    setLoading(false)
-  }
+  const { refresh, isRefreshing } = useCharacterData(characterId)
   
   return (
     <Button 
       variant="outline" 
       size="sm" 
       className="flex-1 border-eve-border"
-      onClick={handleRefresh}
-      disabled={loading}
+      onClick={() => refresh()}
+      disabled={isRefreshing}
     >
-      <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+      <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
       Refresh
     </Button>
   )

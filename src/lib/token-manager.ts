@@ -37,50 +37,67 @@ export async function refreshAccessToken(refreshToken: string): Promise<TokenRes
   }
 }
 
+// Map to track ongoing refresh promises to prevent concurrent redundant refreshes
+const refreshPromises = new Map<number, Promise<{ accessToken: string | null; characterId: number }>>()
+
 export async function getValidAccessToken(characterId: number): Promise<{ accessToken: string | null; characterId: number }> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: {
-      id: true,
-      accessToken: true,
-      refreshToken: true,
-      tokenExpiresAt: true,
-    },
-  })
-
-  if (!character) {
-    return { accessToken: null, characterId }
+  // Check if there is already an ongoing refresh for this character
+  if (refreshPromises.has(characterId)) {
+    return refreshPromises.get(characterId)!
   }
 
-  if (!character.accessToken || !character.refreshToken) {
-    return { accessToken: null, characterId }
+  const performRefresh = async () => {
+    try {
+      const character = await prisma.character.findUnique({
+        where: { id: characterId },
+        select: {
+          id: true,
+          accessToken: true,
+          refreshToken: true,
+          tokenExpiresAt: true,
+        },
+      })
+
+      if (!character || !character.accessToken || !character.refreshToken) {
+        return { accessToken: null, characterId }
+      }
+
+      const now = new Date()
+      const expiresAt = character.tokenExpiresAt
+
+      // If token is still valid (more than 5 mins remaining), return it
+      if (expiresAt && expiresAt.getTime() > now.getTime() + 5 * 60 * 1000) {
+        return { accessToken: character.accessToken, characterId }
+      }
+
+      console.log(`[TokenManager] Refreshing token for character ${characterId}...`)
+      const newTokens = await refreshAccessToken(character.refreshToken)
+      
+      if (!newTokens) {
+        return { accessToken: null, characterId }
+      }
+
+      const newExpiresAt = new Date(Date.now() + newTokens.expires_in * 1000)
+
+      await prisma.character.update({
+        where: { id: characterId },
+        data: {
+          accessToken: newTokens.access_token,
+          refreshToken: newTokens.refresh_token,
+          tokenExpiresAt: newExpiresAt,
+        },
+      })
+
+      return { accessToken: newTokens.access_token, characterId }
+    } finally {
+      // Always clear the promise from the map when done
+      refreshPromises.delete(characterId)
+    }
   }
 
-  const now = new Date()
-  const expiresAt = character.tokenExpiresAt
-
-  if (expiresAt && expiresAt.getTime() > now.getTime() + 5 * 60 * 1000) {
-    return { accessToken: character.accessToken, characterId }
-  }
-
-  const newTokens = await refreshAccessToken(character.refreshToken)
-  
-  if (!newTokens) {
-    return { accessToken: null, characterId }
-  }
-
-  const newExpiresAt = new Date(Date.now() + newTokens.expires_in * 1000)
-
-  await prisma.character.update({
-    where: { id: characterId },
-    data: {
-      accessToken: newTokens.access_token,
-      refreshToken: newTokens.refresh_token,
-      tokenExpiresAt: newExpiresAt,
-    },
-  })
-
-  return { accessToken: newTokens.access_token, characterId }
+  const promise = performRefresh()
+  refreshPromises.set(characterId, promise)
+  return promise
 }
 
 export function isTokenExpired(expiresAt: Date | null): boolean {

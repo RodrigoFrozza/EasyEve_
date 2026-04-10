@@ -8,8 +8,8 @@ import { formatSP, formatISK, timeAgo } from '@/lib/utils'
 import { MapPin, Ship, Zap, Wallet, Plus, Users } from 'lucide-react'
 import { LinkCharacterButton, RefreshCharacterButton, RemoveCharacterButton, SetMainButton, CopyInviteLink, CharacterScopesDialog, ReloginButton } from '@/components/character-actions'
 import { getSession } from '@/lib/session'
-import { TimeAgo } from '@/components/time-ago'
-
+import { CharacterCard } from '@/components/character-card'
+import { getSession } from '@/lib/session'
 interface CharacterData {
   id: number
   name: string
@@ -101,7 +101,9 @@ export default async function CharactersPage() {
                   <p className="text-white font-mono">{user.accountCode}</p>
                 </div>
               </div>
-              <CopyInviteLink accountCode={user.accountCode} />
+              <div className="flex gap-2">
+                <CopyInviteLink accountCode={user.accountCode} />
+              </div>
             </div>
             <p className="text-xs text-gray-500 mt-2">
               Share this link with your alts to link them to your account
@@ -197,75 +199,5 @@ export default async function CharactersPage() {
         </Card>
       )}
     </div>
-  )
-}
-
-function CharacterCard({ character, accountCode, detailed = false }: { character: CharacterData, accountCode: string, detailed?: boolean }) {
-  return (
-    <Card className={`bg-eve-panel border-eve-border ${character.isMain ? 'ring-2 ring-eve-accent' : ''}`}>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-12 w-12">
-              <AvatarImage src={`https://images.evetech.net/characters/${character.id}/portrait?size=128`} />
-              <AvatarFallback>{character.name[0]}</AvatarFallback>
-            </Avatar>
-            <div>
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-lg text-white">{character.name}</CardTitle>
-                {character.isMain && <Badge variant="eve">Main</Badge>}
-              </div>
-              <p className="text-sm text-gray-400">ID: {character.id}</p>
-            </div>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center gap-2 text-sm">
-            <Zap className="h-4 w-4 text-eve-accent" />
-            <span className="text-gray-400">SP:</span>
-            <span className="font-medium text-white">{formatSP(character.totalSp)}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Wallet className="h-4 w-4 text-green-400" />
-            <span className="text-gray-400">ISK:</span>
-            <span className="font-medium text-green-400">{formatISK(character.walletBalance)}</span>
-          </div>
-          {character.location && (
-            <div className="flex items-center gap-2 text-sm col-span-2">
-              <MapPin className="h-4 w-4 text-blue-400" />
-              <span className="text-gray-400">Location:</span>
-              <span className="font-medium text-white">{character.location}</span>
-            </div>
-          )}
-          {character.ship && (
-            <div className="flex items-center gap-2 text-sm col-span-2">
-              <Ship className="h-4 w-4 text-purple-400" />
-              <span className="text-gray-400">Ship:</span>
-              <span className="font-medium text-white">{character.ship}</span>
-            </div>
-          )}
-        </div>
-
-        {detailed && (
-          <div className="pt-4 border-t border-eve-border">
-            <p className="text-xs text-gray-500">
-              Last updated: <TimeAgo date={character.lastFetchedAt} />
-            </p>
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-2 pt-2">
-          <SetMainButton characterId={character.id} isMain={character.isMain} />
-          <RefreshCharacterButton characterId={character.id} />
-          <CharacterScopesDialog scopes={character.scopes} />
-          <ReloginButton accountCode={accountCode} />
-          {!character.isMain && (
-            <RemoveCharacterButton characterId={character.id} />
-          )}
-        </div>
-      </CardContent>
-    </Card>
   )
 }
