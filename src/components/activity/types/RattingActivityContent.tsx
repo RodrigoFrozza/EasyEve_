@@ -280,7 +280,7 @@ export function RattingActivityContent({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-black text-zinc-100 truncate tracking-tight group-hover/p:text-white transition-colors">{p.characterName}</p>
-                    <p className="text-[10px] text-zinc-600 truncate uppercase font-black tracking-widest leading-none mt-1.5 group-hover/p:text-eve-accent transition-colors">{p.fit || 'Awaiting Fit...'}</p>
+                    <p className="text-[10px] text-zinc-600 truncate uppercase font-black tracking-widest leading-none mt-1.5 group-hover/p:text-eve-accent transition-colors">{p.fit || '—'}</p>
                   </div>
                 </div>
               ))}
@@ -316,7 +316,7 @@ export function RattingActivityContent({
           <div className="flex items-center gap-2">
              <div className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
              <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest font-mono">
-               {activity.data?.lastSyncAt ? `Telemetry Linked: ${timeAgo(activity.data.lastSyncAt)}` : 'ESI Data Pending...'}
+               {activity.data?.lastSyncAt ? `Last Sync: ${timeAgo(activity.data.lastSyncAt)}` : 'ESI Data Pending...'}
              </p>
           </div>
         </div>
@@ -336,7 +336,7 @@ export function RattingActivityContent({
           ) : (
             <RefreshCw className={cn("h-5 w-5 transition-transform duration-700 group-hover/sync:rotate-180", syncStatus === 'success' && "text-green-500")} />
           )}
-          <span>{isSyncing ? 'Linking Satellite Data...' : 'Synchronize ESI Assets'}</span>
+          <span>{isSyncing ? 'Linking Satellite Data...' : 'Synchronize ESI'}</span>
         </button>
       </div>
     </div>

@@ -8,7 +8,8 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { FleetSection } from '../shared/FleetSection'
 import { Button } from '@/components/ui/button'
-import { Loader2, Gem, Download, MapPin, Clock, Users, Layers, TrendingUp } from 'lucide-react'
+import { Loader2, Gem, Download, MapPin, Clock, Users, Layers, TrendingUp, Activity as ActivityIcon } from 'lucide-react'
+import { Sparkline } from '@/components/ui/Sparkline'
 
 interface MiningActivityContentProps {
   activity: any
@@ -16,12 +17,14 @@ interface MiningActivityContentProps {
   isSyncing: boolean
   syncStatus: 'idle' | 'success' | 'error'
   onEnd: () => void
+  displayMode?: 'compact' | 'expanded'
 }
 
-export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus, onEnd }: MiningActivityContentProps) {
+export function MiningActivityContent({ 
+  activity, onSync, isSyncing, syncStatus, onEnd, displayMode = 'expanded' 
+}: MiningActivityContentProps) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    fleet: true,
-    mining: false,
+    mining: true,
     ledger: false
   })
   const [logFilterChar, setLogFilterChar] = useState('all')
@@ -196,53 +199,73 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
     document.body.removeChild(link)
   }
 
+  if (displayMode === 'compact') {
+    return (
+      <div className="space-y-4 animate-in fade-in duration-500">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.1)]">
+              <Gem className="h-5 w-5 text-blue-400" />
+            </div>
+            <div>
+              <p className="text-[10px] text-blue-400/50 uppercase font-bold tracking-widest mb-0.5">Yield Actual</p>
+              <p className="text-lg font-black text-white font-mono leading-none">{formatNumber(Math.round(m3PerHour))}<span className="text-xs text-blue-400 ml-1">m³/h</span></p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] text-green-400/50 uppercase font-bold tracking-widest mb-0.5">Est. Profit</p>
+            <p className="text-lg font-black text-white font-mono leading-none">{formatNumber(Math.round(iskPerHour / 1000000))}<span className="text-xs text-green-400 ml-1">M/h</span></p>
+          </div>
+        </div>
+
+        {/* Tactical Sparkline */}
+        <div className="h-16 bg-zinc-950/50 rounded-xl border border-white/[0.03] overflow-hidden relative group">
+          <div className="absolute inset-0 bg-gradient-to-t from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <Sparkline 
+            data={logs.map((l: any) => l.quantity)} 
+            color="#3b82f6" 
+            height={64}
+          />
+          <div className="absolute top-2 left-2 flex items-center gap-1.5">
+            <TrendingUp className="h-3 w-3 text-blue-400/50" />
+            <span className="text-[8px] text-blue-400/30 uppercase font-bold tracking-widest">Extraction Volume Flux</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-zinc-900/40 p-2.5 rounded-lg border border-white/[0.02] flex items-center justify-between">
+            <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider">Total</span>
+            <span className="text-xs font-bold text-blue-400 font-mono">{formatNumber(miningTotalQuantity)} m³</span>
+          </div>
+          <div className="bg-zinc-900/40 p-2.5 rounded-lg border border-white/[0.02] flex items-center justify-between">
+             <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider">Sync</span>
+             <span className="text-xs font-bold text-zinc-400 font-mono uppercase">{lastSyncFormatted || 'PENDING'}</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-3">
-      {/* Main Stats Grid - 4 columns */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-2.5 backdrop-blur-sm">
+      {/* Main Stats Grid - Focus on 2 columns as per user request */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-3 backdrop-blur-sm">
           <p className="text-[9px] text-blue-400/50 uppercase font-bold tracking-widest mb-1">Total Minerado</p>
-          <p className="text-lg font-bold text-blue-400 font-mono tracking-tight">{formatNumber(miningTotalQuantity)} m³</p>
+          <p className="text-xl font-bold text-blue-400 font-mono tracking-tight">{formatNumber(miningTotalQuantity)} m³</p>
           <p className="text-[9px] text-blue-400/30 mt-1">{formatNumber(Math.round(m3PerHour))} m³/h</p>
         </div>
-        <div className="bg-green-500/5 border border-green-500/10 rounded-lg p-2.5 backdrop-blur-sm">
+        <div className="bg-green-500/5 border border-green-500/10 rounded-lg p-3 backdrop-blur-sm">
           <p className="text-[9px] text-green-400/50 uppercase font-bold tracking-widest mb-1">Valor Estimado</p>
-          <p className="text-lg font-bold text-green-400 font-mono tracking-tight">{formatISK(miningTotalValue)}</p>
+          <p className="text-xl font-bold text-green-400 font-mono tracking-tight">{formatISK(miningTotalValue)}</p>
           <p className="text-[9px] text-green-400/30 mt-1">{formatISK(iskPerHour)}/h</p>
-        </div>
-        <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-lg p-2.5 backdrop-blur-sm">
-          <p className="text-[9px] text-cyan-400/50 uppercase font-bold tracking-widest mb-1">Pilotos</p>
-          <p className="text-lg font-bold text-cyan-400 font-mono tracking-tight">{uniqueChars.length}</p>
-          <p className="text-[9px] text-cyan-400/30 mt-1 flex items-center gap-1">
-            <Layers className="h-3 w-3" />
-            {sortedOreTypes.length} ores
-          </p>
-        </div>
-        <div className="bg-purple-500/5 border border-purple-500/10 rounded-lg p-2.5 backdrop-blur-sm">
-          <p className="text-[9px] text-purple-400/50 uppercase font-bold tracking-widest mb-1">Duração</p>
-          <p className="text-lg font-bold text-purple-400 font-mono tracking-tight">{activityDuration}</p>
-          <p className="text-[9px] text-purple-400/30 mt-1 flex items-center gap-1">
-            <MapPin className="h-3 w-3" />
-            {mainSystem}
-          </p>
         </div>
       </div>
 
-      {/* Tabs Navigation */}
+      {/* Tabs Navigation - Simplified (No Fleet tab) */}
       <div className="flex gap-1.5 p-1 rounded-full bg-zinc-950/80 border border-zinc-900/50 mb-3 backdrop-blur-xl">
         <button
-          onClick={() => toggleSection('fleet')}
-          className={cn(
-            "flex-1 px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all duration-300",
-            expandedSections.fleet 
-              ? "bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_12px_rgba(59,130,246,0.1)]" 
-              : "text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50"
-          )}
-        >
-          Fleet
-        </button>
-        <button
-          onClick={() => toggleSection('mining')}
+          onClick={() => setExpandedSections({ mining: true, ledger: false })}
           className={cn(
             "flex-1 px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all duration-300",
             expandedSections.mining 
@@ -253,7 +276,7 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
           Ores ({sortedOreTypes.length})
         </button>
         <button
-          onClick={() => toggleSection('ledger')}
+          onClick={() => setExpandedSections({ mining: false, ledger: true })}
           className={cn(
             "flex-1 px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all duration-300",
             expandedSections.ledger 
@@ -267,16 +290,6 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
 
       {/* Tab Content */}
       <div className="min-h-[180px]">
-        {expandedSections.fleet && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <FleetSection 
-              participants={activity.participants} 
-              participantEarnings={participantEarnings}
-              isMining={true}
-            />
-          </div>
-        )}
-
         {expandedSections.mining && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             {sortedOreTypes.length === 0 ? (
@@ -391,7 +404,7 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
         )}
       </div>
       
-      {/* Sync Button with Last Sync Info */}
+      {/* Sync Button */}
       <div className="pt-3 mt-2 border-t border-zinc-900/50 flex items-center gap-2">
         <button 
           disabled={isSyncing}

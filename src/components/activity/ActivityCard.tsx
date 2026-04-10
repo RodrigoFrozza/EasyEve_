@@ -7,34 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Image from 'next/image'
 import { 
-  Box, 
-  Play, 
-  StopCircle, 
-  Trash2, 
-  RefreshCw, 
-  History, 
-  Clock, 
-  TrendingUp, 
-  Plus, 
-  X,
-  CheckCircle,
-  XCircle,
-  Loader2,
-  Wrench,
-  Wallet,
-  PiggyBank,
-  Package,
-  Receipt,
-  List,
-  Table2,
-  HelpCircle,
-  Download,
-  Filter,
-  LayoutGrid,
-  AlignJustify,
-  ChevronDown,
-  ChevronUp,
-  Activity as ActivityIcon
+  Users, Clock, Play, Square, RefreshCcw, MoreHorizontal, Settings, 
+  ChevronRight, Activity as ActivityIcon, Wallet, Zap, 
+  MapPin, Shield, Target, AlertTriangle, Eye, EyeOff, LayoutGrid, AlignJustify,
+  StopCircle, Trash2, RefreshCw, History, TrendingUp, Plus, X, CheckCircle, XCircle, Loader2, Wrench, PiggyBank, Box
 } from 'lucide-react'
 import { 
   Dialog, 
@@ -78,7 +54,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   const { t } = useTranslations()
 
   // Toggle de visualização
-  const [displayMode, setDisplayMode] = useState<'compact' | 'tabs' | 'expanded'>('compact')
+  const [displayMode, setDisplayMode] = useState<'compact' | 'expanded'>('compact')
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     fleet: true,
     mtu: true,
@@ -256,7 +232,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
 
     const timer = setInterval(updateTimer, 1000);
     updateTimer();
-    return () => clearInterval(timer);
+    return () => clearInterval(timer)
   }, [activity.type]);
 
   const incomeHistory = useMemo(() => {
@@ -380,20 +356,22 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
               <button
                 onClick={() => setDisplayMode('compact')}
                 className={cn(
-                  "px-3 py-1 rounded-full transition-all duration-500 text-[10px] font-black uppercase tracking-widest",
+                  "p-1.5 rounded-full transition-all duration-500",
                   displayMode === 'compact' ? "bg-eve-accent text-black shadow-[0_0_15px_rgba(0,255,255,0.3)]" : "text-zinc-500 hover:text-zinc-300"
                 )}
+                title="Compact View"
               >
-                HUD
+                <LayoutGrid className="h-4 w-4" />
               </button>
               <button
-                onClick={() => setDisplayMode('tabs')}
+                onClick={() => setDisplayMode('expanded')}
                 className={cn(
-                  "px-3 py-1 rounded-full transition-all duration-500 text-[10px] font-black uppercase tracking-widest",
-                  displayMode === 'tabs' ? "bg-eve-accent text-black shadow-[0_0_15px_rgba(0,255,255,0.3)]" : "text-zinc-500 hover:text-zinc-300"
+                  "p-1.5 rounded-full transition-all duration-500",
+                  displayMode === 'expanded' ? "bg-eve-accent text-black shadow-[0_0_15px_rgba(0,255,255,0.3)]" : "text-zinc-500 hover:text-zinc-300"
                 )}
+                title="Detailed View"
               >
-                DATA
+                <AlignJustify className="h-4 w-4" />
               </button>
             </div>
             
@@ -458,7 +436,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-zinc-100 truncate tracking-tight">{p.characterName}</p>
-                        <p className="text-[9px] text-zinc-600 truncate uppercase font-bold tracking-widest leading-none mt-1 group-hover:text-zinc-400 transition-colors">{p.fit || 'No fit recorded'}</p>
+                        <p className="text-[9px] text-zinc-600 truncate uppercase font-bold tracking-widest leading-none mt-1 group-hover:text-zinc-400 transition-colors">{p.fit || '—'}</p>
                       </div>
                     </div>
                   ))}
@@ -574,7 +552,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                  syncStatus === 'success' ? <CheckCircle className="h-4 w-4 mr-2 text-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" /> :
                  syncStatus === 'error' ? <XCircle className="h-4 w-4 mr-2 text-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]" /> :
                  <RefreshCw className="h-4 w-4 mr-3 group-hover:rotate-180 transition-transform duration-700" />}
-                <span className="relative z-10">{isSyncing ? 'Synchronizing...' : 'Synchronize ESI Assets'}</span>
+                <span className="relative z-10">{isSyncing ? 'Synchronizing...' : 'Synchronize ESI'}</span>
               </Button>
               <Button 
                 size="sm" 
