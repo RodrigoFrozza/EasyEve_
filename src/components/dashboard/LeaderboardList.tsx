@@ -7,6 +7,16 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { Target, Zap, Clock } from 'lucide-react'
+import { 
+  startOfDay, 
+  startOfWeek, 
+  startOfMonth,
+  addDays,
+  addWeeks,
+  addMonths,
+  differenceInSeconds,
+  startOfToday
+} from 'date-fns'
 
 interface LeaderboardItem {
   userId: string
@@ -27,36 +37,31 @@ interface LeaderboardListProps {
 
 function getCountdown(period: string): string {
   const now = new Date()
-  const utc = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds())
+  
+  if (period === 'alltime') {
+    return 'N/A'
+  }
   
   let target: Date
   
   switch (period) {
     case 'daily':
-      target = new Date(Date.UTC(utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate() + 1, 0, 0, 0, 0))
+      target = addDays(startOfDay(now), 1)
       break
     case 'weekly':
-      const day = utc.getUTCDay()
-      const daysUntilMonday = day === 0 ? 1 : 7 - day + 1
-      target = new Date(Date.UTC(utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate() + daysUntilMonday, 0, 0, 0, 0))
+      target = addWeeks(startOfWeek(now, { weekStartsOn: 1 }), 1)
       break
     case 'monthly':
-      target = new Date(Date.UTC(utc.getUTCFullYear(), utc.getUTCMonth() + 1, 1, 0, 0, 0, 0))
+      target = addMonths(startOfMonth(now), 1)
       break
-    case 'alltime':
-      const yearEnd = new Date(Date.UTC(utc.getUTCFullYear() + 1, 0, 1, 0, 0, 0, 0))
-      const daysUntilYear = Math.ceil((yearEnd.getTime() - utc.getTime()) / (1000 * 60 * 60 * 24))
-      const hours = Math.floor((yearEnd.getTime() - utc.getTime()) / (1000 * 60 * 60))
-      const mins = Math.floor(((yearEnd.getTime() - utc.getTime()) / (1000 * 60)) % 60)
-      return `${daysUntilYear}d ${hours % 24}h`
     default:
       return '--'
   }
   
-  const diff = target.getTime() - utc.getTime()
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  const mins = Math.floor((diff / (1000 * 60)) % 60)
-  const secs = Math.floor((diff / 1000) % 60)
+  const diff = differenceInSeconds(target, now)
+  const hours = Math.floor(diff / 3600)
+  const mins = Math.floor((diff % 3600) / 60)
+  const secs = diff % 60
   
   return `${hours}h ${mins}m ${secs}s`
 }

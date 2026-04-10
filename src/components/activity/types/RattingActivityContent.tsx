@@ -8,9 +8,10 @@ import { MTULootField } from '../MTULootField'
 import { SalvageField } from '../SalvageField'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Loader2, RefreshCw, TrendingUp, TrendingDown, StopCircle, History, Activity as ActivityIcon, ShieldAlert } from 'lucide-react'
+import { Loader2, RefreshCw, TrendingUp, TrendingDown, StopCircle, History, Activity as ActivityIcon } from 'lucide-react'
 import { Sparkline } from '@/components/ui/Sparkline'
 import { ActivityDetailDialog } from '../ActivityDetailDialog'
+import { MTUInputModal, SalvageInputModal, ConfirmEndModal } from '../modals'
 
 interface RattingActivityContentProps {
   activity: any
@@ -28,7 +29,7 @@ export function RattingActivityContent({
   isSyncing, 
   syncStatus,
   essCountdown,
-  displayMode = 'expanded',
+  displayMode = 'compact',
   onEnd
 }: RattingActivityContentProps) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -36,6 +37,10 @@ export function RattingActivityContent({
     mtu: false,
     salvage: false
   })
+
+  const [mtuModalOpen, setMtuModalOpen] = useState(false)
+  const [salvageModalOpen, setSalvageModalOpen] = useState(false)
+  const [confirmEndOpen, setConfirmEndOpen] = useState(false)
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
@@ -45,8 +50,6 @@ export function RattingActivityContent({
   const automatedEss = activity.data?.automatedEss || 0
   const automatedTaxes = activity.data?.automatedTaxes || 0
   const additionalBounties = activity.data?.additionalBounties || 0
-  const estimatedLootValue = activity.data?.estimatedLootValue || 0 
-  const estimatedSalvageValue = activity.data?.estimatedSalvageValue || 0
 
   const totalIsk = calculateNetProfit(activity.data)
   const durationHours = Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000)
@@ -72,288 +75,304 @@ export function RattingActivityContent({
     })
   }
 
+  const handleConfirmEnd = () => {
+    setConfirmEndOpen(false)
+    onEnd?.()
+  }
+
   if (displayMode === 'compact') {
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
-        <div className="grid grid-cols-1 gap-4">
-          <div className="relative bg-gradient-to-br from-zinc-900 to-black p-6 rounded-2xl border border-white/[0.03] overflow-hidden group/hud shadow-2xl">
-            {/* Background Sparkline */}
-            <div className="absolute inset-x-0 bottom-0 top-1/2 opacity-20 pointer-events-none transition-opacity group-hover/hud:opacity-40">
-              <Sparkline 
-                data={incomeHistory} 
-                width={400} 
-                height={80} 
-                color="#00ffff" 
-                className="w-full h-full"
-                strokeWidth={3}
-              />
+        <div className="space-y-3">
+          <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+            {activity.participants.map((p: any) => (
+              <div key={p.characterId} className="flex-shrink-0 flex flex-col items-center gap-1.5 p-2 bg-zinc-900/40 border border-white/[0.03] rounded-xl hover:bg-zinc-900/60 transition-colors">
+                <Avatar className="h-8 w-8 border border-zinc-700">
+                  <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
+                  <AvatarFallback className="bg-zinc-900 text-[10px] font-black">{p.characterName?.slice(0, 2)}</AvatarFallback>
+                </Avatar>
+                <span className="text-[8px] text-zinc-400 font-black uppercase tracking-wider truncate max-w-[50px]">
+                  {p.characterName?.split(' ')[0]}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 rounded-xl p-3 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-8 h-8 bg-green-500/10 blur-xl rounded-full" />
+              <p className="text-[8px] text-green-400/70 uppercase font-black tracking-wider mb-1">Total Bounty</p>
+              <p className="text-sm font-black text-white font-mono tracking-tight">
+                {formatISK(automatedBounties + additionalBounties)}
+              </p>
             </div>
 
-            <div className="relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">
-                    COMBAT TELEMETRY // REVENUE
-                  </p>
-                  <TrendIcon className={cn("h-3 w-3", trendColor)} />
-                </div>
-                <p className="text-4xl font-black text-white font-mono tracking-tighter flex items-baseline gap-2">
-                  <span className="text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.3)]">
-                    {formatISK(totalIsk)}
-                  </span>
-                  <span className="text-xs text-zinc-600 font-bold uppercase tracking-widest">ISK</span>
-                </p>
+            <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border border-yellow-500/20 rounded-xl p-3 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-8 h-8 bg-yellow-500/10 blur-xl rounded-full" />
+              <p className="text-[8px] text-yellow-400/70 uppercase font-black tracking-wider mb-1">Total ESS</p>
+              <p className="text-sm font-black text-white font-mono tracking-tight">
+                {formatISK(automatedEss)}
+              </p>
+              {essCountdown && (
+                <p className="text-[8px] text-cyan-400 font-mono mt-1">{essCountdown}</p>
+              )}
+            </div>
+
+            <div className="bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20 rounded-xl p-3 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-8 h-8 bg-cyan-500/10 blur-xl rounded-full" />
+              <div className="flex items-center gap-1 mb-1">
+                <p className="text-[8px] text-cyan-400/70 uppercase font-black tracking-wider">ISK/h</p>
+                <TrendIcon className={cn("h-2.5 w-2.5", trendColor)} />
               </div>
-              
-              <div className="text-left sm:text-right space-y-1 bg-zinc-950/40 p-3 rounded-xl border border-white/[0.03] backdrop-blur-sm">
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Efficiency Scale</p>
-                <div className="flex items-center gap-2 justify-end">
-                  <p className="text-xl font-black text-white font-mono tracking-tighter">
-                    {formatISK(iskPerHour)}<span className="text-[10px] text-zinc-600 ml-1">/H</span>
-                  </p>
-                </div>
-              </div>
+              <p className="text-sm font-black text-white font-mono tracking-tight">
+                {formatISK(iskPerHour)}
+              </p>
             </div>
           </div>
 
-          {/* Action Cluster */}
-          <div className="flex items-center gap-2">
+          <div className="flex gap-2">
             <Button 
               size="sm" 
               variant="outline"
-              disabled={isSyncing}
-              onClick={onSync}
-              className={cn(
-                "flex-1 h-12 bg-zinc-950/80 border-white/[0.05] hover:bg-cyan-500/10 hover:border-cyan-500/50 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-cyan-400 transition-all duration-500 rounded-xl relative overflow-hidden group/btn",
-                isSyncing && "animate-pulse border-cyan-500/50 bg-cyan-500/5"
-              )}
+              onClick={() => setMtuModalOpen(true)}
+              className="flex-1 h-10 bg-blue-500/5 border-blue-500/20 hover:bg-blue-500/20 hover:border-blue-500/50 text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-wider"
             >
-              <div className="absolute inset-x-0 bottom-0 h-0.5 bg-cyan-500 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
-              {isSyncing ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className={cn("h-4 w-4 mr-2", syncStatus === 'success' && "text-green-500")} />
-              )}
-              {isSyncing ? 'Linking Satellite...' : 'Satellite Uplink'}
+              <span className="mr-1">+</span> Add MTU
             </Button>
-            
-            <ActivityDetailDialog 
-              activity={activity} 
-              trigger={
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  className="h-12 px-6 bg-white/[0.02] border-white/[0.05] hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl transition-all"
-                >
-                  <History className="h-4 w-4" />
-                </Button>
-              }
-            />
-            
             <Button 
-              size="sm"
+              size="sm" 
               variant="outline"
-              onClick={onEnd}
-              className="h-12 px-6 bg-red-500/5 border-red-500/10 hover:bg-red-500 hover:text-black hover:border-red-500 rounded-xl text-red-500 transition-all group/end"
+              onClick={() => setSalvageModalOpen(true)}
+              className="flex-1 h-10 bg-orange-500/5 border-orange-500/20 hover:bg-orange-500/20 hover:border-orange-500/50 text-orange-400 rounded-xl text-[10px] font-black uppercase tracking-wider"
             >
-              <StopCircle className="h-4 w-4 group-hover/end:scale-110 transition-transform" />
+              <span className="mr-1">+</span> Add Salvage
             </Button>
           </div>
         </div>
+
+        <div className="flex gap-2 pt-2 border-t border-white/[0.03]">
+          <Button 
+            size="sm" 
+            variant="outline"
+            disabled={isSyncing}
+            onClick={onSync}
+            className={cn(
+              "flex-1 h-10 bg-zinc-950/60 border-white/[0.05] hover:bg-cyan-500/10 hover:border-cyan-500/50 text-zinc-400 hover:text-cyan-400 transition-all duration-500 rounded-xl text-[10px] font-black uppercase tracking-wider",
+              isSyncing && "animate-pulse border-cyan-500/50 bg-cyan-500/5"
+            )}
+          >
+            {isSyncing ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", syncStatus === 'success' && "text-green-500")} />
+            )}
+            Sync API
+          </Button>
+          
+          <Button 
+            size="sm" 
+            variant="outline"
+            className="h-10 px-4 bg-white/[0.02] border-white/[0.05] hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl transition-all"
+          >
+            <History className="h-3.5 w-3.5" />
+          </Button>
+
+          <Button 
+            size="sm"
+            variant="outline"
+            onClick={() => setConfirmEndOpen(true)}
+            className="flex-1 h-10 bg-red-500/5 border-red-500/10 hover:bg-red-500 hover:text-black hover:border-red-500 rounded-xl text-red-500 text-[10px] font-black uppercase tracking-wider transition-all"
+          >
+            <StopCircle className="h-3.5 w-3.5 mr-1" />
+            End
+          </Button>
+        </div>
+
+        <MTUInputModal
+          open={mtuModalOpen}
+          onOpenChange={setMtuModalOpen}
+          onSave={handleMTUChange}
+          existingItems={mtuContents}
+          mtuValues={activity.data?.mtuValues}
+        />
+        
+        <SalvageInputModal
+          open={salvageModalOpen}
+          onOpenChange={setSalvageModalOpen}
+          onSave={handleSalvageChange}
+          existingItems={salvageContents}
+        />
+
+        <ConfirmEndModal
+          open={confirmEndOpen}
+          onOpenChange={setConfirmEndOpen}
+          onConfirm={handleConfirmEnd}
+          activityName={activity.data?.siteName || activity.item?.name || 'Ratting'}
+        />
       </div>
     )
   }
 
   return (
-    <div className="space-y-3">
-      {/* Stats Grid - Instruments Style */}
-      <div className="space-y-4">
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-zinc-950/40 border border-white/[0.03] rounded-2xl p-4 backdrop-blur-md relative overflow-hidden group/inst transition-all hover:border-eve-accent/20">
-            <div className="absolute top-0 right-0 p-4 bg-green-500/5 blur-2xl rounded-full" />
-            <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-2 flex items-center gap-1.5 font-mono">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-              BOUNTY
-            </p>
-            <div className="space-y-0.5 relative z-10">
-              <p className="text-xl font-black text-white font-mono tracking-tighter">
-                {formatISK(automatedBounties + additionalBounties)}
-              </p>
-              <div className="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
-                 <div className="h-full bg-green-500/50 w-[70%]" />
-              </div>
+    <div className="space-y-4">
+      <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+        {activity.participants.map((p: any) => (
+          <div key={p.characterId} className="flex-shrink-0 flex flex-col items-center gap-1.5 p-2 bg-zinc-900/40 border border-white/[0.03] rounded-xl hover:bg-zinc-900/60 transition-colors">
+            <Avatar className="h-10 w-10 border-2 border-zinc-700">
+              <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
+              <AvatarFallback className="bg-zinc-900 text-xs font-black">{p.characterName?.slice(0, 2)}</AvatarFallback>
+            </Avatar>
+            <div className="text-center">
+              <span className="text-[9px] text-zinc-300 font-bold block truncate max-w-[60px]">
+                {p.characterName?.split(' ')[0]}
+              </span>
+              <span className="text-[7px] text-zinc-600 uppercase tracking-wider truncate max-w-[60px] block">
+                {p.fit || '—'}
+              </span>
             </div>
           </div>
+        ))}
+      </div>
 
-          <div className="bg-zinc-950/40 border border-white/[0.03] rounded-2xl p-4 backdrop-blur-md relative overflow-hidden group/inst transition-all hover:border-eve-accent/20">
-            <div className="absolute top-0 right-0 p-4 bg-yellow-500/5 blur-2xl rounded-full" />
-            <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-2 flex items-center gap-1.5 font-mono">
-              <span className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
-              ESS
-            </p>
-            <div className="space-y-0.5 relative z-10">
-              <p className="text-xl font-black text-white font-mono tracking-tighter">
-                {formatISK(automatedEss)}
-              </p>
-              {essCountdown && (
-                <p className="text-[9px] text-cyan-500 font-mono font-bold animate-pulse">{essCountdown}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-zinc-950/40 border border-white/[0.03] rounded-2xl p-4 backdrop-blur-md relative overflow-hidden group/inst transition-all hover:border-eve-accent/20">
-            <div className="absolute top-0 right-0 p-4 bg-red-500/5 blur-2xl rounded-full" />
-            <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-2 flex items-center gap-1.5 font-mono">
-              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-              TAXES
-            </p>
-            <div className="space-y-0.5 relative z-10">
-              <p className="text-xl font-black text-zinc-400 font-mono tracking-tighter">
-                {formatISK(automatedTaxes)}
-              </p>
-              <div className="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
-                 <div className="h-full bg-red-500/30 w-[15%]" />
-              </div>
-            </div>
-          </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 rounded-xl p-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 bg-green-500/10 blur-xl rounded-full" />
+          <p className="text-[9px] text-green-400/70 uppercase font-black tracking-wider mb-1">Bounty</p>
+          <p className="text-xl font-black text-white font-mono tracking-tight">
+            {formatISK(automatedBounties + additionalBounties)}
+          </p>
         </div>
 
-        {/* Performance Summary HUD */}
-        <div className="p-5 rounded-2xl bg-gradient-to-r from-cyan-500/10 to-transparent border border-white/[0.05] backdrop-blur-xl flex items-center justify-between shadow-2xl relative overflow-hidden group/hud">
-          <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500 opacity-50 shadow-[0_0_15px_rgba(34,211,238,0.5)]" />
-          <div className="space-y-1">
-            <p className="text-[10px] text-cyan-400 font-black tracking-[0.3em] uppercase opacity-70 flex items-center gap-2">
-              TACTICAL PERFORMANCE HUD
-              <TrendIcon className={cn("h-2.5 w-2.5", trendColor)} />
-            </p>
-            <p className="text-3xl font-black text-white font-mono tracking-tighter leading-none flex items-baseline gap-2">
-              {formatISK(totalIsk)}
-              <span className="text-sm text-zinc-600 font-black uppercase">ISK</span>
-            </p>
+        <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border border-yellow-500/20 rounded-xl p-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 bg-yellow-500/10 blur-xl rounded-full" />
+          <p className="text-[9px] text-yellow-400/70 uppercase font-black tracking-wider mb-1">ESS</p>
+          <p className="text-xl font-black text-white font-mono tracking-tight">
+            {formatISK(automatedEss)}
+          </p>
+          {essCountdown && (
+            <p className="text-[9px] text-cyan-400 font-mono mt-1">{essCountdown}</p>
+          )}
+        </div>
+
+        <div className="bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20 rounded-xl p-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 bg-cyan-500/10 blur-xl rounded-full" />
+          <div className="flex items-center gap-1 mb-1">
+            <p className="text-[9px] text-cyan-400/70 uppercase font-black tracking-wider">ISK/h</p>
+            <TrendIcon className={cn("h-3 w-3", trendColor)} />
           </div>
-          <div className="text-right">
-            <p className="text-[10px] text-zinc-500 font-black tracking-[0.2em] uppercase mb-1">Combat Efficiency</p>
-            <div className="bg-black/60 px-4 py-2 rounded-xl border border-white/[0.05] shadow-inner">
-              <p className="text-lg font-black text-white font-mono leading-none tracking-tighter">
-                {formatISK(iskPerHour)}<span className="text-xs text-zinc-600 ml-1">/H</span>
-              </p>
-            </div>
-          </div>
+          <p className="text-xl font-black text-white font-mono tracking-tight">
+            {formatISK(iskPerHour)}
+          </p>
         </div>
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="flex gap-1.5 p-1.5 rounded-2xl bg-zinc-950/60 border border-white/[0.03] mb-6 mt-4 backdrop-blur-xl shadow-inner">
-        <button
-          onClick={() => setExpandedSections({ fleet: true, mtu: false, salvage: false })}
-          className={cn(
-            "flex-1 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all duration-500",
-            expandedSections.fleet 
-              ? "bg-eve-accent text-black shadow-[0_0_20px_rgba(0,255,255,0.2)]" 
-              : "text-zinc-600 hover:text-zinc-400 hover:bg-white/[0.02]"
-          )}
-        >
-          Fleet
-        </button>
-        <button
-          onClick={() => setExpandedSections({ fleet: false, mtu: true, salvage: false })}
-          className={cn(
-            "flex-1 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all duration-500",
-            expandedSections.mtu 
-              ? "bg-blue-500 text-black shadow-[0_0_20px_rgba(59,130,246,0.2)]" 
-              : "text-zinc-600 hover:text-zinc-400 hover:bg-white/[0.02]"
-          )}
-        >
-          MTU
-        </button>
-        <button
-          onClick={() => setExpandedSections({ fleet: false, mtu: false, salvage: true })}
-          className={cn(
-            "flex-1 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all duration-500",
-            expandedSections.salvage 
-              ? "bg-orange-500 text-black shadow-[0_0_20px_rgba(249,115,22,0.2)]" 
-              : "text-zinc-600 hover:text-zinc-400 hover:bg-white/[0.02]"
-          )}
-        >
-          Salvage
-        </button>
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-zinc-950/40 border border-white/[0.03] rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="h-2 w-2 rounded-full bg-green-500" />
+            <span className="text-[10px] text-zinc-400 uppercase font-black tracking-wider">Last Transactions</span>
+          </div>
+          <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar">
+            {((activity.data as any)?.logs || []).slice(-10).reverse().map((log: any, idx: number) => (
+              <div key={idx} className="flex justify-between items-center text-xs p-2 bg-zinc-900/40 rounded-lg">
+                <span className="text-zinc-400 truncate">{log.charName || 'Unknown'}</span>
+                <span className="text-green-400 font-mono font-bold">{formatISK(log.amount || 0)}</span>
+              </div>
+            ))}
+            {((activity.data as any)?.logs || []).length === 0 && (
+              <p className="text-zinc-500 text-xs text-center py-4">No transactions yet</p>
+            )}
+          </div>
+        </div>
 
-      {/* Tab Content */}
-      <div className="min-h-[220px] relative">
-        {expandedSections.fleet && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {activity.participants.map((p: any) => (
-                <div key={p.characterId} className="flex items-center gap-4 p-4 bg-zinc-950/40 border border-white/[0.03] rounded-2xl backdrop-blur-sm group/p transition-all hover:bg-zinc-900/60 hover:border-eve-accent/30 shadow-lg">
-                  <div className="relative">
-                    <Avatar className="h-12 w-12 border-2 border-zinc-800 transition-transform group-hover/p:scale-110 group-hover/p:border-eve-accent/50 duration-500 shadow-xl">
-                      <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
-                      <AvatarFallback className="bg-zinc-900 text-xs font-black">{p.characterName?.slice(0, 2)}</AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-green-500 rounded-full border-2 border-[#050507] shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black text-zinc-100 truncate tracking-tight group-hover/p:text-white transition-colors">{p.characterName}</p>
-                    <p className="text-[10px] text-zinc-600 truncate uppercase font-black tracking-widest leading-none mt-1.5 group-hover/p:text-eve-accent transition-colors">{p.fit || '—'}</p>
-                  </div>
-                </div>
-              ))}
+        <div className="bg-zinc-950/40 border border-white/[0.03] rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-cyan-500" />
+              <span className="text-[10px] text-zinc-400 uppercase font-black tracking-wider">Efficiency Chart</span>
             </div>
           </div>
-        )}
-
-        {expandedSections.mtu && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <MTULootField 
-              value={mtuContents} 
-              activityId={activity.id}
-              mtuValues={activity.data?.mtuValues || []}
-              onChange={handleMTUChange}
+          <div className="h-[120px] w-full">
+            <Sparkline 
+              data={incomeHistory} 
+              width={300} 
+              height={120} 
+              color="#00d4ff" 
+              strokeWidth={2}
             />
           </div>
-        )}
-
-        {expandedSections.salvage && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <SalvageField 
-              value={salvageContents} 
-              activityId={activity.id}
-              onChange={handleSalvageChange}
-            />
-          </div>
-        )}
-      </div>
-      
-      {/* Sync Footer */}
-      <div className="pt-6 mt-6 border-t border-white/[0.05] space-y-4">
-        <div className="flex items-center justify-between px-2">
-          <div className="flex items-center gap-2">
-             <div className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
-             <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest font-mono">
-               {activity.data?.lastSyncAt ? `Last Sync: ${timeAgo(activity.data.lastSyncAt)}` : 'ESI Data Pending...'}
-             </p>
-          </div>
         </div>
-        <button 
+      </div>
+
+      <div className="flex gap-2 pt-4 border-t border-white/[0.05]">
+        <Button 
+          size="sm" 
+          variant="outline"
           disabled={isSyncing}
           onClick={onSync}
           className={cn(
-            "w-full h-14 text-[11px] uppercase font-black tracking-[0.3em] rounded-2xl transition-all duration-700 flex items-center justify-center gap-3 relative overflow-hidden group/sync",
-            isSyncing 
-              ? "bg-eve-accent/10 border-eve-accent/30 text-eve-accent animate-pulse" 
-              : "bg-zinc-950/60 border border-white/[0.05] hover:bg-zinc-900 text-zinc-500 hover:text-white hover:border-eve-accent/50 shadow-2xl"
+            "flex-1 h-12 bg-zinc-950/60 border-white/[0.05] hover:bg-cyan-500/10 hover:border-cyan-500/50 text-zinc-400 hover:text-cyan-400 transition-all duration-500 rounded-xl text-[11px] font-black uppercase tracking-wider",
+            isSyncing && "animate-pulse border-cyan-500/50 bg-cyan-500/5"
           )}
         >
-          <div className="absolute inset-x-0 bottom-0 h-0.5 bg-eve-accent opacity-0 group-hover/sync:opacity-100 transition-opacity" />
           {isSyncing ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
-            <RefreshCw className={cn("h-5 w-5 transition-transform duration-700 group-hover/sync:rotate-180", syncStatus === 'success' && "text-green-500")} />
+            <RefreshCw className={cn("h-4 w-4 mr-2", syncStatus === 'success' && "text-green-500")} />
           )}
-          <span>{isSyncing ? 'Acquiring Target Data...' : 'Synchronize Satellite Uplink'}</span>
-        </button>
+          Sync API
+        </Button>
+
+        <Button 
+          size="sm" 
+          variant="outline"
+          onClick={() => setMtuModalOpen(true)}
+          className="flex-1 h-12 bg-blue-500/5 border-blue-500/20 hover:bg-blue-500/20 hover:border-blue-500/50 text-blue-400 rounded-xl text-[11px] font-black uppercase tracking-wider"
+        >
+          Add MTU
+        </Button>
+
+        <Button 
+          size="sm" 
+          variant="outline"
+          onClick={() => setSalvageModalOpen(true)}
+          className="flex-1 h-12 bg-orange-500/5 border-orange-500/20 hover:bg-orange-500/20 hover:border-orange-500/50 text-orange-400 rounded-xl text-[11px] font-black uppercase tracking-wider"
+        >
+          Add Salvage
+        </Button>
+
+        <Button 
+          size="sm"
+          variant="outline"
+          onClick={() => setConfirmEndOpen(true)}
+          className="flex-1 h-12 bg-red-500/5 border-red-500/10 hover:bg-red-500 hover:text-black hover:border-red-500 rounded-xl text-red-500 text-[11px] font-black uppercase tracking-wider transition-all"
+        >
+          <StopCircle className="h-4 w-4 mr-2" />
+          End
+        </Button>
       </div>
+
+      <MTUInputModal
+        open={mtuModalOpen}
+        onOpenChange={setMtuModalOpen}
+        onSave={handleMTUChange}
+        existingItems={mtuContents}
+        mtuValues={activity.data?.mtuValues}
+      />
+      
+      <SalvageInputModal
+        open={salvageModalOpen}
+        onOpenChange={setSalvageModalOpen}
+        onSave={handleSalvageChange}
+        existingItems={salvageContents}
+      />
+
+      <ConfirmEndModal
+        open={confirmEndOpen}
+        onOpenChange={setConfirmEndOpen}
+        onConfirm={handleConfirmEnd}
+        activityName={activity.data?.siteName || activity.item?.name || 'Ratting'}
+      />
     </div>
   )
 }

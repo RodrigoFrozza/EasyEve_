@@ -55,6 +55,7 @@ export async function GET(request: Request) {
     const activities = await prisma.activity.findMany({
       where: {
         type: 'ratting',
+        status: 'active',
         startTime: { gte: startDate }
       },
       include: {

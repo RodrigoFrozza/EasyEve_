@@ -83,6 +83,7 @@ export default async function DashboardPage() {
       const activities = await prisma.activity.findMany({
         where: {
           type: 'ratting',
+          status: 'active',
           startTime: { gte: startDate }
         },
         include: {
