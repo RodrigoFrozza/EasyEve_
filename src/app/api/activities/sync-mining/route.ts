@@ -438,13 +438,44 @@ export async function POST(request: Request) {
     // Calculate values and save metadata in each log
     for (const log of allLogs) {
       const typeIdNum = Number(log.typeId)
-      const meta = metaMap[typeIdNum]
+      let meta = metaMap[typeIdNum]
       
+      // If meta is missing or incomplete (volume is 0 or 1 for something that usually isn't), 
+      // let's try to fetch it and update the DB
+      if (!meta || !meta.name || (meta.volume === 0) || (meta.volume === 1 && ![18, 19, 20].includes(typeIdNum))) { // 1 is suspicious for anything not a simple moon ore
+        try {
+          const details = await getTypeDetails(typeIdNum)
+          if (details) {
+            meta = {
+              name: details.name,
+              volume: details.volume || 1,
+              basePrice: details.base_price || 0
+            }
+            metaMap[typeIdNum] = meta
+            
+            // Proactively update DB to fix SDE for future syncs
+            await prisma.eveType.upsert({
+              where: { id: typeIdNum },
+              update: { name: details.name, volume: details.volume, basePrice: details.base_price },
+              create: { 
+                id: typeIdNum, 
+                name: details.name, 
+                volume: details.volume, 
+                basePrice: details.base_price,
+                groupId: details.group_id || 0
+              }
+            }).catch(() => {}) // Ignore DB update errors
+          }
+        } catch (e) {
+          console.error(`[SYNC] Failed to fetch metadata for type ${typeIdNum}:`, e)
+        }
+      }
+
       // Update Name
       log.oreName = meta?.name || 'Unknown Ore'
       
       // Calculate Volume (m3)
-      const unitVolume = meta?.volume || 1 // Fallback to 1 if unknown, though 0 might be safer
+      const unitVolume = meta?.volume || 1
       log.volumeValue = log.quantity * unitVolume
       
       // Priority: Jita sell > market average > base price > 0
@@ -455,12 +486,18 @@ export async function POST(request: Request) {
       log.estimatedValue = estimatedValue
       
       // Accumulate in breakdowns
-      oreBreakdown[typeIdNum].estimatedValue += estimatedValue
-      oreBreakdown[typeIdNum].volumeValue = (oreBreakdown[typeIdNum].volumeValue || 0) + log.volumeValue
+      if (oreBreakdown[typeIdNum]) {
+        oreBreakdown[typeIdNum].name = log.oreName
+        oreBreakdown[typeIdNum].icon = `https://images.evetech.net/types/${typeIdNum}/icon?size=64`
+        oreBreakdown[typeIdNum].estimatedValue += estimatedValue
+        oreBreakdown[typeIdNum].volumeValue = (oreBreakdown[typeIdNum].volumeValue || 0) + log.volumeValue
+      }
       
-      participantBreakdown[log.characterId].estimatedValue += estimatedValue
-      participantBreakdown[log.characterId].quantity += log.quantity
-      participantBreakdown[log.characterId].volumeValue = (participantBreakdown[log.characterId].volumeValue || 0) + log.volumeValue
+      if (participantBreakdown[log.characterId]) {
+        participantBreakdown[log.characterId].estimatedValue += estimatedValue
+        participantBreakdown[log.characterId].quantity += log.quantity
+        participantBreakdown[log.characterId].volumeValue = (participantBreakdown[log.characterId].volumeValue || 0) + log.volumeValue
+      }
     }
 
     const totalQuantity = Object.values(oreBreakdown).reduce((sum, o: any) => sum + (o.volumeValue || 0), 0)
@@ -494,6 +531,7 @@ export async function POST(request: Request) {
       oreBreakdown,
       totalQuantity,
       totalEstimatedValue,
+      miningValue: totalEstimatedValue,
       participantBreakdown,
       participantEarnings,
       logs: allLogs,

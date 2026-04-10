@@ -95,14 +95,17 @@ export function MiningActivityContent({
   }, [oreBreakdown])
 
   const top3Ores = useMemo(() => {
-    return sortedOreTypes.slice(0, 3).map(typeId => ({
-      typeId,
-      name: oreNames[Number(typeId)] || `Type ${typeId}`,
-      image: oreImages[Number(typeId)] || `https://images.evetech.net/types/${typeId}/icon?size=32`,
-      quantity: oreBreakdown[typeId]?.quantity || 0,
-      volume: oreBreakdown[typeId]?.volumeValue || 0,
-      value: oreBreakdown[typeId]?.estimatedValue || 0
-    }))
+    return sortedOreTypes.slice(0, 3).map(typeId => {
+      const breakdown = oreBreakdown[typeId]
+      return {
+        typeId,
+        name: breakdown?.name || oreNames[Number(typeId)] || `Type ${typeId}`,
+        image: breakdown?.icon || oreImages[Number(typeId)] || `https://images.evetech.net/types/${typeId}/icon?size=32`,
+        quantity: breakdown?.quantity || 0,
+        volume: breakdown?.volumeValue || 0,
+        value: breakdown?.estimatedValue || 0
+      }
+    })
   }, [sortedOreTypes, oreNames, oreImages, oreBreakdown])
 
   const handleExportCSV = () => {
