@@ -260,7 +260,7 @@ export function ActivityCard({ activity, index, onEnd }: ActivityCardProps) {
       const totalIsk = (activity.data?.automatedBounties || 0) + 
                        (activity.data?.automatedEss || 0) + 
                        (activity.data?.additionalBounties || 0) +
-                       (activity.data?.miningValue || 0) +
+                       (activity.data?.miningValue || activity.data?.totalEstimatedValue || 0) +
                        estimatedLootValue +
                        estimatedSalvageValue
       
@@ -593,7 +593,7 @@ export function ActivityCard({ activity, index, onEnd }: ActivityCardProps) {
                           (activity.data?.automatedBounties || 0) + 
                           (activity.data?.automatedEss || 0) + 
                           (activity.data?.additionalBounties || 0) +
-                          (activity.data?.miningValue || 0) +
+                          (activity.data?.miningValue || activity.data?.totalEstimatedValue || 0) +
                           estimatedLootValue +
                           estimatedSalvageValue
                         )}
@@ -619,7 +619,7 @@ export function ActivityCard({ activity, index, onEnd }: ActivityCardProps) {
                                className="h-5 w-5 rounded-sm"
                              />
                              <div className="flex flex-col">
-                               <span className="text-[10px] font-bold text-zinc-100">{formatNumber(data.quantity)}</span>
+                               <span className="text-[10px] font-bold text-zinc-100">{formatNumber(Math.round(data.volumeValue || data.quantity))}</span>
                                <span className="text-[8px] text-zinc-500 font-mono">m³</span>
                              </div>
                            </div>
