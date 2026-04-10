@@ -17,6 +17,7 @@ interface LeaderboardWrapperProps {
   initialData: LeaderboardData[]
   currentUserId?: string
   period: string
+  userRank?: number
   refreshInterval?: number // em milliseconds
 }
 
@@ -24,6 +25,7 @@ export function LeaderboardWrapper({
   initialData,
   currentUserId,
   period,
+  userRank,
   refreshInterval = 5 * 60 * 1000 // default 5 min
 }: LeaderboardWrapperProps) {
   const [data, setData] = useState<LeaderboardData[]>(initialData)
@@ -71,6 +73,7 @@ export function LeaderboardWrapper({
         data={data} 
         currentUserId={currentUserId} 
         period={period}
+        userRank={userRank}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
       />

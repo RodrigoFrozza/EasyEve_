@@ -2,14 +2,12 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { formatISK, formatNumber, cn } from '@/lib/utils'
-import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription 
-} from '@/components/ui/dialog'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { FleetSection } from '../shared/FleetSection'
 import { Button } from '@/components/ui/button'
-import { Loader2, Gem, Download, MapPin, Clock, Users, Layers, TrendingUp, TrendingDown, Activity as ActivityIcon, ChevronRight } from 'lucide-react'
+import { Loader2, Gem, Download, TrendingUp, TrendingDown, Activity as ActivityIcon, Pause, Play, StopCircle } from 'lucide-react'
 import { Sparkline } from '@/components/ui/Sparkline'
+import { ConfirmEndModal } from '../modals'
+import Image from 'next/image'
 
 interface MiningActivityContentProps {
   activity: any
@@ -21,33 +19,29 @@ interface MiningActivityContentProps {
 }
 
 export function MiningActivityContent({ 
-  activity, onSync, isSyncing, syncStatus, onEnd, displayMode = 'expanded' 
+  activity, onSync, isSyncing, syncStatus, onEnd, displayMode = 'compact' 
 }: MiningActivityContentProps) {
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    mining: true,
-    ledger: false
-  })
-  const [logFilterChar, setLogFilterChar] = useState('all')
-  const [logFilterSystem, setLogFilterSystem] = useState('all')
+  const [confirmEndOpen, setConfirmEndOpen] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
   const [oreNames, setOreNames] = useState<Record<number, string>>({})
-  const [systemNames, setSystemNames] = useState<Record<number, string>>({})
-
-  const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
-  }
+  const [oreImages, setOreImages] = useState<Record<number, string>>({})
 
   const logs = (activity.data as any)?.logs || []
   const miningTotalQuantity = (activity.data?.totalQuantity || 0)
   const miningTotalValue = (activity.data?.totalEstimatedValue || 0)
   const oreBreakdown = (activity.data?.oreBreakdown || {})
-  const participantEarnings = (activity.data?.participantEarnings || {})
-  const lastSyncAt = (activity.data as any)?.lastSyncAt
-  const m3Trend = (activity.data as any)?.m3Trend || 'stable'
   
+  const startTimeMs = new Date(activity.startTime).getTime()
+  const hoursElapsed = (Date.now() - startTimeMs) / 3600000
+  const isActivityActive = !activity.endTime && hoursElapsed < 24
+  
+  const iskPerHour = isActivityActive ? miningTotalValue / Math.max(0.01, hoursElapsed) : 0
+  const m3PerHour = isActivityActive ? miningTotalQuantity / Math.max(0.01, hoursElapsed) : 0
+
+  const m3Trend = (activity.data as any)?.m3Trend || 'stable'
   const TrendIcon = m3Trend === 'up' ? TrendingUp : m3Trend === 'down' ? TrendingDown : ActivityIcon
   const trendColor = m3Trend === 'up' ? 'text-green-400' : m3Trend === 'down' ? 'text-red-400' : 'text-zinc-500'
 
-  // Fetch ore names when logs change
   useEffect(() => {
     const typeIds = Array.from(new Set(logs.map((l: any) => l.typeId).filter(Boolean)))
     if (typeIds.length === 0) return
@@ -58,85 +52,17 @@ export function MiningActivityContent({
       body: JSON.stringify({ typeIds })
     })
       .then(res => res.json())
-      .then(data => setOreNames(data))
+      .then(data => {
+        setOreNames(data)
+        const images: Record<number, string> = {}
+        ;(typeIds as number[]).forEach((id: number) => {
+          images[id] = `https://images.evetech.net/types/${id}/icon?size=32`
+        })
+        setOreImages(images)
+      })
       .catch(() => {})
   }, [logs])
 
-  // Fetch solar system names when logs change
-  useEffect(() => {
-    const rawSystemIds = logs.map((l: any) => l.solarSystemId).filter((id: any): id is number => id && typeof id === 'number')
-    const systemIds = Array.from(new Set(rawSystemIds))
-    if (systemIds.length === 0) return
-
-    const fetchSystemNames = async () => {
-      const results: Record<number, string> = {}
-      for (const sysId of systemIds as number[]) {
-        try {
-          const res = await fetch(`/api/sde/system-name?systemId=${sysId}`)
-          if (res.ok) {
-            const data = await res.json()
-            results[sysId] = data.name || `System ${sysId}`
-          }
-        } catch {
-          results[sysId] = `System ${sysId}`
-        }
-      }
-      setSystemNames(results)
-    }
-    fetchSystemNames()
-  }, [logs])
-
-  const uniqueChars = useMemo(() => {
-    const chars = new Set<string>()
-    logs.forEach((l: any) => { if(l.characterName) chars.add(l.characterName) })
-    return Array.from(chars)
-  }, [logs])
-
-  const uniqueSystems = useMemo(() => {
-    const systems = new Set<string>()
-    logs.forEach((l: any) => { 
-      if (l.solarSystemId) {
-        systems.add(systemNames[Number(l.solarSystemId)] || `System ${l.solarSystemId}`)
-      }
-    })
-    return Array.from(systems)
-  }, [logs, systemNames])
-
-  // Get main system (most used)
-  const mainSystem = useMemo(() => {
-    const systemCounts: Record<string, number> = {}
-    logs.forEach((l: any) => {
-      if (l.solarSystemId) {
-        const sysName = systemNames[Number(l.solarSystemId)] || `System ${l.solarSystemId}`
-        systemCounts[sysName] = (systemCounts[sysName] || 0) + l.quantity
-      }
-    })
-    const sorted = Object.entries(systemCounts).sort((a, b) => b[1] - a[1])
-    return sorted[0]?.[0] || 'Unknown'
-  }, [logs, systemNames])
-
-  const filteredLogs = useMemo(() => {
-    return logs.filter((log: any) => {
-      const matchChar = logFilterChar === 'all' || log.characterName === logFilterChar
-      const logSystem = log.solarSystemId ? (systemNames[Number(log.solarSystemId)] || `System ${log.solarSystemId}`) : null
-      const matchSystem = logFilterSystem === 'all' || logSystem === logFilterSystem
-      return matchChar && matchSystem
-    })
-  }, [logs, logFilterChar, logFilterSystem, systemNames])
-
-  const participantBreakdown = useMemo(() => {
-    const breakdown: Record<number, { name: string; quantity: number; value: number }> = {}
-    logs.forEach((log: any) => {
-      if (!breakdown[log.characterId]) {
-        breakdown[log.characterId] = { name: log.characterName, quantity: 0, value: 0 }
-      }
-      breakdown[log.characterId].quantity += log.quantity
-      breakdown[log.characterId].value += log.estimatedValue || 0
-    })
-    return breakdown
-  }, [logs])
-
-  // Sort ores by value (descending)
   const sortedOreTypes = useMemo(() => {
     return Object.keys(oreBreakdown).sort((a, b) => {
       const valueA = oreBreakdown[a]?.estimatedValue || 0
@@ -145,35 +71,16 @@ export function MiningActivityContent({
     })
   }, [oreBreakdown])
 
-  // Check if activity is still active
-  const startTimeMs = new Date(activity.startTime).getTime()
-  const hoursElapsed = (Date.now() - startTimeMs) / 3600000
-  const isActivityActive = !activity.endTime && hoursElapsed < 24
-  
-  const iskPerHour = isActivityActive ? miningTotalValue / Math.max(0.01, hoursElapsed) : 0
-  const m3PerHour = isActivityActive ? miningTotalQuantity / Math.max(0.01, hoursElapsed) : 0
-
-  // Format last sync time
-  const lastSyncFormatted = useMemo(() => {
-    if (!lastSyncAt) return null
-    const syncTime = new Date(lastSyncAt).getTime()
-    const minutesAgo = Math.floor((Date.now() - syncTime) / 60000)
-    if (minutesAgo < 1) return 'agora'
-    if (minutesAgo < 60) return `${minutesAgo} min`
-    const hours = Math.floor(minutesAgo / 60)
-    if (hours < 24) return `${hours}h`
-    return `${Math.floor(hours / 24)}d`
-  }, [lastSyncAt])
-
-  // Calculate activity duration
-  const activityDuration = useMemo(() => {
-    const start = new Date(activity.startTime).getTime()
-    const end = activity.endTime ? new Date(activity.endTime).getTime() : Date.now()
-    const diffMs = end - start
-    const hours = Math.floor(diffMs / 3600000)
-    const minutes = Math.floor((diffMs % 3600000) / 60000)
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
-  }, [activity.startTime, activity.endTime])
+  const top3Ores = useMemo(() => {
+    return sortedOreTypes.slice(0, 3).map(typeId => ({
+      typeId,
+      name: oreNames[Number(typeId)] || `Type ${typeId}`,
+      image: oreImages[Number(typeId)] || `https://images.evetech.net/types/${typeId}/icon?size=32`,
+      quantity: oreBreakdown[typeId]?.quantity || 0,
+      volume: oreBreakdown[typeId]?.volumeValue || 0,
+      value: oreBreakdown[typeId]?.estimatedValue || 0
+    }))
+  }, [sortedOreTypes, oreNames, oreImages, oreBreakdown])
 
   const handleExportCSV = () => {
     if (logs.length === 0) return
@@ -183,321 +90,374 @@ export function MiningActivityContent({
     
     for (const log of logs) {
       const oreName = oreNames[Number(log.typeId)] || `Type ${log.typeId}`
-      const systemName = log.solarSystemId ? (systemNames[Number(log.solarSystemId)] || `System ${log.solarSystemId}`) : 'Unknown'
       const dateStr = new Date(log.date).toLocaleDateString('en-CA')
       const quantity = log.quantity
       const value = Math.round(log.estimatedValue || 0)
       
-      csvRows.push(`${dateStr},${log.characterName},"${oreName}","${systemName}",${quantity},${value}`)
+      csvRows.push(`${dateStr},${log.characterName},"${oreName}",Unknown,${quantity},${value}`)
     }
     
     const csvContent = csvRows.join('\n')
-    
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', `mining_history_${activity.id}.csv`)
+    link.href = URL.createObjectURL(blob)
+    link.download = `mining_history_${activity.id}.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
   }
 
+  const handleConfirmEnd = () => {
+    setConfirmEndOpen(false)
+    onEnd?.()
+  }
+
+  const miningHistory = useMemo(() => {
+    return logs.map((l: any) => l.volumeValue || l.quantity)
+  }, [logs])
+
   if (displayMode === 'compact') {
     return (
       <div className="space-y-4 animate-in fade-in duration-500">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.1)]">
-              <Gem className="h-5 w-5 text-blue-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <p className="text-[10px] text-blue-400/50 uppercase font-bold tracking-widest">Yield Actual</p>
-                <TrendIcon className={cn("h-2.5 w-2.5 opacity-50", trendColor)} />
-              </div>
-              <p className="text-lg font-black text-white font-mono leading-none">{formatNumber(Math.round(m3PerHour))}<span className="text-xs text-blue-400 ml-1">m³/h</span></p>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] text-green-400/50 uppercase font-bold tracking-widest mb-0.5">Est. Profit</p>
-            <p className="text-lg font-black text-white font-mono leading-none">{formatNumber(Math.round(iskPerHour / 1000000))}<span className="text-xs text-green-400 ml-1">M/h</span></p>
-          </div>
-        </div>
-
-        {/* Tactical Sparkline */}
-        <div className="h-16 bg-zinc-950/50 rounded-xl border border-white/[0.03] overflow-hidden relative group">
-          <div className="absolute inset-0 bg-gradient-to-t from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <Sparkline 
-            data={logs.map((l: any) => l.volumeValue || l.quantity)} 
-            color="#3b82f6" 
-            height={64}
-          />
-          <div className="absolute top-2 left-2 flex items-center gap-1.5">
-            <TrendingUp className="h-3 w-3 text-blue-400/50" />
-            <span className="text-[8px] text-blue-400/30 uppercase font-bold tracking-widest">Extraction Volume Flux</span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-zinc-900/40 p-2.5 rounded-lg border border-white/[0.02] flex items-center justify-between group/total">
-            <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider">Total</span>
-            <span className="text-xs font-bold text-blue-400 font-mono italic">{formatNumber(miningTotalQuantity)} m³</span>
-          </div>
-          <button 
-            onClick={onSync}
-            disabled={isSyncing}
-            className="bg-zinc-900/40 p-2.5 rounded-lg border border-white/[0.02] flex items-center justify-between group/sync hover:bg-zinc-800/60 hover:border-blue-500/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-             <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider group-hover/sync:text-blue-400 transition-colors">Sync</span>
-             <div className="flex items-center gap-2">
-                {isSyncing && <Loader2 className="h-3 w-3 animate-spin text-blue-400" />}
-                <span className="text-xs font-bold text-zinc-400 font-mono uppercase group-hover/sync:text-white transition-colors">{lastSyncFormatted || 'PENDING'}</span>
-             </div>
-          </button>
-        </div>
-
-        {/* Compact Ore Icons */}
-        {sortedOreTypes.length > 0 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-            {sortedOreTypes.slice(0, 3).map(typeId => (
-              <div key={typeId} className="flex-shrink-0 relative group/oreitem">
-                <img 
-                  src={`https://images.evetech.net/types/${typeId}/icon?size=32`} 
-                  alt="Ore"
-                  className="h-6 w-6 rounded-md border border-white/[0.05] bg-zinc-950 group-hover/oreitem:border-blue-500/50 transition-colors"
-                />
-                <div className="absolute -top-1 -right-1 bg-blue-600 text-[7px] text-white px-1 rounded-full font-bold opacity-0 group-hover/oreitem:opacity-100 transition-opacity">
-                  {formatNumber(oreBreakdown[typeId]?.volumeValue || 0)} m³
+        <div className="space-y-3">
+          <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+            {activity.participants.map((p: any) => (
+              <div key={p.characterId} className="flex-shrink-0 relative">
+                <div className="flex flex-col items-center gap-1.5 p-2 bg-zinc-900/40 border border-white/[0.03] rounded-xl hover:bg-zinc-900/60 transition-colors">
+                  <div className="relative">
+                    <Avatar className="h-8 w-8 border border-zinc-700">
+                      <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
+                      <AvatarFallback className="bg-zinc-900 text-[10px] font-black">{p.characterName?.slice(0, 2)}</AvatarFallback>
+                    </Avatar>
+                    {p.fit && (
+                      <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-blue-500 rounded-full flex items-center justify-center border border-zinc-900">
+                        <Gem className="h-2 w-2 text-white" />
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[8px] text-zinc-400 font-black uppercase tracking-wider truncate max-w-[50px]">
+                    {p.characterName?.split(' ')[0]}
+                  </span>
                 </div>
               </div>
             ))}
-            {sortedOreTypes.length > 3 && (
-              <div className="h-6 w-6 rounded-md bg-zinc-900 border border-white/[0.05] flex items-center justify-center text-[8px] font-bold text-zinc-500">
-                +{sortedOreTypes.length - 3}
-              </div>
-            )}
           </div>
-        )}
+
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 rounded-xl p-3 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-8 h-8 bg-blue-500/10 blur-xl rounded-full" />
+              <p className="text-[8px] text-blue-400/70 uppercase font-black tracking-wider mb-1">Total m³</p>
+              <p className="text-sm font-black text-white font-mono tracking-tight">
+                {formatNumber(Math.round(miningTotalQuantity))}
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 rounded-xl p-3 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-8 h-8 bg-green-500/10 blur-xl rounded-full" />
+              <p className="text-[8px] text-green-400/70 uppercase font-black tracking-wider mb-1">Valor</p>
+              <p className="text-sm font-black text-white font-mono tracking-tight">
+                {formatISK(miningTotalValue)}
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20 rounded-xl p-3 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-8 h-8 bg-cyan-500/10 blur-xl rounded-full" />
+              <div className="flex items-center gap-1 mb-1">
+                <p className="text-[8px] text-cyan-400/70 uppercase font-black tracking-wider">ISK/h</p>
+                <TrendIcon className={cn("h-2.5 w-2.5", trendColor)} />
+              </div>
+              <p className="text-sm font-black text-white font-mono tracking-tight">
+                {formatISK(iskPerHour)}
+              </p>
+            </div>
+          </div>
+
+          {top3Ores.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[8px] text-zinc-500 uppercase font-black tracking-wider">Top Ores</p>
+              <div className="space-y-1">
+                {top3Ores.map((ore) => (
+                  <div key={ore.typeId} className="flex items-center gap-2 p-2 bg-zinc-900/40 border border-white/[0.02] rounded-lg">
+                    <img 
+                      src={ore.image} 
+                      alt={ore.name}
+                      className="h-6 w-6 rounded-md bg-zinc-900"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-zinc-300 font-bold truncate">{ore.name}</p>
+                      <p className="text-[8px] text-zinc-500">{formatNumber(ore.quantity)} units</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-blue-400 font-mono font-bold">{formatNumber(Math.round(ore.volume))} m³</p>
+                      <p className="text-[8px] text-green-400/70 font-mono">{formatISK(ore.value)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2 pt-2 border-t border-white/[0.03]">
+          <Button 
+            size="sm" 
+            variant="outline"
+            disabled={isSyncing}
+            onClick={onSync}
+            className={cn(
+              "flex-1 h-10 bg-zinc-950/60 border-white/[0.05] hover:bg-cyan-500/10 hover:border-cyan-500/50 text-zinc-400 hover:text-cyan-400 transition-all duration-500 rounded-xl text-[10px] font-black uppercase tracking-wider",
+              isSyncing && "animate-pulse border-cyan-500/50 bg-cyan-500/5"
+            )}
+          >
+            {isSyncing ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Loader2 className={cn("h-3.5 w-3.5 mr-1.5", syncStatus === 'success' && "text-green-500")} />
+            )}
+            Sync
+          </Button>
+          
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => setIsPaused(!isPaused)}
+            className={cn(
+              "h-10 px-4 bg-zinc-900/40 border-white/[0.05] rounded-xl transition-all",
+              isPaused ? "text-yellow-400 border-yellow-500/30" : "text-zinc-500 hover:text-zinc-300"
+            )}
+          >
+            {isPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+          </Button>
+
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={handleExportCSV}
+            disabled={logs.length === 0}
+            className="h-10 px-4 bg-zinc-900/40 border-white/[0.05] hover:bg-green-500/10 hover:border-green-500/50 text-zinc-500 hover:text-green-400 rounded-xl transition-all"
+          >
+            <Download className="h-3.5 w-3.5" />
+          </Button>
+
+          <Button 
+            size="sm"
+            variant="outline"
+            onClick={() => setConfirmEndOpen(true)}
+            className="flex-1 h-10 bg-red-500/5 border-red-500/10 hover:bg-red-500 hover:text-black hover:border-red-500 rounded-xl text-red-500 text-[10px] font-black uppercase tracking-wider transition-all"
+          >
+            <StopCircle className="h-3.5 w-3.5 mr-1" />
+            End
+          </Button>
+        </div>
+
+        <ConfirmEndModal
+          open={confirmEndOpen}
+          onOpenChange={setConfirmEndOpen}
+          onConfirm={handleConfirmEnd}
+          activityName={activity.data?.oreType || activity.item?.name || 'Mining'}
+        />
       </div>
     )
   }
 
   return (
-    <div className="space-y-3">
-      {/* Main Stats Grid - Focus on 2 columns as per user request */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-3 backdrop-blur-sm">
-          <p className="text-[9px] text-blue-400/50 uppercase font-bold tracking-widest mb-1">Total Minerado</p>
-          <p className="text-xl font-bold text-blue-400 font-mono tracking-tight">{formatNumber(miningTotalQuantity)} m³</p>
-          <p className="text-[9px] text-blue-400/30 mt-1">{formatNumber(Math.round(m3PerHour))} m³/h</p>
-        </div>
-        <div className="bg-green-500/5 border border-green-500/10 rounded-lg p-3 backdrop-blur-sm relative overflow-hidden group">
-          <div className="absolute top-2 right-2 flex items-center gap-1">
-            <span className="text-[7px] text-green-400/40 uppercase font-bold">Trend</span>
-            <TrendIcon className={cn("h-3 w-3", trendColor)} />
-          </div>
-          <p className="text-[9px] text-green-400/50 uppercase font-bold tracking-widest mb-1">Valor Estimado</p>
-          <p className="text-xl font-bold text-green-400 font-mono tracking-tight">{formatISK(miningTotalValue)}</p>
-          <p className="text-[9px] text-green-400/30 mt-1">{formatISK(iskPerHour)}/h</p>
-        </div>
-      </div>
-
-      {/* Tabs Navigation - Simplified (No Fleet tab) */}
-      <div className="flex gap-1.5 p-1 rounded-full bg-zinc-950/80 border border-zinc-900/50 mb-3 backdrop-blur-xl">
-        <button
-          onClick={() => setExpandedSections({ mining: true, ledger: false })}
-          className={cn(
-            "flex-1 px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all duration-300",
-            expandedSections.mining 
-              ? "bg-green-500/10 text-green-400 border border-green-500/20 shadow-[0_0_12px_rgba(34,197,94,0.1)]" 
-              : "text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50"
-          )}
-        >
-          Ores ({sortedOreTypes.length})
-        </button>
-        <button
-          onClick={() => setExpandedSections({ mining: false, ledger: true })}
-          className={cn(
-            "flex-1 px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all duration-300",
-            expandedSections.ledger 
-              ? "bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-[0_0_12px_rgba(168,85,247,0.1)]" 
-              : "text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50"
-          )}
-        >
-          Ledger ({logs.length})
-        </button>
-      </div>
-
-      {/* Tab Content */}
-      <div className="min-h-[180px]">
-        {expandedSections.mining && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-            {sortedOreTypes.length === 0 ? (
-              <p className="text-center text-[10px] text-gray-600 italic py-8">No mining data yet. Click Sync to fetch from ESI.</p>
-            ) : (
-              <div className="space-y-3">
-                {/* Composition Bar */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-widest">Extraction Mix</span>
-                    <span className="text-[9px] text-zinc-600 font-mono">{formatNumber(miningTotalQuantity)} m³ total</span>
+    <div className="space-y-4">
+      <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+        {activity.participants.map((p: any) => (
+          <div key={p.characterId} className="flex-shrink-0 relative">
+            <div className="flex flex-col items-center gap-1.5 p-2 bg-zinc-900/40 border border-white/[0.03] rounded-xl hover:bg-zinc-900/60 transition-colors">
+              <div className="relative">
+                <Avatar className="h-10 w-10 border-2 border-zinc-700">
+                  <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
+                  <AvatarFallback className="bg-zinc-900 text-xs font-black">{p.characterName?.slice(0, 2)}</AvatarFallback>
+                </Avatar>
+                {p.fit && (
+                  <div className="absolute -bottom-1 -right-1 h-5 w-5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-zinc-900">
+                    <Gem className="h-2.5 w-2.5 text-white" />
                   </div>
-                  <div className="h-2 w-full flex rounded-full overflow-hidden bg-zinc-900 border border-white/[0.05]">
-                    {sortedOreTypes.map((typeId, idx) => {
-                      const volume = oreBreakdown[typeId]?.volumeValue || 0
-                      const percent = (volume / Math.max(1, miningTotalQuantity)) * 100
-                      // Palette: blue-500, green-500, purple-500, yellow-500, cyan-500, pink-500
-                      const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500', 'bg-cyan-500', 'bg-pink-500']
-                      if (percent < 1) return null
-                      return (
-                        <div 
-                          key={typeId}
-                          className={cn("h-full transition-all duration-1000", colors[idx % colors.length])}
-                          style={{ width: `${percent}%` }}
-                          title={`${oreNames[Number(typeId)] || typeId}: ${Math.round(percent)}%`}
-                        />
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                {sortedOreTypes.map((typeId, idx) => {
-                  const quantity = oreBreakdown[typeId]?.quantity || 0
-                  const value = oreBreakdown[typeId]?.estimatedValue || 0
-                  const maxValue = oreBreakdown[sortedOreTypes[0]]?.estimatedValue || 1
-                  const percentage = Math.round((value / maxValue) * 100)
-                  const oreName = oreNames[Number(typeId)] || `Type ${typeId}`
-                  
-                  return (
-                    <div key={typeId} className="flex items-center gap-3 p-2.5 bg-green-950/10 border border-green-900/20 rounded-lg">
-                      <span className="text-[10px] font-bold text-green-500 w-4">{idx + 1}.</span>
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <Gem className="h-4 w-4 text-green-400 flex-shrink-0" />
-                        <span className="text-xs font-bold text-gray-300 truncate">{oreName}</span>
-                      </div>
-                      {/* Progress bar */}
-                      <div className="w-16 h-2 bg-zinc-800 rounded-full overflow-hidden flex-shrink-0">
-                        <div 
-                          className="h-full bg-gradient-to-r from-green-600 to-green-400 rounded-full"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                      <div className="text-right flex-shrink-0 w-24">
-                        <p className="text-sm font-bold text-green-400 font-mono">{formatNumber(oreBreakdown[typeId]?.volumeValue || 0)} m³</p>
-                        <p className="text-[10px] text-gray-500">{formatNumber(quantity)} units</p>
-                      </div>
-                    </div>
-                  )
-                })}
+                )}
+              </div>
+              <div className="text-center">
+                <span className="text-[9px] text-zinc-300 font-bold block truncate max-w-[60px]">
+                  {p.characterName?.split(' ')[0]}
+                </span>
+                <span className="text-[7px] text-zinc-600 uppercase tracking-wider truncate max-w-[60px] block">
+                  {p.fit || '—'}
+                </span>
               </div>
             </div>
-          )}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 rounded-xl p-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 bg-blue-500/10 blur-xl rounded-full" />
+          <p className="text-[9px] text-blue-400/70 uppercase font-black tracking-wider mb-1">Total m³</p>
+          <p className="text-xl font-black text-white font-mono tracking-tight">
+            {formatNumber(Math.round(miningTotalQuantity))}
+          </p>
+          <p className="text-[9px] text-blue-400/50 mt-1">{formatNumber(Math.round(m3PerHour))} m³/h</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 rounded-xl p-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 bg-green-500/10 blur-xl rounded-full" />
+          <p className="text-[9px] text-green-400/70 uppercase font-black tracking-wider mb-1">Valor</p>
+          <p className="text-xl font-black text-white font-mono tracking-tight">
+            {formatISK(miningTotalValue)}
+          </p>
+        </div>
+
+        <div className="bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20 rounded-xl p-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 bg-cyan-500/10 blur-xl rounded-full" />
+          <div className="flex items-center gap-1 mb-1">
+            <p className="text-[9px] text-cyan-400/70 uppercase font-black tracking-wider">ISK/h</p>
+            <TrendIcon className={cn("h-3 w-3", trendColor)} />
+          </div>
+          <p className="text-xl font-black text-white font-mono tracking-tight">
+            {formatISK(iskPerHour)}
+          </p>
+        </div>
+      </div>
+
+      {sortedOreTypes.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] text-zinc-500 uppercase font-black tracking-wider">Ore Breakdown</p>
+            <span className="text-[9px] text-zinc-600 font-mono">{sortedOreTypes.length} types</span>
+          </div>
+          
+          <div className="h-2 w-full flex rounded-full overflow-hidden bg-zinc-900 border border-white/[0.05]">
+            {sortedOreTypes.map((typeId, idx) => {
+              const volume = oreBreakdown[typeId]?.volumeValue || 0
+              const percent = (volume / Math.max(1, miningTotalQuantity)) * 100
+              const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500', 'bg-cyan-500', 'bg-pink-500']
+              if (percent < 1) return null
+              return (
+                <div 
+                  key={typeId}
+                  className={cn("h-full transition-all duration-1000", colors[idx % colors.length])}
+                  style={{ width: `${percent}%` }}
+                />
+              )
+            })}
+          </div>
+
+          <div className="space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
+            {sortedOreTypes.map((typeId, idx) => {
+              const quantity = oreBreakdown[typeId]?.quantity || 0
+              const volume = oreBreakdown[typeId]?.volumeValue || 0
+              const value = oreBreakdown[typeId]?.estimatedValue || 0
+              const maxValue = oreBreakdown[sortedOreTypes[0]]?.estimatedValue || 1
+              const percentage = Math.round((value / maxValue) * 100)
+              
+              return (
+                <div key={typeId} className="flex items-center gap-3 p-3 bg-zinc-900/40 border border-white/[0.02] rounded-xl hover:bg-zinc-900/60 transition-colors">
+                  <span className="text-[10px] font-bold text-zinc-600 w-4">{idx + 1}.</span>
+                  <img 
+                    src={oreImages[Number(typeId)] || `https://images.evetech.net/types/${typeId}/icon?size=32`}
+                    alt={oreNames[Number(typeId)] || typeId}
+                    className="h-8 w-8 rounded-md bg-zinc-900"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-zinc-200 truncate">{oreNames[Number(typeId)] || `Type ${typeId}`}</p>
+                    <p className="text-[9px] text-zinc-500">{formatNumber(quantity)} units</p>
+                  </div>
+                  <div className="w-20 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full"
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                  <div className="text-right w-24">
+                    <p className="text-xs font-bold text-blue-400 font-mono">{formatNumber(Math.round(volume))} m³</p>
+                    <p className="text-[9px] text-green-400/70 font-mono">{formatISK(value)}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
-        {expandedSections.ledger && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-            {/* Filters */}
-            <div className="flex items-center gap-2 mb-2">
-              <select 
-                value={logFilterChar} 
-                onChange={e => setLogFilterChar(e.target.value)}
-                className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-gray-300 outline-none focus:border-zinc-500 flex-1"
-              >
-                <option value="all">All Pilots</option>
-                {uniqueChars.map(char => (
-                  <option key={char} value={char}>{char}</option>
-                ))}
-              </select>
-              <select 
-                value={logFilterSystem} 
-                onChange={e => setLogFilterSystem(e.target.value)}
-                className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-gray-300 outline-none focus:border-zinc-500 flex-1"
-              >
-                <option value="all">All Systems</option>
-                {uniqueSystems.map(sys => (
-                  <option key={sys} value={sys}>{sys}</option>
-                ))}
-              </select>
-              <button
-                onClick={handleExportCSV}
-                className="p-1.5 rounded transition-colors text-gray-500 hover:text-green-400"
-                title="Export CSV"
-              >
-                <Download className="h-3.5 w-3.5" />
-              </button>
+      {miningHistory.length > 0 && (
+        <div className="bg-zinc-950/40 border border-white/[0.03] rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-cyan-500" />
+              <span className="text-[10px] text-zinc-400 uppercase font-black tracking-wider">Efficiency Chart</span>
             </div>
-
-            <div className="flex items-center justify-between text-[10px] text-gray-500 bg-zinc-900/30 rounded px-2 py-1.5 mb-2">
-              <span>{filteredLogs.length} registros</span>
-              <span>Média: {formatNumber(Math.round((filteredLogs.reduce((s: number, l: any) => s + l.quantity, 0)) / Math.max(filteredLogs.length, 1)))} m³</span>
-            </div>
-
-            {filteredLogs.length === 0 ? (
-              <p className="text-center text-[10px] text-gray-600 italic py-8">No mining records.</p>
-            ) : (
-              <div className="space-y-1.5 max-h-[180px] overflow-y-auto custom-scrollbar">
-                {filteredLogs.map((log: any, idx: number) => (
-                  <div key={idx} className="flex items-center justify-between py-2 px-3 rounded border-l-2 border-l-purple-500 bg-purple-950/10">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-5 w-5">
-                        <AvatarImage src={`https://images.evetech.net/characters/${log.characterId}/portrait?size=64`} />
-                        <AvatarFallback className="text-[7px] bg-zinc-800 text-zinc-400">
-                          {(log.characterName || '??').slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col">
-                        <span className="text-gray-300 text-[10px] font-medium">{log.characterName}</span>
-                        <span className="text-[8px] text-gray-500">
-                          {oreNames[Number(log.typeId)] || `Type ${log.typeId}`}
-                          {log.solarSystemId && ` • ${systemNames[Number(log.solarSystemId)] || `Sys ${log.solarSystemId}`}`}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-bold text-[11px] text-purple-400">
-                        {formatNumber(log.volumeValue || 0)} m³
-                      </span>
-                      <p className="text-[8px] text-gray-500">
-                        {formatNumber(log.quantity)} unt
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
-        )}
-      </div>
-      
-      {/* Sync Button */}
-      <div className="pt-3 mt-2 border-t border-zinc-900/50 flex items-center gap-2">
-        <button 
+          <div className="h-[100px] w-full">
+            <Sparkline 
+              data={miningHistory} 
+              width={400} 
+              height={100} 
+              color="#00d4ff" 
+              strokeWidth={2}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-2 pt-4 border-t border-white/[0.05]">
+        <Button 
+          size="sm" 
+          variant="outline"
           disabled={isSyncing}
           onClick={onSync}
-          className="flex-1 h-10 text-[10px] uppercase font-black tracking-[0.2em] rounded-xl bg-zinc-900/50 hover:bg-zinc-800 text-zinc-500 hover:text-white border border-zinc-800/50 flex items-center justify-center gap-2"
+          className={cn(
+            "flex-1 h-12 bg-zinc-950/60 border-white/[0.05] hover:bg-cyan-500/10 hover:border-cyan-500/50 text-zinc-400 hover:text-cyan-400 transition-all duration-500 rounded-xl text-[11px] font-black uppercase tracking-wider",
+            isSyncing && "animate-pulse border-cyan-500/50 bg-cyan-500/5"
+          )}
         >
-          {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> :
-           syncStatus === 'success' ? <span className="text-green-500">✓</span> :
-           syncStatus === 'error' ? <span className="text-red-500">✗</span> :
-           <span className="text-zinc-400">⟳</span>}
-          {isSyncing ? 'Syncing...' : 'Sync ESI'}
-        </button>
-        {lastSyncFormatted && (
-          <span className="text-[9px] text-zinc-600 flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            {lastSyncFormatted}
-          </span>
-        )}
-        <button 
-          onClick={onEnd}
-          className="flex-1 h-10 text-[10px] uppercase font-black tracking-[0.2em] rounded-xl bg-red-950/10 hover:bg-red-950/30 text-red-500/70 hover:text-red-400 border border-red-900/20 flex items-center justify-center gap-2"
+          {isSyncing ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Loader2 className={cn("h-4 w-4 mr-2", syncStatus === 'success' && "text-green-500")} />
+          )}
+          Sync API
+        </Button>
+
+        <Button 
+          size="sm" 
+          variant="outline"
+          onClick={() => setIsPaused(!isPaused)}
+          className={cn(
+            "h-12 px-6 bg-zinc-900/40 border-white/[0.05] rounded-xl transition-all",
+            isPaused ? "text-yellow-400 border-yellow-500/30" : "text-zinc-500 hover:text-zinc-300"
+          )}
         >
-          Finalizar
-        </button>
+          {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+        </Button>
+
+        <Button 
+          size="sm" 
+          variant="outline"
+          onClick={handleExportCSV}
+          disabled={logs.length === 0}
+          className="h-12 px-6 bg-zinc-900/40 border-white/[0.05] hover:bg-green-500/10 hover:border-green-500/50 text-zinc-500 hover:text-green-400 rounded-xl transition-all"
+        >
+          <Download className="h-4 w-4" />
+        </Button>
+
+        <Button 
+          size="sm"
+          variant="outline"
+          onClick={() => setConfirmEndOpen(true)}
+          className="flex-1 h-12 bg-red-500/5 border-red-500/10 hover:bg-red-500 hover:text-black hover:border-red-500 rounded-xl text-red-500 text-[11px] font-black uppercase tracking-wider transition-all"
+        >
+          <StopCircle className="h-4 w-4 mr-2" />
+          End
+        </Button>
       </div>
+
+      <ConfirmEndModal
+        open={confirmEndOpen}
+        onOpenChange={setConfirmEndOpen}
+        onConfirm={handleConfirmEnd}
+        activityName={activity.data?.oreType || activity.item?.name || 'Mining'}
+      />
     </div>
   )
 }
