@@ -8,7 +8,6 @@ export const EsiCharacterSchema = z.object({
   scopes: z.string().optional(),
   token_type: z.string().optional(),
   character_owner_hash: z.string().optional(),
-  intellectual_property: z.string().optional(),
 })
 
 export const CharacterPublicInfoSchema = z.object({
@@ -25,13 +24,14 @@ export const CharacterPublicInfoSchema = z.object({
 // --- Character Stats ---
 export const CharacterSkillsSchema = z.object({
   total_sp: z.number().default(0),
-  unallocated_sp: z.number().optional().default(0),
+  free_sp: z.number().optional().default(0),
   skills: z.array(z.object({
     skill_id: z.number(),
     skillpoints_in_skill: z.number(),
     trained_skill_level: z.number(),
     active_skill_level: z.number(),
   })).optional().default([]),
+  queues: z.array(z.any()).optional().default([]),
 })
 
 export const CharacterLocationSchema = z.object({
@@ -70,4 +70,21 @@ export const WalletJournalSchema = z.object({
   reason: z.string().optional(),
   first_party_id: z.number().optional(),
   second_party_id: z.number().optional(),
+})
+
+export const TypeDetailsSchema = z.object({
+  type_id: z.number(),
+  name: z.string(),
+  description: z.string(),
+  volume: z.number().optional(),
+  packaged_volume: z.number().optional(),
+  capacity: z.number().optional(),
+  portion_size: z.number().optional(),
+  mass: z.number().optional(),
+  radius: z.number().optional(),
+  published: z.boolean().optional(),
+  group_id: z.number().optional(),
+  market_group_id: z.number().optional(),
+  icon_id: z.number().optional(),
+  graphic_id: z.number().optional(),
 })

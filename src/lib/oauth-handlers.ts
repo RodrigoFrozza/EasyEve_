@@ -71,7 +71,7 @@ export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
   const charInfo = await getCharacterInfo(tokenData.access_token)
   
   const characterId = charInfo.character_id
-  const ownerHash = charInfo.character_owner_hash
+  const ownerHash = charInfo.character_owner_hash || ''
   const characterName = charInfo.character_name
 
   console.log('[OAuth Login] Character:', characterName, 'ID:', characterId)
@@ -196,7 +196,7 @@ export async function handleLinkFlow(
   const charInfo = await getCharacterInfo(tokenData.access_token)
 
   const characterId = charInfo.character_id
-  const ownerHash = charInfo.character_owner_hash
+  const ownerHash = charInfo.character_owner_hash || ''
   const characterName = charInfo.character_name
 
   const existingChar = await prisma.character.findUnique({

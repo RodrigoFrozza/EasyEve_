@@ -208,6 +208,17 @@ export interface ModuleBaseStats {
 const shipStatsCache = new Map<number, ShipBaseStats>()
 const moduleStatsCache = new Map<number, ModuleBaseStats>()
 
+const DRONE_DPS: Record<number, number> = {
+  2454: 10,   // Warrior II
+  2486: 11.5, // Hobgoblin II
+  2476: 15.2, // Hammerhead II
+  2183: 20.8, // Ogre II
+  2464: 12.1, // Acolyte II
+  2446: 10.8, // Hornet II
+  2474: 14.2, // Vespid II
+  2193: 19.5, // Wasp II
+}
+
 // --- API Functions ---
 /**
  * Fetches base ship statistics from the database with caching.
@@ -652,25 +663,25 @@ export function fitToEftFormat(
   
   // High slots
   for (const mod of slots.high) {
-    lines.push(mod.offline ? `${mod.name || mod.typeId} /offline` : (mod.name || mod.typeId))
+    lines.push(mod.offline ? `${mod.name || mod.typeId} /offline` : String(mod.name || mod.typeId))
   }
   lines.push('')
   
   // Med slots
   for (const mod of slots.med) {
-    lines.push(mod.offline ? `${mod.name || mod.typeId} /offline` : (mod.name || mod.typeId))
+    lines.push(mod.offline ? `${mod.name || mod.typeId} /offline` : String(mod.name || mod.typeId))
   }
   lines.push('')
   
   // Low slots
   for (const mod of slots.low) {
-    lines.push(mod.offline ? `${mod.name || mod.typeId} /offline` : (mod.name || mod.typeId))
+    lines.push(mod.offline ? `${mod.name || mod.typeId} /offline` : String(mod.name || mod.typeId))
   }
   lines.push('')
   
   // Rigs
   for (const mod of slots.rig) {
-    lines.push(mod.name || mod.typeId)
+    lines.push(String(mod.name || mod.typeId))
   }
   lines.push('')
   
@@ -693,6 +704,4 @@ export default {
   calculateFitStats,
   parseEftFormat,
   fitToEftFormat
-}
-
 }

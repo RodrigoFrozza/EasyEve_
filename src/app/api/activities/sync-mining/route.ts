@@ -340,6 +340,22 @@ export async function POST(request: Request) {
         }
       }
     }
+    // Initialize breakdowns and collect logs
+    const allLogs = Array.from(logMap.values())
+    const oreBreakdown: Record<number, any> = {}
+    const participantBreakdown: Record<number, any> = {}
+
+    // Initialize breakdowns correctly
+    allLogs.forEach(log => {
+      if (!oreBreakdown[log.typeId]) {
+        oreBreakdown[log.typeId] = { typeId: log.typeId, quantity: 0, estimatedValue: 0, volumeValue: 0 }
+      }
+      oreBreakdown[log.typeId].quantity += log.quantity
+      
+      if (!participantBreakdown[log.characterId]) {
+        participantBreakdown[log.characterId] = { characterId: log.characterId, characterName: log.characterName, quantity: 0, estimatedValue: 0, volumeValue: 0 }
+      }
+    })
 
     // Get Prices and Ore Metadata (Name/Volume) from SDE
     const typeIdsList = Object.keys(oreBreakdown).map(Number)

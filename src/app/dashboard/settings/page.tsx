@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { Settings, User, Bell, Shield, Database, Palette, Link2, Globe } from 'lucide-react'
 import { getSession } from '@/lib/session'
 import { DataManagement } from '@/components/settings/DataManagement'
-import { LanguageSelectorClient } from '@/components/settings/LanguageSelectorClient'
+import { LanguageSelector } from '@/components/settings/LanguageSelectorClient'
 
 export default async function SettingsPage() {
   const session = await getSession()
@@ -158,7 +158,7 @@ export default async function SettingsPage() {
               <CardDescription>Select your preferred language</CardDescription>
             </CardHeader>
             <CardContent>
-              <LanguageSelectorClient />
+              <LanguageSelector />
             </CardContent>
           </Card>
 

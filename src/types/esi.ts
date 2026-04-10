@@ -9,6 +9,11 @@ export type CharacterLocation = z.infer<typeof schemas.CharacterLocationSchema>
 export type CharacterShip = z.infer<typeof schemas.CharacterShipSchema>
 export type WalletTransaction = z.infer<typeof schemas.WalletTransactionSchema>
 export type WalletJournal = z.infer<typeof schemas.WalletJournalSchema>
+export type TypeDetails = z.infer<typeof schemas.TypeDetailsSchema>
+
+// Legacy aliases to support existing code
+export type EveCharacter = EsiCharacter
+export type EveCharacterLegacy = EsiCharacter
 
 // Re-export schemas for convenience
 export const {
@@ -18,5 +23,6 @@ export const {
   CharacterLocationSchema,
   CharacterShipSchema,
   WalletTransactionSchema,
-  WalletJournalSchema
+  WalletJournalSchema,
+  TypeDetailsSchema
 } = schemas

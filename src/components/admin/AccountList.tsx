@@ -34,6 +34,7 @@ interface AccountData {
   subscriptionEnd: string | null
   allowedActivities: string[]
   characters: Character[]
+  createdAt: string
   _count: {
     characters: number
     activities: number

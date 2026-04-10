@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/admin-auth'
+import { Prisma } from '@prisma/client'
 
 export async function GET(req: NextRequest) {
   const { error } = await requireAdmin()
@@ -14,9 +15,9 @@ export async function GET(req: NextRequest) {
 
   const where = search ? {
     OR: [
-      { payerCharacterName: { contains: search, mode: 'insensitive' } },
-      { user: { accountCode: { contains: search, mode: 'insensitive' } } },
-      { user: { name: { contains: search, mode: 'insensitive' } } }
+      { payerCharacterName: { contains: search, mode: 'insensitive' as Prisma.QueryMode } },
+      { user: { accountCode: { contains: search, mode: 'insensitive' as Prisma.QueryMode } } },
+      { user: { name: { contains: search, mode: 'insensitive' as Prisma.QueryMode } } }
     ]
   } : {}
 

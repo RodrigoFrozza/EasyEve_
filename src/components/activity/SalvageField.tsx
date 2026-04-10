@@ -154,7 +154,7 @@ export function SalvageField({ value, activityId, onChange }: SalvageFieldProps)
                     <Button 
                       size="sm" 
                       className="h-7 text-[10px] flex-1 bg-orange-600 text-white hover:bg-orange-500 rounded-full shadow-lg shadow-orange-500/10"
-                      onClick={() => saveSalvage(index)}
+                      onClick={() => saveSalvage(actualIndex)}
                     >
                       Save Salvage
                     </Button>

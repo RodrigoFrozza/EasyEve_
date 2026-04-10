@@ -17,6 +17,8 @@ import axios, { AxiosInstance } from 'axios'
 import { getValidAccessToken } from './token-manager'
 import { 
   EsiCharacter, 
+  EveCharacter,
+  TypeDetails,
   CharacterPublicInfo, 
   CharacterSkills, 
   CharacterLocationSchema,

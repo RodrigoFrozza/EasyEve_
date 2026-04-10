@@ -8,6 +8,8 @@ interface SessionUser {
   characterId: number
   role: string
   allowedActivities: string[]
+  isBlocked: boolean
+  subscriptionEnd: string | null
   characters: Array<{
     id: number
     name: string
