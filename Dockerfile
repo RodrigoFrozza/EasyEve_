@@ -21,8 +21,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma Client using local version
-RUN npm run db:generate
+# Generate Prisma Client (only once)
+RUN NODE_OPTIONS="--max-old-space-size=2048" npm run db:generate
 
 # Build Next.js with memory limits for KVM1
 ENV NEXT_TELEMETRY_DISABLED=1

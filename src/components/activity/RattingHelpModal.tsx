@@ -21,12 +21,15 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
+import { useTranslations } from '@/i18n/hooks'
 
 interface RattingHelpModalProps {
   children?: React.ReactNode
 }
 
 export function RattingHelpModal({ children }: RattingHelpModalProps) {
+  const { t } = useTranslations()
+  
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -40,10 +43,10 @@ export function RattingHelpModal({ children }: RattingHelpModalProps) {
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold flex items-center gap-2">
             <Target className="h-6 w-6 text-red-500" />
-            Guia de Configuração: Ratting Activity
+            {t('activity.ratting.title')}
           </DialogTitle>
           <DialogDescription className="text-gray-400">
-            Aprenda a configurar e maximizar o rastreamento automático de seus lucros com Ratting.
+            {t('activity.ratting.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -52,10 +55,10 @@ export function RattingHelpModal({ children }: RattingHelpModalProps) {
           <section className="space-y-3">
             <h3 className="text-lg font-semibold text-eve-accent flex items-center gap-2">
               <ShieldCheck className="h-5 w-5" />
-              1. Preparação dos Personagens
+              {t('activity.ratting.characterPreparation')}
             </h3>
             <p className="text-sm text-gray-300 leading-relaxed">
-              Para que o rastreamento automático funcione, seus personagens devem estar vinculados ao EasyEve com as permissões corretas.
+              {t('activity.ratting.characterPreparationText')}
             </p>
             <div className="bg-eve-dark/50 border border-eve-border rounded-lg p-4 space-y-3">
               <div className="flex items-start gap-3">
@@ -67,7 +70,7 @@ export function RattingHelpModal({ children }: RattingHelpModalProps) {
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="h-4 w-4 text-green-500 mt-1 shrink-0" />
                 <div className="text-sm">
-                  <span className="font-bold text-white">Tokens Ativos:</span> Verifique na tela de personagens se o status do token está verde. Tokens expirados impedem a sincronização.
+                  <span className="font-bold text-white">{t('activity.ratting.activeTokens')}</span> {t('activity.ratting.activeTokensHelp')}
                 </div>
               </div>
             </div>
@@ -79,17 +82,17 @@ export function RattingHelpModal({ children }: RattingHelpModalProps) {
           <section className="space-y-3">
             <h3 className="text-lg font-semibold text-eve-accent flex items-center gap-2">
               <Zap className="h-5 w-5" />
-              2. Iniciando a Operação
+              {t('activity.ratting.startOperation')}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <h4 className="text-sm font-bold text-white uppercase tracking-wider">Passo A</h4>
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider">{t('activity.ratting.stepA')}</h4>
                 <p className="text-xs text-gray-400">
                   Clique em <span className="text-white font-bold">&quot;Start New Activity&quot;</span> e selecione o ícone de Ratting (mira vermelha).
                 </p>
               </div>
               <div className="space-y-2">
-                <h4 className="text-sm font-bold text-white uppercase tracking-wider">Passo B</h4>
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider">{t('activity.ratting.stepB')}</h4>
                 <p className="text-xs text-gray-400">
                   Selecione os personagens que participarão da frota e a <span className="text-white font-bold">NPC Faction</span> local.
                 </p>
@@ -97,7 +100,7 @@ export function RattingHelpModal({ children }: RattingHelpModalProps) {
             </div>
             <div className="mt-2 text-xs bg-red-500/10 border border-red-500/20 rounded p-3 text-red-400 flex gap-2 italic">
               <Info className="h-4 w-4 shrink-0" />
-              O sistema utiliza a Faction e o Site Name para sugerir os melhores bônus e calcular estimativas.
+              {t('activity.ratting.note')}
             </div>
           </section>
 
@@ -107,10 +110,10 @@ export function RattingHelpModal({ children }: RattingHelpModalProps) {
           <section className="space-y-3">
             <h3 className="text-lg font-semibold text-eve-accent flex items-center gap-2">
               <RefreshCw className="h-5 w-5" />
-              3. Sincronização de ISK
+              {t('activity.ratting.iskSync')}
             </h3>
             <p className="text-sm text-gray-300">
-              O EasyEve não "lê sua tela", ele consulta o servidor da CCP em busca de novos registros de carteira.
+              {t('activity.ratting.iskSyncText')}
             </p>
             <div className="space-y-4">
               <div className="flex gap-4">
@@ -137,7 +140,7 @@ export function RattingHelpModal({ children }: RattingHelpModalProps) {
               <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
                 <h4 className="text-xs font-bold text-yellow-500 uppercase flex items-center gap-2 mb-1">
                   <AlertCircle className="h-3 w-3" />
-                  Importante
+                  {t('activity.ratting.important')}
                 </h4>
                 <p className="text-[10px] text-yellow-500/80">
                   O ESI da CCP pode ter um atraso (cache) de até 5 minutos. Se você acabou de receber o tick no jogo, espere alguns instantes antes de clicar em sincronizar no portal.
@@ -149,7 +152,7 @@ export function RattingHelpModal({ children }: RattingHelpModalProps) {
           {/* Section 4: Dicas de Especialista */}
           <section className="bg-zinc-900/50 border border-eve-border rounded-lg p-4 space-y-3">
             <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
-              Dicas de Especialista
+              {t('activity.ratting.expertTips')}
             </h3>
             <ul className="text-xs text-gray-400 space-y-2 list-disc pl-4">
               <li>Priorize <span className="text-white">Havens (Rock)</span> e <span className="text-white">Sanctums</span> para melhor ISK/Hora em Nullsec.</li>
@@ -161,7 +164,7 @@ export function RattingHelpModal({ children }: RattingHelpModalProps) {
 
         <div className="flex justify-end mt-4">
           <Button onClick={() => {}} className="bg-eve-accent text-black font-bold hover:bg-eve-accent/80">
-            Entendi, Pilot!
+            {t('activity.ratting.gotIt')}
           </Button>
         </div>
       </DialogContent>

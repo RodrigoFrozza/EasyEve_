@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { useTranslations } from '@/i18n/hooks'
 
 interface Character {
   id: number
@@ -45,6 +46,7 @@ interface AccountListProps {
 }
 
 export function AccountList({ accounts, onSelectAccount }: AccountListProps) {
+  const { t } = useTranslations()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'active' | 'blocked' | 'expired'>('all')
 
@@ -70,7 +72,7 @@ export function AccountList({ accounts, onSelectAccount }: AccountListProps) {
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
           <Input 
-            placeholder="Buscar por nome, ID ou código..." 
+            placeholder={t('admin.searchPlaceholder')} 
             className="pl-10 bg-eve-panel border-eve-border text-white placeholder:text-gray-500"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -99,7 +101,7 @@ export function AccountList({ accounts, onSelectAccount }: AccountListProps) {
         <Table>
           <TableHeader className="bg-eve-dark/50">
             <TableRow className="border-eve-border/50 hover:bg-transparent">
-              <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest pl-6">Conta</TableHead>
+              <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest pl-6">{t('account.tableHeader')}</TableHead>
               <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Status/Role</TableHead>
               <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Assinatura</TableHead>
               <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Módulos</TableHead>

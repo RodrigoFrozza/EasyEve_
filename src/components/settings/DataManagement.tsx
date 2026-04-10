@@ -12,8 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useTranslations } from '@/i18n/hooks'
 
 export function DataManagement() {
+  const { t } = useTranslations()
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -155,15 +157,14 @@ export function DataManagement() {
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-500" />
-              Confirmar Exclusão Total
+              {t('settings.confirmDelete')}
             </DialogTitle>
             <DialogDescription className="text-gray-400">
-              Esta ação irá remover permanentemente todas as suas **Atividades** e **Fits** salvos. 
-              Sua conta e personagens vinculados não serão afetados.
+              {t('settings.clearDataWarning')}
             </DialogDescription>
           </DialogHeader>
           <div className="bg-red-500/10 border border-red-500/20 rounded p-3 text-red-400 text-xs italic">
-            Atenção: Esta ação não pode ser desfeita. Recomendamos exportar seus dados antes de prosseguir.
+            {t('settings.clearDataWarning2')}
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button 
@@ -172,7 +173,7 @@ export function DataManagement() {
               disabled={isDeleting}
               className="text-gray-400 hover:text-white"
             >
-              Cancelar
+              {t('common.cancel')}
             </Button>
             <Button 
               variant="destructive" 

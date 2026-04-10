@@ -83,7 +83,8 @@
     "exportData": "Export Data",
     "importData": "Import Data",
     "clearData": "Clear Data",
-    "clearDataWarning": "This action will permanently remove all your saved Activities and Fits.",
+    "confirmDelete": "Confirm Total Deletion",
+    "clearDataWarning": "This action will permanently remove all your saved Activities and Fits. Your account and linked characters will not be affected.",
     "clearDataWarning2": "Attention: This action cannot be undone. We recommend exporting your data before proceeding.",
     "dataCleared": "Data cleared successfully"
   },
@@ -94,14 +95,19 @@
     "noAccountFound": "No account found with selected filters.",
     "syncAPIError": "Failed to communicate with Sync API",
     "paymentLinked": "Payment linked successfully!",
-    "selectModules": "Select the modules the user will have access to after approval."
+    "selectModules": "Select the modules the user will have access to after approval.",
+    "cancel": "Cancel",
+    "confirmApproval": "Confirm Approval",
+    "logsTitle": "Viewing records from the last 7 days",
+    "confirmPayment": "Approve Payment"
   },
   "login": {
     "reason": "Reason:",
     "contactDiscord": "Contact us via Discord to contest."
   },
   "account": {
-    "validSubscription": "Accounts with valid subscription time"
+    "validSubscription": "Accounts with valid subscription time",
+    "tableHeader": "Account"
   },
   "dashboard": {
     "startActivityPrompt": "Start an activity to start recording"

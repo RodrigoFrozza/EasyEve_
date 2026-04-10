@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useTranslations } from '@/i18n/hooks'
 
 // New Modular Components
 import { StatsRow } from '@/components/admin/StatsRow'
@@ -99,6 +100,7 @@ export default function AdminPage() {
 function AdminContent() {
   const { data: session, status: sessionStatus } = useSession()
   const router = useRouter()
+  const { t } = useTranslations()
   const [accounts, setAccounts] = useState<AccountData[]>([])
   const [prices, setPrices] = useState<ModulePrice[]>([])
   const [payments, setPayments] = useState<PaymentRecord[]>([])
@@ -197,7 +199,7 @@ function AdminContent() {
         toast.error(`Erro: ${error.error}`)
       }
     } catch (err) {
-      toast.error('Falha na comunicação com a API de Sync')
+      toast.error(t('admin.syncAPIError'))
     } finally {
       setIsSyncing(false)
     }
@@ -240,7 +242,7 @@ function AdminContent() {
         body: JSON.stringify({ userId })
       })
       if (res.ok) {
-        toast.success('Pagamento vinculado com sucesso!')
+        toast.success(t('admin.paymentLinked'))
         fetchAllData()
       }
     } catch (err) {
@@ -499,9 +501,9 @@ function AdminContent() {
       <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
         <DialogContent className="sm:max-w-[425px] bg-eve-panel border-eve-border text-white">
           <DialogHeader>
-            <DialogTitle>Aprovar Pagamento</DialogTitle>
+            <DialogTitle>{t('admin.confirmPayment')}</DialogTitle>
             <DialogDescription className="text-gray-400">
-              Selecione os módulos que o usuário terá acesso após a aprovação.
+              {t('admin.selectModules')}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -530,14 +532,14 @@ function AdminContent() {
             </div>
           </div>
           <DialogFooter className="bg-eve-dark/30 p-4 -m-6 mt-4 border-t border-eve-border/50">
-            <Button variant="ghost" onClick={() => setIsApproveDialogOpen(false)} className="text-gray-400">Cancelar</Button>
+            <Button variant="ghost" onClick={() => setIsApproveDialogOpen(false)} className="text-gray-400">{t('admin.cancel')}</Button>
             <Button 
                 onClick={confirmApprovePayment} 
                 disabled={isSyncing || selectedModules.length === 0}
                 className="bg-eve-accent text-black font-bold hover:bg-eve-accent/80"
             >
               {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Confirmar Aprovação
+              {t('admin.confirmApproval')}
             </Button>
           </DialogFooter>
         </DialogContent>

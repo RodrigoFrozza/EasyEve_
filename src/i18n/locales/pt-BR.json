@@ -83,7 +83,8 @@
     "exportData": "Exportar Dados",
     "importData": "Importar Dados",
     "clearData": "Limpar Dados",
-    "clearDataWarning": "Esta ação irá remover permanentemente todas as suas Atividades e Fits salvos.",
+    "confirmDelete": "Confirmar Exclusão Total",
+    "clearDataWarning": "Esta ação irá remover permanentemente todas as suas Atividades e Fits salvos. Sua conta e personagens vinculados não serão afetados.",
     "clearDataWarning2": "Atenção: Esta ação não pode ser desfeita. Recomendamos exportar seus dados antes de prosseguir.",
     "dataCleared": "Dados limpos com sucesso"
   },
@@ -94,14 +95,19 @@
     "noAccountFound": "Nenhuma conta encontrada com os filtros selecionados.",
     "syncAPIError": "Falha na comunicação com a API de Sync",
     "paymentLinked": "Pagamento vinculado com sucesso!",
-    "selectModules": "Selecione os módulos que o usuário terá acesso após a aprovação."
+    "selectModules": "Selecione os módulos que o usuário terá acesso após a aprovação.",
+    "cancel": "Cancelar",
+    "confirmApproval": "Confirmar Aprovação",
+    "logsTitle": "Visualizando registros dos últimos 7 dias",
+    "confirmPayment": "Aprovar Pagamento"
   },
   "login": {
     "reason": "Motivo:",
     "contactDiscord": "Entre em contato via Discord para contestação."
   },
   "account": {
-    "validSubscription": "Contas com tempo de assinatura válido"
+    "validSubscription": "Contas com tempo de assinatura válido",
+    "tableHeader": "Conta"
   },
   "dashboard": {
     "startActivityPrompt": "Inicie uma atividade para começar a registrar"
