@@ -11,7 +11,7 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "sync:mining": "ts-node scripts/sync-mining-data.ts"
+    "sync:mining": "node scripts/sync-mining-data.js"
   },
   "dependencies": {
     "@prisma/client": "^5.10.0",
