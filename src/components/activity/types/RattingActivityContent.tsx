@@ -8,7 +8,7 @@ import { MTULootField } from '../MTULootField'
 import { SalvageField } from '../SalvageField'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Loader2, RefreshCw, TrendingUp, TrendingDown, StopCircle, History, Activity as ActivityIcon } from 'lucide-react'
+import { Loader2, RefreshCw, TrendingUp, TrendingDown, StopCircle, History, Activity as ActivityIcon, Pause, Play, HelpCircle } from 'lucide-react'
 import { Sparkline } from '@/components/ui/Sparkline'
 import { ActivityDetailDialog } from '../ActivityDetailDialog'
 import { MTUInputModal, SalvageInputModal, ConfirmEndModal } from '../modals'
@@ -41,6 +41,7 @@ export function RattingActivityContent({
   const [mtuModalOpen, setMtuModalOpen] = useState(false)
   const [salvageModalOpen, setSalvageModalOpen] = useState(false)
   const [confirmEndOpen, setConfirmEndOpen] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
@@ -80,22 +81,60 @@ export function RattingActivityContent({
     onEnd?.()
   }
 
+  const participants = activity.participants || []
+  const firstParticipant = participants[0]
+  const otherParticipants = participants.slice(1)
+
   if (displayMode === 'compact') {
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
         <div className="space-y-3">
-          <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-            {activity.participants.map((p: any) => (
-              <div key={p.characterId} className="flex-shrink-0 flex flex-col items-center gap-1.5 p-2 bg-zinc-900/40 border border-white/[0.03] rounded-xl hover:bg-zinc-900/60 transition-colors">
-                <Avatar className="h-8 w-8 border border-zinc-700">
-                  <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
-                  <AvatarFallback className="bg-zinc-900 text-[10px] font-black">{p.characterName?.slice(0, 2)}</AvatarFallback>
-                </Avatar>
-                <span className="text-[8px] text-zinc-400 font-black uppercase tracking-wider truncate max-w-[50px]">
-                  {p.characterName?.split(' ')[0]}
-                </span>
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar">
+            {firstParticipant && (
+              <div className="flex-shrink-0 relative group">
+                <div className="flex flex-col items-center gap-1.5 p-2 bg-zinc-900/40 border border-white/[0.03] rounded-xl hover:bg-zinc-900/60 transition-colors">
+                  <div className="relative">
+                    <Avatar className="h-10 w-10 border-2 border-zinc-700">
+                      <AvatarImage src={`https://images.evetech.net/characters/${firstParticipant.characterId}/portrait?size=64`} />
+                      <AvatarFallback className="bg-zinc-900 text-xs font-black">{firstParticipant.characterName?.slice(0, 2)}</AvatarFallback>
+                    </Avatar>
+                    {firstParticipant.fit && (
+                      <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-blue-500 rounded-full flex items-center justify-center border-2 border-zinc-900">
+                        <span className="text-[8px] text-white font-black">F</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="absolute z-50 hidden group-hover:block bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1 -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                  <span className="text-[10px] text-white font-bold">{firstParticipant.characterName}</span>
+                </div>
               </div>
-            ))}
+            )}
+            
+            {otherParticipants.length > 0 && (
+              <div className="flex gap-1">
+                {otherParticipants.map((p: any) => (
+                  <div key={p.characterId} className="flex-shrink-0 relative group">
+                    <div className="flex flex-col items-center gap-1 p-1.5 bg-zinc-900/40 border border-white/[0.03] rounded-lg hover:bg-zinc-900/60 transition-colors">
+                      <div className="relative">
+                        <Avatar className="h-6 w-6 border border-zinc-700">
+                          <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=32`} />
+                          <AvatarFallback className="bg-zinc-900 text-[8px] font-black">{p.characterName?.slice(0, 2)}</AvatarFallback>
+                        </Avatar>
+                        {p.fit && (
+                          <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-blue-500 rounded-full flex items-center justify-center border border-zinc-900">
+                            <span className="text-[6px] text-white font-black">F</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="absolute z-50 hidden group-hover:block bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1 -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                      <span className="text-[10px] text-white font-bold">{p.characterName}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-2">
@@ -137,7 +176,7 @@ export function RattingActivityContent({
               onClick={() => setMtuModalOpen(true)}
               className="flex-1 h-10 bg-blue-500/5 border-blue-500/20 hover:bg-blue-500/20 hover:border-blue-500/50 text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-wider"
             >
-              <span className="mr-1">+</span> Add MTU
+              + MTU
             </Button>
             <Button 
               size="sm" 
@@ -145,7 +184,7 @@ export function RattingActivityContent({
               onClick={() => setSalvageModalOpen(true)}
               className="flex-1 h-10 bg-orange-500/5 border-orange-500/20 hover:bg-orange-500/20 hover:border-orange-500/50 text-orange-400 rounded-xl text-[10px] font-black uppercase tracking-wider"
             >
-              <span className="mr-1">+</span> Add Salvage
+              + Salvage
             </Button>
           </div>
         </div>
@@ -166,15 +205,19 @@ export function RattingActivityContent({
             ) : (
               <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", syncStatus === 'success' && "text-green-500")} />
             )}
-            Sync API
+            Sync
           </Button>
           
           <Button 
             size="sm" 
             variant="outline"
-            className="h-10 px-4 bg-white/[0.02] border-white/[0.05] hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl transition-all"
+            onClick={() => setIsPaused(!isPaused)}
+            className={cn(
+              "h-10 px-4 bg-zinc-900/40 border-white/[0.05] rounded-xl transition-all",
+              isPaused ? "text-yellow-400 border-yellow-500/30" : "text-zinc-500 hover:text-zinc-300"
+            )}
           >
-            <History className="h-3.5 w-3.5" />
+            {isPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
           </Button>
 
           <Button 
@@ -216,19 +259,28 @@ export function RattingActivityContent({
   return (
     <div className="space-y-4">
       <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-        {activity.participants.map((p: any) => (
-          <div key={p.characterId} className="flex-shrink-0 flex flex-col items-center gap-1.5 p-2 bg-zinc-900/40 border border-white/[0.03] rounded-xl hover:bg-zinc-900/60 transition-colors">
-            <Avatar className="h-10 w-10 border-2 border-zinc-700">
-              <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
-              <AvatarFallback className="bg-zinc-900 text-xs font-black">{p.characterName?.slice(0, 2)}</AvatarFallback>
-            </Avatar>
-            <div className="text-center">
-              <span className="text-[9px] text-zinc-300 font-bold block truncate max-w-[60px]">
-                {p.characterName?.split(' ')[0]}
-              </span>
-              <span className="text-[7px] text-zinc-600 uppercase tracking-wider truncate max-w-[60px] block">
-                {p.fit || '—'}
-              </span>
+        {participants.map((p: any) => (
+          <div key={p.characterId} className="flex-shrink-0 relative group">
+            <div className="flex flex-col items-center gap-1.5 p-2 bg-zinc-900/40 border border-white/[0.03] rounded-xl hover:bg-zinc-900/60 transition-colors">
+              <div className="relative">
+                <Avatar className="h-10 w-10 border-2 border-zinc-700">
+                  <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
+                  <AvatarFallback className="bg-zinc-900 text-xs font-black">{p.characterName?.slice(0, 2)}</AvatarFallback>
+                </Avatar>
+                <div className={cn(
+                  "absolute -bottom-1 -right-1 h-4 w-4 rounded-full flex items-center justify-center border-2 border-zinc-900",
+                  p.fit ? "bg-blue-500" : "bg-zinc-700"
+                )}>
+                  {p.fit ? (
+                    <span className="text-[8px] text-white font-black">F</span>
+                  ) : (
+                    <HelpCircle className="h-2.5 w-2.5 text-white" />
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="absolute z-50 hidden group-hover:block bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1 -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap">
+              <span className="text-[10px] text-white font-bold">{p.characterName}</span>
             </div>
           </div>
         ))}
@@ -326,10 +378,22 @@ export function RattingActivityContent({
         <Button 
           size="sm" 
           variant="outline"
+          onClick={() => setIsPaused(!isPaused)}
+          className={cn(
+            "h-12 px-6 bg-zinc-900/40 border-white/[0.05] rounded-xl transition-all",
+            isPaused ? "text-yellow-400 border-yellow-500/30" : "text-zinc-500 hover:text-zinc-300"
+          )}
+        >
+          {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+        </Button>
+
+        <Button 
+          size="sm" 
+          variant="outline"
           onClick={() => setMtuModalOpen(true)}
           className="flex-1 h-12 bg-blue-500/5 border-blue-500/20 hover:bg-blue-500/20 hover:border-blue-500/50 text-blue-400 rounded-xl text-[11px] font-black uppercase tracking-wider"
         >
-          Add MTU
+          + MTU
         </Button>
 
         <Button 
@@ -338,7 +402,7 @@ export function RattingActivityContent({
           onClick={() => setSalvageModalOpen(true)}
           className="flex-1 h-12 bg-orange-500/5 border-orange-500/20 hover:bg-orange-500/20 hover:border-orange-500/50 text-orange-400 rounded-xl text-[11px] font-black uppercase tracking-wider"
         >
-          Add Salvage
+          + Salvage
         </Button>
 
         <Button 

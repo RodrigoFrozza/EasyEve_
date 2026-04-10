@@ -539,7 +539,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 px-2 mb-1">
                     <div className="h-4 w-1 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.4)]" />
-                    <span className="text-[10px] uppercase font-black tracking-[0.2em] text-blue-400">Inventory Management</span>
+                    <span className="text-[10px] uppercase font-black tracking-[0.2em] text-blue-400">MTU Management</span>
                   </div>
                   <div className="bg-zinc-950/20 p-2 rounded-2xl border border-zinc-900/30 backdrop-blur-md">
                     <MTULootField 
@@ -558,7 +558,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 px-2 mb-1">
                     <div className="h-4 w-1 bg-orange-500 rounded-full shadow-[0_0_8px_rgba(249,115,22,0.4)]" />
-                    <span className="text-[10px] uppercase font-black tracking-[0.2em] text-orange-400">Reclamation Systems</span>
+                    <span className="text-[10px] uppercase font-black tracking-[0.2em] text-orange-400">Salvage Management</span>
                   </div>
                   <div className="bg-zinc-950/20 p-2 rounded-2xl border border-zinc-900/30 backdrop-blur-md">
                     <SalvageField 
