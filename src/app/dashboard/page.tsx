@@ -119,7 +119,7 @@ export default async function DashboardPage() {
         grouped[userId].ess += actEss
         grouped[userId].total += actBounty + actEss
       }
-      return Object.values(grouped).sort((a, b) => b.total - a.total).slice(0, 5)
+      return Object.values(grouped).sort((a, b) => b.total - a.total).slice(0, 10)
     }, 60 * 1000) // 1 min cache
   }
 
@@ -261,18 +261,23 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-eve-panel border-eve-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-white text-sm">Ratting Leaderboard</CardTitle>
+        <Card className="bg-eve-panel border-eve-border overflow-hidden">
+          <CardHeader className="p-3 border-b border-white/5 bg-white/[0.02]">
+            <CardTitle className="text-white text-xs uppercase tracking-widest font-black flex items-center gap-2">
+              <TrendingUp className="h-3 w-3 text-cyan-400" />
+              Ratting Leaderboard
+            </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0">
+          <CardContent className="p-0">
             <Tabs defaultValue="daily" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 bg-eve-dark h-8">
-                <TabsTrigger value="daily" className="text-[10px] h-6">D</TabsTrigger>
-                <TabsTrigger value="weekly" className="text-[10px] h-6">W</TabsTrigger>
-                <TabsTrigger value="monthly" className="text-[10px] h-6">M</TabsTrigger>
-                <TabsTrigger value="alltime" className="text-[10px] h-6">ALL</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-4 bg-transparent h-9 border-b border-white/5 rounded-none p-0">
+                <TabsTrigger value="daily" className="text-[9px] font-bold uppercase tracking-tighter data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full">Daily</TabsTrigger>
+                <TabsTrigger value="weekly" className="text-[9px] font-bold uppercase tracking-tighter data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full">Weekly</TabsTrigger>
+                <TabsTrigger value="monthly" className="text-[9px] font-bold uppercase tracking-tighter data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full">Monthly</TabsTrigger>
+                <TabsTrigger value="alltime" className="text-[9px] font-bold uppercase tracking-tighter data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full">All-Time</TabsTrigger>
               </TabsList>
+              
+              <div className="p-2">
               
               <TabsContent value="daily">
                 <LeaderboardWrapper initialData={dailyStats} currentUserId={session?.user?.id} period="daily" refreshInterval={60000} />
@@ -286,6 +291,7 @@ export default async function DashboardPage() {
               <TabsContent value="alltime">
                 <LeaderboardWrapper initialData={allTimeStats} currentUserId={session?.user?.id} period="alltime" refreshInterval={60000} />
               </TabsContent>
+              </div>
             </Tabs>
           </CardContent>
         </Card>
