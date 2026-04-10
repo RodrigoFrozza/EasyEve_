@@ -107,6 +107,15 @@ export function ActivityDetailDialog({ activity, trigger, open, onOpenChange }: 
     return Array.from(chars)
   }, [data.logs])
 
+  const uniqueOres = useMemo(() => {
+    if (!isMiningActivity) return []
+    const ores = new Set<string>()
+    ;(data.logs || []).forEach((l: any) => {
+      if (l.oreName) ores.add(l.oreName)
+    })
+    return Array.from(ores)
+  }, [data.logs, isMiningActivity])
+
   const handleExportCSV = () => {
     const logs = data.logs || []
     if (logs.length === 0) return
@@ -192,10 +201,12 @@ export function ActivityDetailDialog({ activity, trigger, open, onOpenChange }: 
                 <div className="p-2 bg-green-500/10 rounded-lg">
                    <Wallet className="h-4 w-4 text-green-400" />
                 </div>
-                <span className="text-[10px] text-zinc-500 uppercase font-black tracking-[0.2em] font-mono">GROSS REVENUE</span>
+                <span className="text-[10px] text-zinc-500 uppercase font-black tracking-[0.2em] font-mono">
+                  {isMiningActivity ? 'ESTIMATED VALUE' : 'GROSS REVENUE'}
+                </span>
               </div>
               <div className="text-2xl font-black text-white font-mono tracking-tighter leading-none">
-                {formatISK(grossBounty)}
+                {formatISK(isMiningActivity ? miningTotalValue : grossBounty)}
               </div>
               <div className="h-1 w-full bg-zinc-900 mt-4 rounded-full overflow-hidden">
                  <div className="h-full bg-green-500/40 w-[85%]" />
@@ -206,12 +217,14 @@ export function ActivityDetailDialog({ activity, trigger, open, onOpenChange }: 
               <div className="absolute top-0 right-0 p-4 bg-blue-500/5 blur-2xl rounded-full" />
               <div className="flex items-center gap-2.5 mb-3">
                 <div className="p-2 bg-blue-500/10 rounded-lg">
-                   <Package className="h-4 w-4 text-blue-400" />
+                   {isMiningActivity ? <TrendingUp className="h-4 w-4 text-blue-400" /> : <Package className="h-4 w-4 text-blue-400" />}
                 </div>
-                <span className="text-[10px] text-zinc-500 uppercase font-black tracking-[0.2em] font-mono">ASSET LOGISTICS</span>
+                <span className="text-[10px] text-zinc-500 uppercase font-black tracking-[0.2em] font-mono">
+                  {isMiningActivity ? 'EXTRACTION VOLUME' : 'ASSET LOGISTICS'}
+                </span>
               </div>
               <div className="text-2xl font-black text-white font-mono tracking-tighter leading-none">
-                {formatISK(estimatedLootValue + estimatedSalvageValue)}
+                {isMiningActivity ? `${formatNumber(miningTotalQuantity)} m³` : formatISK(estimatedLootValue + estimatedSalvageValue)}
               </div>
               <div className="h-1 w-full bg-zinc-900 mt-4 rounded-full overflow-hidden">
                  <div className="h-full bg-blue-500/40 w-[40%]" />
@@ -231,9 +244,18 @@ export function ActivityDetailDialog({ activity, trigger, open, onOpenChange }: 
                   const start = new Date(activity.startTime).getTime()
                   const end = activity.endTime ? new Date(activity.endTime).getTime() : Date.now()
                   const hours = (end - start) / 3600000
-                  return hours > 0.01 ? formatISK(netProfit / hours) : formatISK(0)
+                  const iskh = hours > 0.01 ? formatISK(netProfit / hours) : formatISK(0)
+                  const m3h = hours > 0.01 ? formatNumber(miningTotalQuantity / hours) : formatNumber(0)
+                  
+                  return (
+                    <div className="flex flex-col">
+                      <span>{iskh}<span className="text-[10px] text-zinc-600 font-black ml-1.5">/H</span></span>
+                      {isMiningActivity && (
+                        <span className="text-[10px] text-zinc-500 mt-1 font-mono tracking-normal lowercase">{m3h} m³/h extraction</span>
+                      )}
+                    </div>
+                  )
                 })()}
-                <span className="text-[10px] text-zinc-600 font-black ml-1.5">/H</span>
               </div>
               <div className="flex items-center gap-1.5 mt-4">
                  <div className="h-1 flex-1 bg-eve-accent/20 rounded-full" />
@@ -286,7 +308,21 @@ export function ActivityDetailDialog({ activity, trigger, open, onOpenChange }: 
              </div>
 
              <div className="grid grid-cols-2 gap-3">
-                {!isMiningActivity && (
+                {isMiningActivity ? (
+                   <div className="relative group">
+                     <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-600 group-focus-within:text-eve-accent transition-colors" />
+                     <select 
+                       value={logFilterType} 
+                       onChange={e => setLogFilterType(e.target.value)}
+                       className="w-full bg-zinc-950/60 border border-white/[0.05] rounded-xl pl-9 pr-4 py-3 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400 outline-none focus:border-eve-accent/40 focus:bg-zinc-900 transition-all appearance-none cursor-pointer"
+                     >
+                       <option value="all">FILTER://ALL_MATERIALS</option>
+                       {uniqueOres.map(ore => (
+                         <option key={ore} value={ore}>QUERY://{ore.toUpperCase()}</option>
+                       ))}
+                     </select>
+                   </div>
+                ) : (
                   <div className="relative group">
                     <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-600 group-focus-within:text-eve-accent transition-colors" />
                     <select 
@@ -341,9 +377,19 @@ export function ActivityDetailDialog({ activity, trigger, open, onOpenChange }: 
                                   <AvatarFallback className="text-[10px] bg-zinc-950 text-zinc-600 font-black">{log.charName?.slice(0, 2)}</AvatarFallback>
                                 </Avatar>
                                 <div className="absolute -bottom-1 -right-1 p-1 bg-zinc-950 border border-white/[0.05] rounded-md shadow-lg">
-                                   {log.type === 'bounty' && <Wallet className="h-2.5 w-2.5 text-green-500" />}
-                                   {log.type === 'ess' && <PiggyBank className="h-2.5 w-2.5 text-yellow-500" />}
-                                   {log.type === 'tax' && <Receipt className="h-2.5 w-2.5 text-red-500" />}
+                                   {isMiningActivity ? (
+                                     <img 
+                                      src={`https://images.evetech.net/types/${log.typeId}/icon?size=32`} 
+                                      className="h-3 w-3"
+                                      alt="Ore"
+                                     />
+                                   ) : (
+                                     <>
+                                       {log.type === 'bounty' && <Wallet className="h-2.5 w-2.5 text-green-500" />}
+                                       {log.type === 'ess' && <PiggyBank className="h-2.5 w-2.5 text-yellow-500" />}
+                                       {log.type === 'tax' && <Receipt className="h-2.5 w-2.5 text-red-500" />}
+                                     </>
+                                   )}
                                 </div>
                               </div>
                               <div className="space-y-0.5">
@@ -351,23 +397,26 @@ export function ActivityDetailDialog({ activity, trigger, open, onOpenChange }: 
                                  <div className="flex items-center gap-2">
                                     <p className={cn(
                                       "text-[9px] font-black uppercase tracking-[0.2em]",
+                                      isMiningActivity ? 'text-blue-400/70' :
                                       log.type === 'bounty' ? 'text-green-500/70' :
                                       log.type === 'ess' ? 'text-yellow-500/70' :
                                       'text-red-500/70'
                                     )}>
-                                       {log.type}
+                                       {isMiningActivity ? log.oreName : log.type}
                                     </p>
                                     <span className="text-zinc-800 font-black">•</span>
-                                    <p className="text-[9px] text-zinc-600 font-black font-mono">HASH_{Math.random().toString(36).substring(7).toUpperCase()}</p>
+                                    <p className="text-[9px] text-zinc-600 font-black font-mono">
+                                      {isMiningActivity ? `UNT_${formatNumber(log.quantity)} • ${formatNumber(log.volumeValue)}m³` : `HASH_${Math.random().toString(36).substring(7).toUpperCase()}`}
+                                    </p>
                                  </div>
                               </div>
                            </div>
                            <div className="text-right">
                               <p className={cn(
                                 "text-lg font-black font-mono tracking-tighter transition-all group-hover/log:scale-110 origin-right",
-                                log.type === 'tax' ? 'text-red-500' : 'text-green-400'
+                                !isMiningActivity && log.type === 'tax' ? 'text-red-500' : 'text-green-400'
                               )}>
-                                {log.type === 'tax' ? '-' : '+'}{formatISK(log.amount)}
+                                {(!isMiningActivity && log.type === 'tax') ? '-' : '+'}{formatISK(isMiningActivity ? log.value : log.amount)}
                               </p>
                               <div className="flex items-center justify-end gap-1.5 text-zinc-600 mt-1">
                                  <Clock className="h-2.5 w-2.5" />
@@ -387,8 +436,8 @@ export function ActivityDetailDialog({ activity, trigger, open, onOpenChange }: 
                         <tr className="text-zinc-600 uppercase tracking-widest border-b border-white/[0.05]">
                            <th className="p-4 text-left font-black tracking-[0.2em]">TIMESTAMP</th>
                            <th className="p-4 text-left font-black tracking-[0.2em]">DECRYPT_IDENTITY</th>
-                           <th className="p-4 text-left font-black tracking-[0.2em]">TRANS_TYPE</th>
-                           <th className="p-4 text-right font-black tracking-[0.2em]">AMOUNT_CREDITED</th>
+                           <th className="p-4 text-left font-black tracking-[0.2em]">{isMiningActivity ? 'MATERIAL' : 'TRANS_TYPE'}</th>
+                           <th className="p-4 text-right font-black tracking-[0.2em]">{isMiningActivity ? 'EST_VALUE' : 'AMOUNT_CREDITED'}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/[0.03]">
@@ -404,22 +453,34 @@ export function ActivityDetailDialog({ activity, trigger, open, onOpenChange }: 
                                </div>
                             </td>
                             <td className="p-4">
-                                <Badge variant="outline" className={cn(
-                                  "text-[8px] border-none px-2 py-0.5 h-5 font-black uppercase tracking-widest rounded-md",
-                                  log.type === 'bounty' ? 'bg-green-500/10 text-green-500 shadow-[0_0_10px_rgba(34,197,94,0.1)]' :
-                                  log.type === 'ess' ? 'bg-yellow-500/10 text-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.1)]' :
-                                  'bg-red-500/10 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]'
-                                )}>
-                                  {log.type}
-                                </Badge>
+                                {isMiningActivity ? (
+                                  <div className="flex items-center gap-2">
+                                    <img src={`https://images.evetech.net/types/${log.typeId}/icon?size=32`} className="h-5 w-5 rounded-sm" />
+                                    <div className="flex flex-col">
+                                      <span className="text-blue-400 font-black uppercase text-[9px] leading-tight">{log.oreName}</span>
+                                      <span className="text-zinc-600 font-bold text-[8px] leading-tight">
+                                        {formatNumber(log.quantity)} unt • {formatNumber(log.volumeValue)} m³
+                                      </span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <Badge variant="outline" className={cn(
+                                    "text-[8px] border-none px-2 py-0.5 h-5 font-black uppercase tracking-widest rounded-md",
+                                    log.type === 'bounty' ? 'bg-green-500/10 text-green-500 shadow-[0_0_10px_rgba(34,197,94,0.1)]' :
+                                    log.type === 'ess' ? 'bg-yellow-500/10 text-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.1)]' :
+                                    'bg-red-500/10 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]'
+                                  )}>
+                                    {log.type}
+                                  </Badge>
+                                )}
                             </td>
                             <td className={cn(
                               "p-4 text-right font-black text-[11px]",
-                              log.type === 'tax' ? 'text-red-500' : 'text-green-400 font-bold'
+                              !isMiningActivity && log.type === 'tax' ? 'text-red-500' : 'text-green-400 font-bold'
                             )}>
                               <div className="flex items-center justify-end gap-1.5">
-                                 {log.type === 'tax' ? '-' : '+'}
-                                 {formatISK(log.amount)}
+                                 {(!isMiningActivity && log.type === 'tax') ? '-' : '+'}
+                                 {formatISK(isMiningActivity ? log.value : log.amount)}
                                  <span className="text-[8px] text-zinc-700 opacity-50">ISK</span>
                               </div>
                             </td>
@@ -455,16 +516,24 @@ export function ActivityDetailDialog({ activity, trigger, open, onOpenChange }: 
           <div className="absolute inset-0 bg-gradient-to-t from-eve-accent/5 to-transparent pointer-events-none" />
           <div className="flex items-center justify-between mb-8 relative z-10">
              <div className="space-y-2">
-                <span className="text-[10px] text-zinc-500 uppercase font-black tracking-[0.3em] font-mono opacity-50">OPERATIONAL OVERHEAD</span>
+                <span className="text-[10px] text-zinc-500 uppercase font-black tracking-[0.3em] font-mono opacity-50">
+                  {isMiningActivity ? 'EXTRACTION SUMMARY' : 'OPERATIONAL OVERHEAD'}
+                </span>
                 <div className="flex items-center gap-3">
-                   <div className="p-1.5 bg-red-500/10 rounded-lg">
-                      <Receipt className="h-4 w-4 text-red-400" />
+                   <div className={cn("p-1.5 rounded-lg", isMiningActivity ? "bg-blue-500/10" : "bg-red-500/10")}>
+                      {isMiningActivity ? <Package className="h-4 w-4 text-blue-400" /> : <Receipt className="h-4 w-4 text-red-400" />}
                    </div>
-                   <p className="text-xl font-black text-red-500 font-mono tracking-tighter leading-none">-{formatISK(automatedTaxes)}</p>
+                   {isMiningActivity ? (
+                     <p className="text-xl font-black text-blue-400 font-mono tracking-tighter leading-none">{formatNumber(miningTotalQuantity)} m³</p>
+                   ) : (
+                     <p className="text-xl font-black text-red-500 font-mono tracking-tighter leading-none">-{formatISK(automatedTaxes)}</p>
+                   )}
                 </div>
              </div>
              <div className="text-right space-y-2">
-                <span className="text-[10px] text-eve-accent font-black tracking-[0.3em] font-mono uppercase">FINAL SETTLEMENT PROFIT</span>
+                <span className="text-[10px] text-eve-accent font-black tracking-[0.3em] font-mono uppercase">
+                  {isMiningActivity ? 'TOTAL EXTRACTION VALUE' : 'FINAL SETTLEMENT PROFIT'}
+                </span>
                 <div className="flex items-center justify-end gap-4">
                    <p className="text-4xl font-black text-white font-mono tracking-tighter shadow-glow-accent leading-none">
                      {formatISK(netProfit)}

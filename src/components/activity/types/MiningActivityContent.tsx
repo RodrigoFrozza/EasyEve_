@@ -222,7 +222,7 @@ export function MiningActivityContent({
         <div className="h-16 bg-zinc-950/50 rounded-xl border border-white/[0.03] overflow-hidden relative group">
           <div className="absolute inset-0 bg-gradient-to-t from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <Sparkline 
-            data={logs.map((l: any) => l.quantity)} 
+            data={logs.map((l: any) => l.volumeValue || l.quantity)} 
             color="#3b82f6" 
             height={64}
           />
@@ -261,7 +261,7 @@ export function MiningActivityContent({
                   className="h-6 w-6 rounded-md border border-white/[0.05] bg-zinc-950 group-hover/oreitem:border-blue-500/50 transition-colors"
                 />
                 <div className="absolute -top-1 -right-1 bg-blue-600 text-[7px] text-white px-1 rounded-full font-bold opacity-0 group-hover/oreitem:opacity-100 transition-opacity">
-                  {formatNumber(oreBreakdown[typeId]?.quantity)}
+                  {formatNumber(oreBreakdown[typeId]?.volumeValue || 0)} m³
                 </div>
               </div>
             ))}
@@ -348,8 +348,8 @@ export function MiningActivityContent({
                         />
                       </div>
                       <div className="text-right flex-shrink-0 w-24">
-                        <p className="text-sm font-bold text-green-400 font-mono">{formatNumber(quantity)} m³</p>
-                        <p className="text-[10px] text-gray-500">{formatISK(value)}</p>
+                        <p className="text-sm font-bold text-green-400 font-mono">{formatNumber(oreBreakdown[typeId]?.volumeValue || 0)} m³</p>
+                        <p className="text-[10px] text-gray-500">{formatNumber(quantity)} units</p>
                       </div>
                     </div>
                   )
@@ -420,10 +420,10 @@ export function MiningActivityContent({
                     </div>
                     <div className="text-right">
                       <span className="font-bold text-[11px] text-purple-400">
-                        {formatNumber(log.quantity)} m³
+                        {formatNumber(log.volumeValue || 0)} m³
                       </span>
-                      <p className="text-[8px] text-gray-600">
-                        {new Date(log.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      <p className="text-[8px] text-gray-500">
+                        {formatNumber(log.quantity)} unt
                       </p>
                     </div>
                   </div>

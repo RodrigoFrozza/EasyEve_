@@ -26,6 +26,7 @@ interface ActivityStore {
   activities: Activity[]
   isLoading: boolean
   pollingInterval: NodeJS.Timeout | null
+  rattingSyncInterval: NodeJS.Timeout | null
   
   setActivities: (activities: Activity[]) => void
   addActivity: (activity: Activity) => void
@@ -39,13 +40,16 @@ interface ActivityStore {
   syncActivity: (id: string) => Promise<Activity | null>
   
   startPolling: (interval?: number) => void
+  startRattingAutoSync: (interval?: number) => void
   stopPolling: () => void
+  stopRattingAutoSync: () => void
 }
 
 export const useActivityStore = create<ActivityStore>((set, get) => ({
   activities: [],
   isLoading: false,
   pollingInterval: null,
+  rattingSyncInterval: null,
 
   setActivities: (activities) => set({ activities }),
 
@@ -126,6 +130,37 @@ export const useActivityStore = create<ActivityStore>((set, get) => ({
     if (pollingInterval) {
       clearInterval(pollingInterval)
       set({ pollingInterval: null })
+    }
+  },
+
+  startRattingAutoSync: (interval = 300000) => {
+    const { stopRattingAutoSync, activities, syncActivity } = get()
+    stopRattingAutoSync()
+    
+    const syncId = setInterval(async () => {
+      const activeRatting = activities.filter(a => a.status === 'active' && a.type === 'ratting')
+      if (activeRatting.length === 0) return
+      
+      console.log(`[AUTO-SYNC] Syncing ${activeRatting.length} ratting activities...`)
+      for (const activity of activeRatting) {
+        try {
+          await syncActivity(activity.id)
+        } catch (err) {
+          console.error(`[AUTO-SYNC] Error syncing activity ${activity.id}:`, err)
+        }
+      }
+    }, interval)
+    
+    set({ rattingSyncInterval: syncId })
+    console.log(`[AUTO-SYNC] Started auto-sync every ${interval/1000}s for ratting activities`)
+  },
+
+  stopRattingAutoSync: () => {
+    const { rattingSyncInterval } = get()
+    if (rattingSyncInterval) {
+      clearInterval(rattingSyncInterval)
+      set({ rattingSyncInterval: null })
+      console.log('[AUTO-SYNC] Stopped auto-sync')
     }
   }
 }))

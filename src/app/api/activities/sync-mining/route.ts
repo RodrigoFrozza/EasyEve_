@@ -19,34 +19,37 @@ const JITA_PRICE_CACHE_TTL = 5 * 60 * 1000
 async function getJitaSellPrices(typeIds: number[]): Promise<Record<number, number>> {
   const now = Date.now()
   
-  // Return cached if valid
+  // Return cached if valid and covers all needed
   if (jitaPriceCache && (now - jitaPriceCache.timestamp < JITA_PRICE_CACHE_TTL)) {
     return jitaPriceCache.prices
   }
   
   const priceMap: Record<number, number> = {}
   
-  // Fetch prices from Jita market for each type
-  for (const typeId of typeIds) {
-    try {
-      const response = await fetch(
-        `${ESI_BASE_URL}/markets/${JITA_REGION_ID}/orders/?type_id=${typeId}&order_type=sell`,
-        { headers: { 'X-User-Agent': USER_AGENT } }
-      )
-      
-      if (!response.ok) continue
-      
-      const orders: MarketOrder[] = await response.json()
-      const validOrders = orders.filter(o => o.volume_remain > 0)
-      
-      if (validOrders.length > 0) {
-        // Best sell price (lowest)
-        const bestPrice = Math.min(...validOrders.map(o => o.price))
-        priceMap[typeId] = bestPrice
+  // Fetch prices in parallel with concurrency limit
+  const BATCH_SIZE = 10
+  for (let i = 0; i < typeIds.length; i += BATCH_SIZE) {
+    const batch = typeIds.slice(i, i + BATCH_SIZE)
+    await Promise.all(batch.map(async (typeId) => {
+      try {
+        const response = await fetch(
+          `${ESI_BASE_URL}/markets/${JITA_REGION_ID}/orders/?type_id=${typeId}&order_type=sell`,
+          { headers: { 'X-User-Agent': USER_AGENT } }
+        )
+        
+        if (!response.ok) return
+        
+        const orders: MarketOrder[] = await response.json()
+        const validOrders = orders.filter(o => o.volume_remain > 0)
+        
+        if (validOrders.length > 0) {
+          const bestPrice = Math.min(...validOrders.map(o => o.price))
+          priceMap[typeId] = bestPrice
+        }
+      } catch (e) {
+        console.error(`Error fetching Jita price for type ${typeId}:`, e)
       }
-    } catch (e) {
-      console.error(`Error fetching Jita price for type ${typeId}:`, e)
-    }
+    }))
   }
   
   jitaPriceCache = { prices: priceMap, timestamp: now }
@@ -338,50 +341,56 @@ export async function POST(request: Request) {
       }
     }
 
-    // Single loop to build all breakdowsn
-    const allLogs = Array.from(logMap.values())
-    const oreBreakdown: Record<number, { quantity: number; estimatedValue: number }> = {}
-    const participantBreakdown: Record<number, { quantity: number; estimatedValue: number }> = {}
-
-    for (const log of allLogs) {
-      // Ore breakdown
-      if (!oreBreakdown[log.typeId]) {
-        oreBreakdown[log.typeId] = { quantity: 0, estimatedValue: 0 }
-      }
-      oreBreakdown[log.typeId].quantity += log.quantity
-
-      // Participant breakdown
-      if (!participantBreakdown[log.characterId]) {
-        participantBreakdown[log.characterId] = { quantity: 0, estimatedValue: 0 }
-      }
-    }
-
-    // Get prices - prefer Jita sell prices, fallback to market prices, then base prices
+    // Get Prices and Ore Metadata (Name/Volume) from SDE
     const typeIdsList = Object.keys(oreBreakdown).map(Number)
+    
+    // Resolve Names and Volumes from SDE (EveType table)
+    const sdeMetadata = await prisma.eveType.findMany({
+      where: { id: { in: typeIdsList } },
+      select: { id: true, name: true, volume: true, basePrice: true }
+    })
+    
+    const metaMap: Record<number, { name: string; volume: number; basePrice: number }> = {}
+    sdeMetadata.forEach(m => {
+      metaMap[m.id] = { 
+        name: m.name, 
+        volume: m.volume || 0,
+        basePrice: m.basePrice || 0
+      }
+    })
+
     const jitaPrices = await getJitaSellPrices(typeIdsList)
     const marketPrices = await getMarketPrices()
     
-    const typeIdsWithoutPrice = typeIdsList.filter(id => !jitaPrices[id] && !marketPrices[id])
-    const basePrices = typeIdsWithoutPrice.length > 0 
-      ? await getBasePrices(typeIdsWithoutPrice)
-      : {}
-
-    // Calculate values and save estimatedValue in each log (single pass)
+    // Calculate values and save metadata in each log
     for (const log of allLogs) {
       const typeIdNum = Number(log.typeId)
+      const meta = metaMap[typeIdNum]
+      
+      // Update Name
+      log.oreName = meta?.name || 'Unknown Ore'
+      
+      // Calculate Volume (m3)
+      const unitVolume = meta?.volume || 1 // Fallback to 1 if unknown, though 0 might be safer
+      log.volumeValue = log.quantity * unitVolume
+      
       // Priority: Jita sell > market average > base price > 0
-      const price = jitaPrices[typeIdNum] || marketPrices[typeIdNum] || basePrices[typeIdNum] || 0
+      const price = jitaPrices[typeIdNum] || marketPrices[typeIdNum] || meta?.basePrice || 0
       const estimatedValue = log.quantity * price
       
-      // Save estimatedValue in log
+      // Save info in log
       log.estimatedValue = estimatedValue
       
+      // Accumulate in breakdowns
       oreBreakdown[typeIdNum].estimatedValue += estimatedValue
+      oreBreakdown[typeIdNum].volumeValue = (oreBreakdown[typeIdNum].volumeValue || 0) + log.volumeValue
+      
       participantBreakdown[log.characterId].estimatedValue += estimatedValue
       participantBreakdown[log.characterId].quantity += log.quantity
+      participantBreakdown[log.characterId].volumeValue = (participantBreakdown[log.characterId].volumeValue || 0) + log.volumeValue
     }
 
-    const totalQuantity = Object.values(oreBreakdown).reduce((sum, o) => sum + o.quantity, 0)
+    const totalQuantity = Object.values(oreBreakdown).reduce((sum, o: any) => sum + (o.volumeValue || 0), 0)
     const totalEstimatedValue = Object.values(oreBreakdown).reduce((sum, o) => sum + o.estimatedValue, 0)
 
     const participantEarnings: Record<number, number> = {}
