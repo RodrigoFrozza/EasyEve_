@@ -1,13 +1,35 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-function getStartOfPeriod(period: string): Date {
+interface RattingData {
+  automatedBounties?: number
+  automatedEss?: number
+  automatedTaxes?: number
+  grossBounties?: number
+  currentIskPerHour?: number
+  logs?: Array<{
+    refId: string
+    date: string
+    amount: number
+    type: string
+    charName: string
+    charId: number
+  }>
+  participantEarnings?: Record<number, number>
+}
+
+async function getStartOfPeriod(period: string): Promise<Date> {
   const now = new Date()
   const utcNow = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds())
   
   switch (period) {
-    case 'alltime':
-      return new Date('2024-01-01T00:00:00Z')
+    case 'alltime': {
+      const earliestActivity = await prisma.activity.findFirst({
+        orderBy: { startTime: 'asc' },
+        select: { startTime: true }
+      })
+      return earliestActivity?.startTime || new Date('2024-01-01T00:00:00Z')
+    }
     case 'daily':
       return new Date(Date.UTC(utcNow.getUTCFullYear(), utcNow.getUTCMonth(), utcNow.getUTCDate(), 0, 0, 0, 0))
     case 'weekly':
@@ -26,7 +48,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || 'daily'
-    const startDate = getStartOfPeriod(period)
+    const startDate = await getStartOfPeriod(period)
 
     console.log(`[Leaderboard] period=${period}, startDate=${startDate.toISOString()}, now=${new Date().toISOString()}`)
 
@@ -35,12 +57,9 @@ export async function GET(request: Request) {
         type: 'ratting',
         startTime: { gte: startDate }
       },
-      select: {
-        id: true,
-        data: true,
+      include: {
         user: {
-          select: {
-            id: true,
+          include: {
             characters: {
               where: { isMain: true },
               select: { id: true, name: true }
@@ -65,8 +84,9 @@ export async function GET(request: Request) {
           characterId: mainChar?.id || 0
         }
       }
-      const actBounty = Number((a.data as any)?.automatedBounties || 0)
-      const actEss = Number((a.data as any)?.automatedEss || 0)
+      const activityData = a.data as RattingData | null
+      const actBounty = Number(activityData?.automatedBounties || 0)
+      const actEss = Number(activityData?.automatedEss || 0)
       grouped[userId].bounty += actBounty
       grouped[userId].ess += actEss
       grouped[userId].total += actBounty + actEss

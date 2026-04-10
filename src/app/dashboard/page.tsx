@@ -31,6 +31,11 @@ import {
   startOfMonth 
 } from 'date-fns'
 
+interface RattingData {
+  automatedBounties?: number
+  automatedEss?: number
+}
+
 async function getCharacterDetails(charId: number) {
   const response = await fetch(`https://esi.evetech.net/latest/characters/${charId}/`, {
     next: { revalidate: 60 },
@@ -58,14 +63,21 @@ export default async function DashboardPage() {
 
   const now = new Date()
 
+  async function getStartDateForPeriod(period: 'daily' | 'weekly' | 'monthly' | 'alltime', baseDate: Date): Promise<Date> {
+    if (period === 'alltime') {
+      const earliestActivity = await prisma.activity.findFirst({
+        orderBy: { startTime: 'asc' },
+        select: { startTime: true }
+      })
+      return earliestActivity?.startTime || new Date('2024-01-01')
+    }
+    if (period === 'daily') return startOfDay(baseDate)
+    if (period === 'weekly') return startOfWeek(baseDate, { weekStartsOn: 1 })
+    return startOfMonth(baseDate)
+  }
+
   const getLeaderboard = async (period: 'daily' | 'weekly' | 'monthly' | 'alltime') => {
-    const startDate = period === 'alltime' 
-      ? new Date('2024-01-01') 
-      : period === 'daily' 
-      ? startOfDay(now) 
-      : period === 'weekly' 
-      ? startOfWeek(now, { weekStartsOn: 1 }) 
-      : startOfMonth(now)
+    const startDate = await getStartDateForPeriod(period, now)
 
     return withCache(`leaderboard_${period}`, async () => {
       const activities = await prisma.activity.findMany({
@@ -73,12 +85,9 @@ export default async function DashboardPage() {
           type: 'ratting',
           startTime: { gte: startDate }
         },
-        select: {
-          id: true,
-          data: true,
+        include: {
           user: {
-            select: {
-              id: true,
+            include: {
               characters: {
                 where: { isMain: true },
                 select: { id: true, name: true }
@@ -102,8 +111,9 @@ export default async function DashboardPage() {
             characterId: mainChar?.id || 0
           }
         }
-        const actBounty = Number((a.data as any)?.automatedBounties || 0)
-        const actEss = Number((a.data as any)?.automatedEss || 0)
+        const activityData = a.data as RattingData | null
+        const actBounty = Number(activityData?.automatedBounties || 0)
+        const actEss = Number(activityData?.automatedEss || 0)
         grouped[userId].bounty += actBounty
         grouped[userId].ess += actEss
         grouped[userId].total += actBounty + actEss
