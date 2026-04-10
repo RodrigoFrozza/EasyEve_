@@ -101,7 +101,9 @@ export function ActivityDetailDialog({ activity, trigger, open, onOpenChange }: 
 
   const uniqueChars = useMemo(() => {
     const chars = new Set<string>()
-    ;(data.logs || []).forEach((l: any) => chars.add(l.charName))
+    ;(data.logs || []).forEach((l: any) => {
+      if (l.charName) chars.add(l.charName)
+    })
     return Array.from(chars)
   }, [data.logs])
 
@@ -159,7 +161,7 @@ export function ActivityDetailDialog({ activity, trigger, open, onOpenChange }: 
             </div>
             
             <DialogTitle className="text-4xl font-black text-white tracking-tighter flex items-center gap-4">
-              {data.siteName || activity.type.toUpperCase()}
+              {data.siteName || (activity.type || 'Activity').toUpperCase()}
               {activity.status === 'completed' && (
                 <div className="flex items-center gap-2 bg-zinc-900 border border-white/[0.05] px-3 py-1 rounded-lg">
                   <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" />
@@ -310,7 +312,7 @@ export function ActivityDetailDialog({ activity, trigger, open, onOpenChange }: 
                   >
                     <option value="all">ENTITY://ALL_PARTICIPANTS</option>
                     {uniqueChars.map(char => (
-                      <option key={char} value={char}>{char.toUpperCase()}</option>
+                      <option key={char} value={char}>{(char || 'Unknown').toUpperCase()}</option>
                     ))}
                   </select>
                 </div>

@@ -1,31 +1,34 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { startOfDay, startOfWeek, startOfMonth } from 'date-fns'
+
+function getStartOfPeriod(period: string): Date {
+  const now = new Date()
+  const utcNow = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds())
+  
+  switch (period) {
+    case 'alltime':
+      return new Date('2024-01-01T00:00:00Z')
+    case 'daily':
+      return new Date(Date.UTC(utcNow.getUTCFullYear(), utcNow.getUTCMonth(), utcNow.getUTCDate(), 0, 0, 0, 0))
+    case 'weekly':
+      const day = utcNow.getUTCDay()
+      const diff = day === 0 ? -6 : 1 - day
+      const weekStart = new Date(Date.UTC(utcNow.getUTCFullYear(), utcNow.getUTCMonth(), utcNow.getUTCDate() + diff, 0, 0, 0, 0))
+      return weekStart
+    case 'monthly':
+      return new Date(Date.UTC(utcNow.getUTCFullYear(), utcNow.getUTCMonth(), 1, 0, 0, 0, 0))
+    default:
+      return new Date(Date.UTC(utcNow.getUTCFullYear(), utcNow.getUTCMonth(), utcNow.getUTCDate(), 0, 0, 0, 0))
+  }
+}
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || 'daily'
+    const startDate = getStartOfPeriod(period)
 
-    const now = new Date()
-    let startDate: Date
-
-    switch (period) {
-      case 'alltime':
-        startDate = new Date('2024-01-01')
-        break
-      case 'daily':
-        startDate = startOfDay(now)
-        break
-      case 'weekly':
-        startDate = startOfWeek(now, { weekStartsOn: 1 })
-        break
-      case 'monthly':
-        startDate = startOfMonth(now)
-        break
-      default:
-        startDate = startOfDay(now)
-    }
+    console.log(`[Leaderboard] period=${period}, startDate=${startDate.toISOString()}, now=${new Date().toISOString()}`)
 
     const activities = await prisma.activity.findMany({
       where: {

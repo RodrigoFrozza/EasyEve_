@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { Target, Zap } from 'lucide-react'
+import { Target, Zap, Clock } from 'lucide-react'
 
 interface LeaderboardItem {
   userId: string
@@ -25,6 +25,42 @@ interface LeaderboardListProps {
   isRefreshing?: boolean
 }
 
+function getCountdown(period: string): string {
+  const now = new Date()
+  const utc = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds())
+  
+  let target: Date
+  
+  switch (period) {
+    case 'daily':
+      target = new Date(Date.UTC(utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate() + 1, 0, 0, 0, 0))
+      break
+    case 'weekly':
+      const day = utc.getUTCDay()
+      const daysUntilMonday = day === 0 ? 1 : 7 - day + 1
+      target = new Date(Date.UTC(utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate() + daysUntilMonday, 0, 0, 0, 0))
+      break
+    case 'monthly':
+      target = new Date(Date.UTC(utc.getUTCFullYear(), utc.getUTCMonth() + 1, 1, 0, 0, 0, 0))
+      break
+    case 'alltime':
+      const yearEnd = new Date(Date.UTC(utc.getUTCFullYear() + 1, 0, 1, 0, 0, 0, 0))
+      const daysUntilYear = Math.ceil((yearEnd.getTime() - utc.getTime()) / (1000 * 60 * 60 * 24))
+      const hours = Math.floor((yearEnd.getTime() - utc.getTime()) / (1000 * 60 * 60))
+      const mins = Math.floor(((yearEnd.getTime() - utc.getTime()) / (1000 * 60)) % 60)
+      return `${daysUntilYear}d ${hours % 24}h`
+    default:
+      return '--'
+  }
+  
+  const diff = target.getTime() - utc.getTime()
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const mins = Math.floor((diff / (1000 * 60)) % 60)
+  const secs = Math.floor((diff / 1000) % 60)
+  
+  return `${hours}h ${mins}m ${secs}s`
+}
+
 export function LeaderboardList({ 
   data, 
   currentUserId, 
@@ -34,6 +70,7 @@ export function LeaderboardList({
 }: LeaderboardListProps) {
   const [prevData, setPrevData] = useState<LeaderboardItem[]>([])
   const [page, setPage] = useState(0)
+  const [countdown, setCountdown] = useState('')
   const itemsPerPage = 5
 
   const paginatedData = data.slice(page * itemsPerPage, (page + 1) * itemsPerPage)
@@ -42,6 +79,17 @@ export function LeaderboardList({
   useEffect(() => {
     setPrevData(data)
   }, [data])
+
+  useEffect(() => {
+    if (!period || period === 'alltime') return
+    
+    setCountdown(getCountdown(period))
+    const interval = setInterval(() => {
+      setCountdown(getCountdown(period))
+    }, 1000)
+    
+    return () => clearInterval(interval)
+  }, [period])
 
   if (data.length === 0) {
     return (
@@ -257,6 +305,14 @@ export function LeaderboardList({
             >
               Next →
             </button>
+          </div>
+        )}
+
+        {countdown && period !== 'alltime' && (
+          <div className="flex items-center justify-center gap-1.5 pt-2 text-[10px] text-gray-500">
+            <Clock className="h-3 w-3" />
+            <span>Resets in:</span>
+            <span className="text-cyan-400 font-mono font-bold">{countdown}</span>
           </div>
         )}
       </div>

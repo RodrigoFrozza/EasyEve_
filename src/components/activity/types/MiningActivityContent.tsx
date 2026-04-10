@@ -364,7 +364,7 @@ export function MiningActivityContent({ activity, onSync, isSyncing, syncStatus,
                       <Avatar className="h-5 w-5">
                         <AvatarImage src={`https://images.evetech.net/characters/${log.characterId}/portrait?size=64`} />
                         <AvatarFallback className="text-[7px] bg-zinc-800 text-zinc-400">
-                          {log.characterName?.slice(0, 2).toUpperCase()}
+                          {(log.characterName || '??').slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">

@@ -5,8 +5,10 @@ import { Suspense } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2 } from 'lucide-react'
+import { useTranslations } from '@/i18n/hooks'
 
 function LoginContent() {
+  const { t } = useTranslations()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
   const error = searchParams.get('error')
@@ -48,10 +50,10 @@ function LoginContent() {
                 CONTA BLOQUEADA
               </p>
               <p className="text-xs opacity-80">
-                Motivo: {searchParams.get('reason') || 'Violação dos termos ou pendência administrativa.'}
+                {t('login.reason')} {searchParams.get('reason') || 'Violação dos termos ou pendência administrativa.'}
               </p>
               <p className="text-[10px] mt-2 italic">
-                Entre em contato via Discord para contestação.
+                {t('login.contactDiscord')}
               </p>
             </div>
           )}

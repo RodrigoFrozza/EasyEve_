@@ -9,11 +9,13 @@ import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
 import { cn, formatISK } from '@/lib/utils'
 import { Crown, Calendar, Info, Wallet, CheckCircle2, XCircle, AlertCircle, Copy, Check, History } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslations } from '@/i18n/hooks'
 
 export default function SubscriptionPage() {
   const { data: session } = useSession()
   const [copied, setCopied] = useState(false)
   const corpName = "Easy Eve Holding's"
+  const { t } = useTranslations()
 
   const copyCorp = () => {
     navigator.clipboard.writeText(corpName)
@@ -28,8 +30,8 @@ export default function SubscriptionPage() {
     <div className="max-w-4xl mx-auto space-y-8 pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-bold text-white tracking-tight">Assinatura</h1>
-          <p className="text-gray-400 mt-2">Gerencie seu acesso aos módulos do EasyEve</p>
+          <h1 className="text-4xl font-bold text-white tracking-tight">{t('subscription.title')}</h1>
+          <p className="text-gray-400 mt-2">{t('subscription.subtitle')}</p>
         </div>
         
         <div className="flex items-center gap-3 bg-eve-panel p-4 rounded-xl border border-eve-border shadow-2xl">
@@ -40,9 +42,9 @@ export default function SubscriptionPage() {
             <Crown className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Status Atual</p>
+            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">{t('subscription.currentStatus')}</p>
             <p className={cn("text-lg font-bold", isExpired ? "text-red-400" : "text-green-400")}>
-              {isExpired ? 'Expirada' : 'Ativa'}
+              {isExpired ? t('common.expired') : t('common.activeStatus')}
             </p>
           </div>
         </div>
@@ -57,19 +59,19 @@ export default function SubscriptionPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-eve-accent" />
-              Período de Acesso
+              {t('subscription.accessPeriod')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-1">
-              <p className="text-sm text-gray-400">Sua assinatura termina em:</p>
+              <p className="text-sm text-gray-400">{t('subscription.subscriptionEnds')}</p>
               <p className="text-3xl font-bold text-white">
-                {session?.user?.subscriptionEnd ? new Date(session.user.subscriptionEnd).toLocaleDateString() : 'N/A'}
+                {session?.user?.subscriptionEnd ? new Date(session.user.subscriptionEnd).toLocaleDateString() : t('common.notAvailable')}
               </p>
               {isExpired && (
                 <div className="flex items-center gap-2 text-red-400 text-sm mt-2 animate-pulse">
                   <AlertCircle className="h-4 w-4" />
-                  <span>Seu acesso aos módulos pagos foi suspenso.</span>
+                  <span>{t('subscription.expiredMessage')}</span>
                 </div>
               )}
             </div>
@@ -78,16 +80,16 @@ export default function SubscriptionPage() {
               <div className="flex items-start gap-3">
                 <Info className="h-5 w-5 text-eve-accent shrink-0 mt-0.5" />
                 <div className="text-sm space-y-2">
-                  <p className="text-gray-300 font-medium">Como renovar?</p>
+                  <p className="text-gray-300 font-medium">{t('subscription.howToRenew')}</p>
                   <p className="text-gray-400 leading-relaxed">
-                    Envie o valor em ISK para a corporação in-game:
+                    {t('subscription.sendISK')}
                   </p>
                   <div className="flex items-center gap-2 bg-eve-panel p-2 rounded border border-eve-border group cursor-pointer" onClick={copyCorp}>
                     <code className="text-eve-accent font-bold">{corpName}</code>
                     {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 text-gray-600 group-hover:text-white" />}
                   </div>
                   <p className="text-xs text-gray-500 italic">
-                    A ativação é automática! O sistema detecta o envio e libera seu acesso em alguns minutos após a aprovação do Master.
+                    {t('subscription.autoActivation')}
                   </p>
                 </div>
               </div>
@@ -100,7 +102,7 @@ export default function SubscriptionPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Crown className="h-5 w-5 text-yellow-500" />
-              Módulos Disponíveis
+              {t('subscription.availableModules')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -124,11 +126,11 @@ export default function SubscriptionPage() {
                     </div>
                     {isAllowed ? (
                       <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px]">
-                        <CheckCircle2 className="h-3 w-3 mr-1" /> Ativo
+                        <CheckCircle2 className="h-3 w-3 mr-1" /> {t('common.active')}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="bg-gray-500/10 text-gray-500 border-transparent text-[10px]">
-                        <XCircle className="h-3 w-3 mr-1" /> Bloqueado
+                        <XCircle className="h-3 w-3 mr-1" /> {t('common.blocked')}
                       </Badge>
                     )}
                   </div>
@@ -143,19 +145,19 @@ export default function SubscriptionPage() {
          <Card className="bg-eve-panel border-eve-border p-6 flex flex-col items-center text-center space-y-3">
             <Wallet className="h-10 w-10 text-eve-accent opacity-50" />
             <h3 className="font-bold text-white uppercase text-xs tracking-widest">Suporte Financeiro</h3>
-            <p className="text-gray-400 text-sm">Problemas com seu pagamento? Abra um ticket no nosso Discord oficial.</p>
+            <p className="text-gray-400 text-sm">{t('subscription.paymentIssues')}</p>
             <Button variant="outline" className="w-full mt-2" onClick={() => window.open('https://discord.gg/easyeve', '_blank')}>
-               Entrar no Discord
+               {t('subscription.joinDiscord')}
             </Button>
          </Card>
 
          <Card className="md:col-span-2 bg-gradient-to-br from-eve-panel to-eve-dark border-eve-border overflow-hidden group">
             <CardHeader>
-               <CardTitle className="text-sm uppercase tracking-widest text-gray-500">Histórico de Pagamentos</CardTitle>
+               <CardTitle className="text-sm uppercase tracking-widest text-gray-500">{t('subscription.paymentHistory')}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center py-8 opacity-40 group-hover:opacity-100 transition-opacity">
                <History className="h-12 w-12 text-gray-600 mb-2" />
-               <p className="text-gray-500 text-sm">Nenhum pagamento registrado nos últimos 30 dias</p>
+               <p className="text-gray-500 text-sm">{t('subscription.noPayments')}</p>
             </CardContent>
          </Card>
       </div>

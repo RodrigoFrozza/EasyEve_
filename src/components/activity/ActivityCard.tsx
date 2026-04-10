@@ -56,6 +56,7 @@ import { RattingHelpModal } from './RattingHelpModal'
 import { MiningActivityContent } from './types/MiningActivityContent'
 import { RattingActivityContent } from './types/RattingActivityContent'
 import { Sparkline } from '@/components/ui/Sparkline'
+import { useTranslations } from '@/i18n/hooks'
 
 
 export interface ActivityCardProps {
@@ -74,6 +75,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
   
   const [logFilterType, setLogFilterType] = useState('all')
   const [logFilterChar, setLogFilterChar] = useState('all')
+  const { t } = useTranslations()
 
   // Toggle de visualização
   const [displayMode, setDisplayMode] = useState<'compact' | 'tabs' | 'expanded'>('compact')
@@ -174,7 +176,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
     const headers = ['Date', 'Character', 'Type', 'Amount (ISK)']
     const csvContent = [
       headers.join(','),
-      ...filteredLogs.map((log: any) => `${new Date(log.date).toISOString().replace(',', '')},${log.charName},${log.type.toUpperCase()},${log.amount}`)
+      ...filteredLogs.map((log: any) => `${new Date(log.date).toISOString().replace(',', '')},${log.charName},${(log.type || 'UNKNOWN').toUpperCase()},${log.amount}`)
     ].join('\n')
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -518,7 +520,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                   <Avatar key={p.characterId} className="h-8 w-8 border-2 border-[#0a0a0f] ring-1 ring-white/5">
                     <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
                     <AvatarFallback className="bg-zinc-900 text-[10px] font-black">
-                      {p.characterName?.slice(0, 2).toUpperCase()}
+                      {(p.characterName || '??').slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 ))}
@@ -558,7 +560,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
 ) : (
               /* Fallback for other activity types */
               <div className="py-4 text-center text-zinc-500 text-sm">
-                Modo detalhado não disponível para este tipo de atividade.
+                {t('activity.detailedModeNotAvailable')}
               </div>
             )}
           </>

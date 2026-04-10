@@ -1,0 +1,113 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "search": "Search",
+    "filter": "Filter",
+    "active": "Active",
+    "inactive": "Inactive",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "activeStatus": "Active",
+    "expired": "Expired",
+    "blocked": "Blocked",
+    "notAvailable": "N/A"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "activity": "Activity",
+    "fits": "Fits",
+    "admin": "Admin",
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "subscription": {
+    "title": "Subscription",
+    "subtitle": "Manage your EasyEve access",
+    "currentStatus": "Current Status",
+    "accessPeriod": "Access Period",
+    "subscriptionEnds": "Your subscription ends on:",
+    "expiredMessage": "Your access to paid modules has been suspended.",
+    "howToRenew": "How to renew?",
+    "sendISK": "Send the ISK amount to the in-game corporation:",
+    "autoActivation": "Activation is automatic! The system detects the payment and releases your access minutes after Master approval.",
+    "availableModules": "Available Modules",
+    "financialSupport": "Financial Support",
+    "paymentIssues": "Payment issues? Open a ticket on our official Discord.",
+    "joinDiscord": "Join Discord",
+    "paymentHistory": "Payment History",
+    "noPayments": "No payments recorded in the last 30 days"
+  },
+  "activity": {
+    "startNew": "Start New Activity",
+    "detailedModeNotAvailable": "Detailed mode not available for this activity type.",
+    "ratting": {
+      "title": "Ratting Configuration Guide",
+      "description": "Learn how to configure and maximize your automatic profit tracking with Ratting.",
+      "characterPreparation": "1. Character Preparation",
+      "characterPreparationText": "For automatic tracking to work, your characters must be linked to EasyEve with the correct permissions.",
+      "walletScope": "Wallet Scope:",
+      "walletScopeHelp": "It is essential that the character has the Wallet Journal read scope active. Without this, EasyEve cannot see Bounties and ESS payments.",
+      "activeTokens": "Active Tokens:",
+      "activeTokensHelp": "Check on the characters screen if the token status is green. Expired tokens prevent synchronization.",
+      "startOperation": "2. Starting the Operation",
+      "stepA": "Step A",
+      "stepAText": "Click on \"Start New Activity\" and select the Ratting icon (red crosshair).",
+      "stepB": "Step B",
+      "stepBText": "Select the characters that will participate in the fleet and the local NPC Faction.",
+      "note": "The system uses Faction and Site Name to suggest the best bonuses and calculate estimates.",
+      "iskSync": "3. ISK Synchronization",
+      "iskSyncText": "EasyEve doesn't \"read your screen\", it queries the CCP server for new wallet journal entries.",
+      "bountyTicks": "Bounty Ticks",
+      "bountyTicksHelp": "Synchronized every 20 minutes (standard game time). Use the \"Sync ESI\" button to update.",
+      "essPayouts": "ESS Payouts",
+      "essPayoutsHelp": "Appear in the wallet about 3 hours after the activity. If you close the activity, EasyEve will continue monitoring for 4 more hours.",
+      "important": "Important",
+      "importantText": "CCP ESI may have a cache delay of up to 5 minutes. If you just received the tick in-game, wait a few moments before syncing.",
+      "expertTips": "Expert Tips",
+      "expertTip1": "Prioritize Havens (Rock) and Sanctums for best ISK/Hour in Nullsec.",
+      "expertTip2": "Always click \"Sync ESI\" before finishing the activity to ensure the last tick was captured.",
+      "expertTip3": "ISK/hr calculation considers net profit accumulated divided by total operation time.",
+      "gotIt": "Got it, Pilot!"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "dataManagement": "Data Management",
+    "exportData": "Export Data",
+    "importData": "Import Data",
+    "clearData": "Clear Data",
+    "clearDataWarning": "This action will permanently remove all your saved Activities and Fits.",
+    "clearDataWarning2": "Attention: This action cannot be undone. We recommend exporting your data before proceeding.",
+    "dataCleared": "Data cleared successfully"
+  },
+  "admin": {
+    "title": "Admin Panel",
+    "accounts": "Accounts",
+    "searchPlaceholder": "Search by name, ID or code...",
+    "noAccountFound": "No account found with selected filters.",
+    "syncAPIError": "Failed to communicate with Sync API",
+    "paymentLinked": "Payment linked successfully!",
+    "selectModules": "Select the modules the user will have access to after approval."
+  },
+  "login": {
+    "reason": "Reason:",
+    "contactDiscord": "Contact us via Discord to contest."
+  },
+  "account": {
+    "validSubscription": "Accounts with valid subscription time"
+  },
+  "dashboard": {
+    "startActivityPrompt": "Start an activity to start recording"
+  },
+  "global": {
+    "systemOk": "The system is operating normally as expected.",
+    "realTimeMonitoring": "Real-time monitoring of browser failures from users"
+  }
+}

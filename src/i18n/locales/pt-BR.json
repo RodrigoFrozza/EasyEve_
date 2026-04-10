@@ -1,0 +1,113 @@
+{
+  "common": {
+    "loading": "Carregando...",
+    "error": "Ocorreu um erro",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "close": "Fechar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "active": "Ativo",
+    "inactive": "Inativo",
+    "enabled": "Habilitado",
+    "disabled": "Desabilitado",
+    "activeStatus": "Ativa",
+    "expired": "Expirada",
+    "blocked": "Bloqueado",
+    "notAvailable": "N/A"
+  },
+  "nav": {
+    "dashboard": "Painel",
+    "activity": "Atividade",
+    "fits": "Fits",
+    "admin": "Admin",
+    "settings": "Configurações",
+    "logout": "Sair"
+  },
+  "subscription": {
+    "title": "Assinatura",
+    "subtitle": "Gerencie seu acesso aos módulos do EasyEve",
+    "currentStatus": "Status Atual",
+    "accessPeriod": "Período de Acesso",
+    "subscriptionEnds": "Sua assinatura termina em:",
+    "expiredMessage": "Seu acesso aos módulos pagos foi suspenso.",
+    "howToRenew": "Como renovar?",
+    "sendISK": "Envie o valor em ISK para a corporação in-game:",
+    "autoActivation": "A ativação é automática! O sistema detecta o envio e libera seu acesso em alguns minutos após a aprovação do Master.",
+    "availableModules": "Módulos Disponíveis",
+    "financialSupport": "Suporte Financeiro",
+    "paymentIssues": "Problemas com seu pagamento? Abra um ticket no nosso Discord oficial.",
+    "joinDiscord": "Entrar no Discord",
+    "paymentHistory": "Histórico de Pagamentos",
+    "noPayments": "Nenhum pagamento registrado nos últimos 30 dias"
+  },
+  "activity": {
+    "startNew": "Iniciar Nova Atividade",
+    "detailedModeNotAvailable": "Modo detalhado não disponível para este tipo de atividade.",
+    "ratting": {
+      "title": "Guia de Configuração: Ratting Activity",
+      "description": "Aprenda a configurar e maximizar o rastreamento automático de seus lucros com Ratting.",
+      "characterPreparation": "1. Preparação dos Personagens",
+      "characterPreparationText": "Para que o rastreamento automático funcione, seus personagens devem estar vinculados ao EasyEve com as permissões corretas.",
+      "walletScope": "Escopo de Carteira:",
+      "walletScopeHelp": "É essencial que o personagem tenha o escopo de leitura de Wallet Journal ativo. Sem isso, o EasyEve não conseguirá ver os pagamentos de Bounties e ESS.",
+      "activeTokens": "Tokens Ativos:",
+      "activeTokensHelp": "Verifique na tela de personagens se o status do token está verde. Tokens expirados impedem a sincronização.",
+      "startOperation": "2. Iniciando a Operação",
+      "stepA": "Passo A",
+      "stepAText": "Clique em \"Start New Activity\" e selecione o ícone de Ratting (mira vermelha).",
+      "stepB": "Passo B",
+      "stepBText": "Selecione os personagens que participarão da frota e a NPC Faction local.",
+      "note": "O sistema utiliza a Faction e o Site Name para sugerir os melhores bônus e calcular estimativas.",
+      "iskSync": "3. Sincronização de ISK",
+      "iskSyncText": "O EasyEve não \"lê sua tela\", ele consulta o servidor da CCP em busca de novos registros de carteira.",
+      "bountyTicks": "Ticks de Bounty",
+      "bountyTicksHelp": "Sincronizados a cada 20 minutos (tempo padrão do jogo). Use o botão \"Sync ESI\" para atualizar.",
+      "essPayouts": "Payouts do ESS",
+      "essPayoutsHelp": "Surgem na carteira cerca de 3 horas após a atividade. Se você fechar a atividade, o EasyEve continuará monitorando por mais 4 horas.",
+      "important": "Importante",
+      "importantText": "O ESI da CCP pode ter um atraso (cache) de até 5 minutos. Se você acabou de receber o tick no jogo, espere alguns instantes antes de clicar em sincronizar no portal.",
+      "expertTips": "Dicas de Especialista",
+      "expertTip1": "Priorize Havens (Rock) e Sanctums para melhor ISK/Hora em Nullsec.",
+      "expertTip2": "Sempre clique em \"Sync ESI\" antes de finalizar a atividade para garantir que o último tick foi capturado.",
+      "expertTip3": "O cálculo de ISK/hr considera o lucro líquido acumulado dividido pelo tempo total de operação.",
+      "gotIt": "Entendi, Pilot!"
+    }
+  },
+  "settings": {
+    "title": "Configurações",
+    "dataManagement": "Gerenciamento de Dados",
+    "exportData": "Exportar Dados",
+    "importData": "Importar Dados",
+    "clearData": "Limpar Dados",
+    "clearDataWarning": "Esta ação irá remover permanentemente todas as suas Atividades e Fits salvos.",
+    "clearDataWarning2": "Atenção: Esta ação não pode ser desfeita. Recomendamos exportar seus dados antes de prosseguir.",
+    "dataCleared": "Dados limpos com sucesso"
+  },
+  "admin": {
+    "title": "Painel de Admin",
+    "accounts": "Contas",
+    "searchPlaceholder": "Buscar por nome, ID ou código...",
+    "noAccountFound": "Nenhuma conta encontrada com os filtros selecionados.",
+    "syncAPIError": "Falha na comunicação com a API de Sync",
+    "paymentLinked": "Pagamento vinculado com sucesso!",
+    "selectModules": "Selecione os módulos que o usuário terá acesso após a aprovação."
+  },
+  "login": {
+    "reason": "Motivo:",
+    "contactDiscord": "Entre em contato via Discord para contestação."
+  },
+  "account": {
+    "validSubscription": "Contas com tempo de assinatura válido"
+  },
+  "dashboard": {
+    "startActivityPrompt": "Inicie uma atividade para começar a registrar"
+  },
+  "global": {
+    "systemOk": "O sistema está operando normalmente conforme o esperado.",
+    "realTimeMonitoring": "Monitoramento em tempo real de falhas no navegador dos usuários"
+  }
+}
