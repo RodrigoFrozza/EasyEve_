@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { formatISK, formatNumber, cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { MiningSummaryPanel } from './summary/MiningSummaryPanel'
 import { RattingSummaryPanel } from './summary/RattingSummaryPanel'
 import { MTUManagementModal } from './summary/MTUManagementModal'
