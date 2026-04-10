@@ -7,9 +7,10 @@ import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Switch } from '@/components/ui/switch'
-import { Settings, User, Bell, Shield, Database, Palette, Link2 } from 'lucide-react'
+import { Settings, User, Bell, Shield, Database, Palette, Link2, Globe } from 'lucide-react'
 import { getSession } from '@/lib/session'
 import { DataManagement } from '@/components/settings/DataManagement'
+import { LanguageSelectorClient } from '@/components/settings/LanguageSelectorClient'
 
 export default async function SettingsPage() {
   const session = await getSession()
@@ -145,6 +146,19 @@ export default async function SettingsPage() {
                   <span className="text-sm text-white">Cyan</span>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-eve-panel border-eve-border">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Globe className="h-5 w-5 text-eve-accent" />
+                Language
+              </CardTitle>
+              <CardDescription>Select your preferred language</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LanguageSelectorClient />
             </CardContent>
           </Card>
 

@@ -8,7 +8,9 @@ import { MTULootField } from '../MTULootField'
 import { SalvageField } from '../SalvageField'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Loader2, RefreshCw } from 'lucide-react'
+import { Loader2, RefreshCw, TrendingUp, StopCircle, History } from 'lucide-react'
+import { Sparkline } from '@/components/ui/Sparkline'
+import { ActivityDetailDialog } from '../ActivityDetailDialog'
 
 interface RattingActivityContentProps {
   activity: any
@@ -16,6 +18,8 @@ interface RattingActivityContentProps {
   isSyncing: boolean
   syncStatus: 'idle' | 'success' | 'error'
   essCountdown?: string
+  displayMode?: 'compact' | 'tabs' | 'expanded'
+  onEnd?: () => void
 }
 
 export function RattingActivityContent({ 
@@ -23,7 +27,9 @@ export function RattingActivityContent({
   onSync, 
   isSyncing, 
   syncStatus,
-  essCountdown 
+  essCountdown,
+  displayMode = 'expanded',
+  onEnd
 }: RattingActivityContentProps) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     fleet: true,
@@ -46,6 +52,7 @@ export function RattingActivityContent({
   const durationHours = Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000)
   const iskPerHour = totalIsk / durationHours
 
+  const incomeHistory = (activity.data as any)?.incomeHistory || []
   const mtuContents = activity.data?.mtuContents || []
   const salvageContents = activity.data?.salvageContents || []
 
@@ -59,6 +66,93 @@ export function RattingActivityContent({
     useActivityStore.getState().updateActivity(activity.id, {
       data: { ...activity.data, salvageContents: newSalvage }
     })
+  }
+
+  if (displayMode === 'compact') {
+    return (
+      <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+        <div className="grid grid-cols-1 gap-4">
+          <div className="relative bg-gradient-to-br from-zinc-900 to-black p-6 rounded-2xl border border-white/[0.03] overflow-hidden group/hud shadow-2xl">
+            {/* Background Sparkline */}
+            <div className="absolute inset-x-0 bottom-0 top-1/2 opacity-20 pointer-events-none transition-opacity group-hover/hud:opacity-40">
+              <Sparkline 
+                data={incomeHistory} 
+                width={400} 
+                height={80} 
+                color="#00ffff" 
+                className="w-full h-full"
+                strokeWidth={3}
+              />
+            </div>
+
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 flex items-center gap-2">
+                   <TrendingUp className="h-3 w-3 text-eve-accent" />
+                   Net Revenue
+                </p>
+                <p className="text-4xl font-black text-white font-mono tracking-tighter flex items-baseline gap-2">
+                  <span className="text-eve-accent drop-shadow-[0_0_10px_rgba(0,255,255,0.4)]">
+                    {formatISK(totalIsk)}
+                  </span>
+                  <span className="text-xs text-zinc-600 font-bold uppercase tracking-widest">ISK</span>
+                </p>
+              </div>
+              
+              <div className="text-left sm:text-right space-y-1">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Hourly Rate</p>
+                <p className="text-xl font-black text-cyan-400 font-mono tracking-tighter">
+                  {formatISK(iskPerHour)}/h
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Cluster */}
+          <div className="flex items-center gap-2">
+            <Button 
+              size="sm" 
+              variant="outline"
+              disabled={isSyncing}
+              onClick={onSync}
+              className={cn(
+                "flex-1 h-12 bg-white/[0.02] border-white/[0.05] hover:bg-eve-accent/10 hover:border-eve-accent/50 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-eve-accent transition-all duration-500 rounded-xl",
+                isSyncing && "animate-pulse border-eve-accent/50 bg-eve-accent/5"
+              )}
+            >
+              {isSyncing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className={cn("h-4 w-4 mr-2", syncStatus === 'success' && "text-green-500")} />
+              )}
+              {isSyncing ? 'Linking ESI...' : 'Synchronize'}
+            </Button>
+            
+            <ActivityDetailDialog 
+              activity={activity} 
+              trigger={
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  className="h-12 px-6 bg-white/[0.02] border-white/[0.05] hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl transition-all"
+                >
+                  <History className="h-4 w-4" />
+                </Button>
+              }
+            />
+            
+            <Button 
+              size="sm"
+              variant="outline"
+              onClick={onEnd}
+              className="h-12 px-6 bg-red-500/5 border-red-500/10 hover:bg-red-500 hover:text-black hover:border-red-500 rounded-xl text-red-500 transition-all group/end"
+            >
+              <StopCircle className="h-4 w-4 group-hover/end:scale-110 transition-transform" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -86,7 +86,11 @@
     "confirmDelete": "Confirmar Exclusão Total",
     "clearDataWarning": "Esta ação irá remover permanentemente todas as suas Atividades e Fits salvos. Sua conta e personagens vinculados não serão afetados.",
     "clearDataWarning2": "Atenção: Esta ação não pode ser desfeita. Recomendamos exportar seus dados antes de prosseguir.",
-    "dataCleared": "Dados limpos com sucesso"
+    "dataCleared": "Dados limpos com sucesso",
+    "language": "Idioma",
+    "languageDesc": "Selecione seu idioma preferido",
+    "english": "Inglês",
+    "portuguese": "Português (Brasil)"
   },
   "admin": {
     "title": "Painel de Admin",
@@ -99,7 +103,19 @@
     "cancel": "Cancelar",
     "confirmApproval": "Confirmar Aprovação",
     "logsTitle": "Visualizando registros dos últimos 7 dias",
-    "confirmPayment": "Aprovar Pagamento"
+    "confirmPayment": "Aprovar Pagamento",
+    "filterAll": "Todos",
+    "filterActive": "Ativos",
+    "filterBlocked": "Bloqueados",
+    "filterExpired": "Expirados",
+    "modulesHeader": "Módulos",
+    "manageAccounts": "Gerenciar Contas",
+    "modulesAndPrices": "Módulos e Preços",
+    "modulesConfig": "Configuração de Módulos",
+    "subscription": "Assinatura",
+    "esconciliation": "Conciliação ESI",
+    "systemHealth": "Saúde do Sistema",
+    "modulePriceDesc": "Defina o preço em ISK e a disponibilidade de cada funcionalidade"
   },
   "login": {
     "reason": "Motivo:",

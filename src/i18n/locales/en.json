@@ -86,7 +86,11 @@
     "confirmDelete": "Confirm Total Deletion",
     "clearDataWarning": "This action will permanently remove all your saved Activities and Fits. Your account and linked characters will not be affected.",
     "clearDataWarning2": "Attention: This action cannot be undone. We recommend exporting your data before proceeding.",
-    "dataCleared": "Data cleared successfully"
+    "dataCleared": "Data cleared successfully",
+    "language": "Language",
+    "languageDesc": "Select your preferred language",
+    "english": "English",
+    "portuguese": "Portuguese (Brazil)"
   },
   "admin": {
     "title": "Admin Panel",
@@ -99,7 +103,19 @@
     "cancel": "Cancel",
     "confirmApproval": "Confirm Approval",
     "logsTitle": "Viewing records from the last 7 days",
-    "confirmPayment": "Approve Payment"
+    "confirmPayment": "Approve Payment",
+    "filterAll": "All",
+    "filterActive": "Active",
+    "filterBlocked": "Blocked",
+    "filterExpired": "Expired",
+    "modulesHeader": "Modules",
+    "manageAccounts": "Manage Accounts",
+    "modulesAndPrices": "Modules & Prices",
+    "modulesConfig": "Module Configuration",
+    "subscription": "Subscription",
+    "esconciliation": "ESI Conciliation",
+    "systemHealth": "System Health",
+    "modulePriceDesc": "Set price in ISK and availability for each feature"
   },
   "login": {
     "reason": "Reason:",

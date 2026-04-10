@@ -91,7 +91,7 @@ export function AccountList({ accounts, onSelectAccount }: AccountListProps) {
                         : "bg-eve-panel text-gray-400 hover:text-white border border-eve-border"
                 )}
              >
-                {f === 'all' ? 'Todos' : f === 'active' ? 'Ativos' : f === 'blocked' ? 'Bloqueados' : 'Expirados'}
+                {f === 'all' ? t('admin.filterAll') : f === 'active' ? t('admin.filterActive') : f === 'blocked' ? t('admin.filterBlocked') : t('admin.filterExpired')}
              </button>
            ))}
         </div>
@@ -103,8 +103,8 @@ export function AccountList({ accounts, onSelectAccount }: AccountListProps) {
             <TableRow className="border-eve-border/50 hover:bg-transparent">
               <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest pl-6">{t('account.tableHeader')}</TableHead>
               <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Status/Role</TableHead>
-              <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Assinatura</TableHead>
-              <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Módulos</TableHead>
+              <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">{t('admin.subscription')}</TableHead>
+              <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">{t('admin.modulesHeader')}</TableHead>
               <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest text-right pr-6"></TableHead>
             </TableRow>
           </TableHeader>

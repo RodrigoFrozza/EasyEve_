@@ -17,6 +17,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { getTypeIconUrl, getTypeRenderUrl } from '@/lib/sde'
 import { getShipStats, getAllShipNames } from '@/lib/sde/ships'
+import { getModuleStats } from '@/lib/dogma-calculator'
 
 interface ModuleData {
   typeId: number
@@ -49,14 +50,15 @@ interface FitState {
   cargo: FitModule[]
 }
 
-interface FitStats {
-  cpu: { used: number; total: number; free: number }
-  power: { used: number; total: number; free: number }
-  dps: { total: number }
+interface EditorStats {
+  cpu: { used: number; total: number; free: number; overflow?: boolean }
+  power: { used: number; total: number; free: number; overflow?: boolean }
+  dps: { total: number; turret?: number; missile?: number; drone?: number }
   volley: number
   tank: number
   ehp: number
   capStable: boolean
+  overflow?: boolean
 }
 
 const SLOT_COLORS = {
@@ -111,7 +113,7 @@ export default function FitEditorPage() {
   const [saved, setSaved] = useState(false)
   
   // Stats calculados
-  const [stats, setStats] = useState<FitStats | null>(null)
+  const [stats, setStats] = useState<EditorStats | null>(null)
   
   // Fetch ships
   const fetchShips = useCallback(async () => {
@@ -196,59 +198,68 @@ export default function FitEditorPage() {
     }))
   }
   
-  // Calcular stats
+  // Calcular stats com dados reais do ship
   const calculateStats = useCallback(async () => {
     if (!selectedShip) return
     
-    // Buscar dados reais do ship (do banco ou ESI)
-    const shipData = await getShipStats(selectedShip.name)
-    const cpuTotal = shipData?.cpu || getCpuTotal(selectedShip.name)
-    const powerTotal = shipData?.powerGrid || getPowerTotal(selectedShip.name)
+    // Buscar dados reais do ship
+    const shipStats = await getShipStats(selectedShip.name)
+    const cpuTotal = shipStats?.cpu || getCpuTotal(selectedShip.name)
+    const powerTotal = shipStats?.powerGrid || getPowerTotal(selectedShip.name)
     
     let cpuUsed = 0
     let powerUsed = 0
     let dps = 0
     
+    // Calcular CPU/Power/DPS baseado em módulos
     for (const mod of fit.high) {
       if (!mod.offline) {
-        cpuUsed += getModuleCpu(mod.name)
-        powerUsed += getModulePower(mod.name)
-        dps += getModuleDps(mod.name)
+        const modStats = await getModuleStats(mod.typeId)
+        cpuUsed += modStats?.cpu || getModuleCpu(mod.name)
+        powerUsed += modStats?.powerGrid || getModulePower(mod.name)
+        dps += (modStats?.damage || 0) / ((modStats?.fireRate || 1) || 1)
       }
     }
     for (const mod of fit.med) {
       if (!mod.offline) {
-        cpuUsed += getModuleCpu(mod.name)
-        powerUsed += getModulePower(mod.name)
+        const modStats = await getModuleStats(mod.typeId)
+        cpuUsed += modStats?.cpu || getModuleCpu(mod.name)
+        powerUsed += modStats?.powerGrid || getModulePower(mod.name)
       }
     }
     for (const mod of fit.low) {
       if (!mod.offline) {
-        cpuUsed += getModuleCpu(mod.name)
-        powerUsed += getModulePower(mod.name)
+        const modStats = await getModuleStats(mod.typeId)
+        cpuUsed += modStats?.cpu || getModuleCpu(mod.name)
+        powerUsed += modStats?.powerGrid || getModulePower(mod.name)
       }
     }
     for (const mod of fit.rig) {
       if (!mod.offline) {
-        powerUsed += getModulePower(mod.name)
+        const modStats = await getModuleStats(mod.typeId)
+        powerUsed += modStats?.powerGrid || getModulePower(mod.name)
       }
     }
     
-    // Calcular EHP e tank com dados reais
-    const shieldHP = shipData?.shieldCapacity || 1000
-    const armorHP = shipData?.armorHP || 2000
-    const hullHP = shipData?.hullHP || 1000
+    // Calcular EHP e tank com dados reais do ship
+    const shieldHP = shipStats?.shieldCapacity || 1000
+    const armorHP = shipStats?.armorHP || 2000
+    const hullHP = shipStats?.hullHP || 1000
     const tank = dps > 0 ? Math.min(dps, shieldHP * 0.25 + armorHP * 0.1 + hullHP * 0.05) : 0
     const ehp = shieldHP + armorHP * 2 + hullHP * 4
     
+    const cpuOverflow = cpuUsed > cpuTotal
+    const powerOverflow = powerUsed > powerTotal
+    
     setStats({
-      cpu: { used: cpuUsed, total: cpuTotal, free: cpuTotal - cpuUsed },
-      power: { used: powerUsed, total: powerTotal, free: powerTotal - powerUsed },
-      dps: { total: dps },
-      volley: dps * 2,
-      tank: tank,
-      ehp: ehp,
-      capStable: true
+      cpu: { used: cpuUsed, total: cpuTotal, free: Math.max(0, cpuTotal - cpuUsed), overflow: cpuOverflow },
+      power: { used: powerUsed, total: powerTotal, free: Math.max(0, powerTotal - powerUsed), overflow: powerOverflow },
+      dps: { total: Math.round(dps) },
+      volley: Math.round(dps * 2),
+      tank: Math.round(tank),
+      ehp: Math.round(ehp),
+      capStable: true,
+      overflow: cpuOverflow || powerOverflow
     })
   }, [selectedShip, fit])
   

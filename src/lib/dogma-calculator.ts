@@ -1,14 +1,80 @@
 // Dogma Calculator - Sistema de cálculo para fits de EVE Online
-// Calcula CPU, PowerGrid, DPS, Tank, EHP, Capacitor
+// Versão 2.0 - Usa dados do banco (ShipStats, ModuleStats) com fallback ESI
 
 import { prisma } from '@/lib/prisma'
 
-const ESI_BASE_URL = 'https://esi.evetech.net/latest'
+// Extended types with all database fields
+interface ShipStatsDb {
+  typeId: number
+  name: string
+  highSlots: number
+  medSlots: number
+  lowSlots: number
+  rigSlots: number
+  cpu: number
+  powerGrid: number
+  capacitor: number
+  capacitorRecharge: number
+  shieldCapacity: number
+  armorHP: number
+  hullHP: number
+  shieldEmResist: number
+  shieldExpResist: number
+  shieldKinResist: number
+  shieldThermResist: number
+  armorEmResist: number
+  armorExpResist: number
+  armorKinResist: number
+  armorThermResist: number
+  hullEmResist: number
+  hullExpResist: number
+  hullKinResist: number
+  hullThermResist: number
+  maxVelocity: number
+  agility: number
+  mass: number
+  warpSpeed: number
+  droneBay: number
+  cargo: number
+  syncedAt: Date
+  updatedAt: Date
+}
+
+interface ModuleStatsDb {
+  typeId: number
+  name: string
+  groupId: number | null
+  groupName: string | null
+  slotType: string | null
+  cpu: number
+  powerGrid: number
+  damage: number
+  fireRate: number
+  optimalRange: number
+  falloffRange: number
+  trackingSpeed: number
+  missileDamage: number
+  missileRange: number
+  missileVelocity: number
+  shieldBoost: number
+  armorRepair: number
+  hullRepair: number
+  capacitorNeed: number
+  capacitorDrain: number
+  ecmStrength: number
+  sensorDampStrength: number
+  trackingDisruptStrength: number
+  webSpeedPenalty: number
+  webRangeBonus: number
+  syncedAt: Date
+  updatedAt: Date
+}
 
 // --- Tipos ---
 
 export interface FitModule {
   typeId: number
+  name?: string
   chargeTypeId?: number
   offline?: boolean
   quantity?: number
@@ -25,572 +91,470 @@ export interface FitSlot {
 }
 
 export interface FitStats {
-  // Requisitos
-  cpu: { used: number; total: number; free: number }
-  power: { used: number; total: number; free: number }
+  cpu: { used: number; total: number; free: number; overflow: boolean }
+  power: { used: number; total: number; free: number; overflow: boolean }
   
-  // Slots
-  highSlots: { used: number; total: number }
-  medSlots: { used: number; total: number }
-  lowSlots: { used: number; total: number }
-  rigSlots: { used: number; total: number }
+  slots: {
+    high: { used: number; total: number; overflow: boolean }
+    med: { used: number; total: number; overflow: boolean }
+    low: { used: number; total: number; overflow: boolean }
+    rig: { used: number; total: number; overflow: boolean }
+  }
   
-  // Combat Stats
-  dps: { total: number; projectile: number; missile: number; drone: number; hybrid: number; laser: number }
+  dps: { 
+    total: number
+    turret: number
+    missile: number
+    drone: number
+  }
   volley: { total: number }
-  range: { optimal: number; falloff: number; missileRange: number }
+  range: { optimal: number; falloff: number }
   
-  // Tank
   tank: {
-    shield: { hp: number; regen: number; resist: { thermal: number; kinetic: number; explosive: number; em: number } }
-    armor: { hp: number; resist: { thermal: number; kinetic: number; explosive: number; em: number } }
-    hull: { hp: number; resist: { thermal: number; kinetic: number; explosive: number; em: number } }
+    shield: { hp: number; regen: number; maxRegen: number }
+    armor: { hp: number; repair: number }
+    hull: { hp: number; repair: number }
   }
   ehp: { shield: number; armor: number; hull: number; total: number }
   
-  // Capacitor
   capacitor: {
     capacity: number
     rechargeRate: number
     stable: boolean
     usePerSecond: number
     deltaPerSecond: number
+    timeToEmpty: number
   }
   
-  // Cargas
+  // Internal tracking for calculations
+  _capacitorUsePerSecond?: number
+  
   droneBay: { volume: number; maxVolume: number }
   cargo: { volume: number; maxVolume: number }
   
-  // Velocidade
   velocity: {
     alignTime: number
     warpSpeed: number
     maxSpeed: number
-    mass: number
   }
   
-  // Custo estimado
-  cost?: number
+  cost: number
 }
 
-// Ship base attributes (from SDE/ESI)
-export interface ShipAttributes {
+export interface ShipBaseStats {
   typeId: number
   name: string
-  
-  // Requisitos	base
-  cpu: number
-  powerGrid: number
-  
-  // Slots
   highSlots: number
   medSlots: number
   lowSlots: number
   rigSlots: number
-  subsystemSlots?: number
-  
-  // Capacidades base
-  capacitorCapacity: number
+  cpu: number
+  powerGrid: number
+  capacitor: number
   capacitorRecharge: number
-  
-  // HP Base
   shieldCapacity: number
-  armorCapacity: number
-  hullCapacity: number
-  
-  // Resistências ship
+  armorHP: number
+  hullHP: number
   shieldEmResist: number
-  shieldExplosiveResist: number
-  shieldKineticResist: number
-  shieldThermalResist: number
-  
+  shieldExpResist: number
+  shieldKinResist: number
+  shieldThermResist: number
   armorEmResist: number
-  armorExplosiveResist: number
-  armorKineticResist: number
-  armorThermalResist: number
-  
+  armorExpResist: number
+  armorKinResist: number
+  armorThermResist: number
   hullEmResist: number
-  hullExplosiveResist: number
-  hullKineticResist: number
-  hullThermalResist: number
-  
-  // Velocidade
+  hullExpResist: number
+  hullKinResist: number
+  hullThermResist: number
   maxVelocity: number
-  maxSpeed: number
   agility: number
   mass: number
   warpSpeed: number
-  alignTime: number
-  
-  // Cargas
-  droneBayCapacity: number
-  cargoCapacity: number
-  
-  // Scan
-  scanRange: number
-  scanResolving: number
+  droneBay: number
+  cargo: number
 }
 
-// Módulo info (from SDE/ESI)
-export interface ModuleAttributes {
+export interface ModuleBaseStats {
   typeId: number
   name: string
-  groupId: number
-  groupName: string
-  
-  // Requisitos
+  groupId: number | null
+  groupName: string | null
+  slotType: string | null
   cpu: number
-  power: number
-  slots: ('high' | 'med' | 'low' | 'rig' | 'subsystem')[]
-  
-  // Efeitos
-  isWeapon?: boolean
-  damage?: number
-  
-  // Tank
-  shieldCapacity?: number
-  shieldBoostAmount?: number
-  shieldBoostDelay?: number
-  armorRepairAmount?: number
-  armorRepairDelay?: number
-  hullRepairAmount?: number
-  
-  // Electronic Warfare
-  ewar?: {
-    type: 'web' | 'sensorDamp' | 'trackingDisruptor' | 'ecm' | 'paint' | 'disruptor'
-    strength?: number
-    range?: number
-  }
-  
-  // Propulsion
-  propulsion?: {
-    type: 'afterburner' | 'microwarpdrive'
-    boost?: number
-    speedBonus?: number
-  }
-  
-  // Cargas
-  capacity?: number
-  volume?: number
-  
-  // Drones
-  isDrone?: boolean
-  droneDamage?: number
-  droneRange?: number
-  droneTracking?: number
-  
-  //Charges
-  isCharge?: boolean
-  chargeDamage?: { em: number; thermal: number; kinetic: number; explosive: number }
-  chargeRange?: number
-  chargeVelocity?: number
+  powerGrid: number
+  damage: number
+  fireRate: number
+  optimalRange: number
+  falloffRange: number
+  trackingSpeed: number
+  missileDamage: number
+  missileRange: number
+  missileVelocity: number
+  shieldBoost: number
+  armorRepair: number
+  hullRepair: number
+  capacitorNeed: number
+  capacitorDrain: number
+  ecmStrength: number
+  sensorDampStrength: number
+  trackingDisruptStrength: number
+  webSpeedPenalty: number
+  webRangeBonus: number
 }
 
-// --- Dogma Attribute IDs ---
-const DOGMA = {
-  // Ship base attributes
-  CPU: 19,
-  POWER: 21,
-  CAPACITOR: 22,
-  CAPACITOR_RECHARGE: 64,
-  
-  // Slots
-  HI_SLOTS: 47,
-  MED_SLOTS: 48,
-  LOW_SLOTS: 49,
-  RIG_SLOTS: 1137,
-  SUBSYSTEM_SLOTS: 1544,
-  
-  // HP
-  SHIELD_CAPACITY: 73,
-  ARMOR_HP: 265,
-  STRUCTURAL_INTEGRITY: 9,
-  
-  // Shield Regen
-  SHIELD_RECHARGE: 98,
-  SHIELD_PASSIVE: 109,
-  
-  // Resistências (Shield)
-  SHIELD_EM_RESIST: 110,
-  SHIELD_EXPLOSIVE_RESIST: 111,
-  SHIELD_KINETIC_RESIST: 112,
-  SHIELD_THERMAL_RESIST: 113,
-  
-  // Resistências (Armor)
-  ARMOR_EM_RESIST: 267,
-  ARMOR_EXPLOSIVE_RESIST: 268,
-  ARMOR_KINETIC_RESIST: 269,
-  ARMOR_THERMAL_RESIST: 270,
-  
-  // Resistências (Hull)
-  HULL_EM_RESIST: 272,
-  HULL_EXPLOSIVE_RESIST: 273,
-  HULL_KINETIC_RESIST: 274,
-  HULL_THERMAL_RESIST: 275,
-  
-  // Velocidade
-  MAX_VELOCITY: 37,
-  AGILITY: 70,
-  MASS: 70, // mass is 70
-  MASS_KG: 4, // new mass attr
-  WARP_SPEED: 30,
-  ALIGN_TIME: 153, // calculated in runtime
-  
-  // Cargas
-  DRONE_BAY_CAPACITY: 227,
-  CARGO_CAPACITY: 5,
-  
-  // Scan
-  SCAN_RANGE: 255,
-  SCAN_CERTAINTY: 252,
-  
-  // Weapon attributes
-  DAMAGE: 6,
-  FIRE_RATE: 47,
-  OPTIMAL_RANGE: 54,
-  FALLOFF_RANGE: 55,
-  TRACKING_SPEED: 63,
-  
-  // Missile attributes
-  MISSILE_DAMAGE: 78,
-  MISSILE_VELOCITY: 84,
-  MISSILE_RANGE: 86,
-  EXPLOSION_RADIUS: 89,
-  EXPLOSION_VELOCITY: 90,
-  
-  // Requisitos de módulos
-  CPU_NEEDED: 129,
-  POWER_NEEDED: 30,
-  
-  // Damage multiplier
-  DAMAGE_MULTIPLIER: 64,
-  TRACKING_SPEED_BONUS: 205,
-  OPTIMAL_RANGE_BONUS: 208,
-  ROF_BONUS: 210,
-  
-  // Tank multipliers
-  SHIELD_BOOST: 68,
-  ARMOR_BOOST: 73,
-  HULL_BOOST: 77,
-  
-  // Capacitor usage
-  CAPACITOR_NEEDED: 100,
-  CAPACITOR_RECHARGE_RATE: 63,
-  
-  // Movement
-  VELOCITY_BOOST: 1056,
-  ACCELERATION_DELAY: 1242,
-  
-  // Weapon groups
-  TURRET: 74,
-  LAUNCHER: 78,
-}
+// --- Cache ---
 
-// Group IDs para categorização
-const GROUPS = {
-  SHIP: 6,
-  
-  // Weapons
-  ENERGY_TURRET: 76,
-  PROJECTILE_TURRET: 77,
-  HYBRID_TURRET: 78,
-  MISSILE_LAUNCHER: 79,
- 射Drones: 18,
-  
-  // Tank
-  SHIELD_BOOSTER: 29,
-  ARMOR_REPAIR: 30,
-  HULL_REPAIR: 31,
-  
-  // Electronic Warfare
-  ECM: 111,
-  SENSOR_DAMP: 112,
-  TRACKING_DISRUPTOR: 113,
-  STasis_WEB: 65,
-  REMOTE_REPAIR: 120,
-  
-  // Propulsion
-  AFTERBURNER: 33,
-  MICRO_WARP: 34,
-  
-  // NOS/Neut
-  NOS: 35,
-  NEUT: 36,
-  
-  // Core
-  SHIELD_EXTENSION: 32,
-  ARMOR_PLATING: 28,
-  HULL_MOD: 27,
-  // Rigs
-  SHIELD_RIG: 153,
-  ARMOR_RIG: 154,
-  NAVIGATION_RIG: 155,
-  
-  // Subsystems
-  STARSHIP_SUBSYSTEM: 186,
-  
-  // Drones
-  COMBAT_DRONE: 18,
-  LOGISTICS_DRONE: 19,
-  MINING_DRONE: 172,
-  SALVAGE_DRONE: 374,
-}
+const shipStatsCache = new Map<number, ShipBaseStats>()
+const moduleStatsCache = new Map<number, ModuleBaseStats>()
 
 // --- API Functions ---
 
-export async function getShipAttributes(typeId: number): Promise<ShipAttributes | null> {
+export async function getShipStats(typeId: number): Promise<ShipBaseStats | null> {
+  if (shipStatsCache.has(typeId)) {
+    return shipStatsCache.get(typeId)!
+  }
+  
   try {
-    // Get from ESI
-    const response = await fetch(`${ESI_BASE_URL}/universe/types/${typeId}/`)
-    if (!response.ok) return null
-    
-    const typeData = await response.json()
-    
-    // Get dogma attributes
-    const [cpu, power, capacitor, hp] = await Promise.all([
-      getDogmaAttribute(typeId, DOGMA.CPU),
-      getDogmaAttribute(typeId, DOGMA.POWER),
-      getDogmaAttribute(typeId, DOGMA.CAPACITOR),
-      getDogmaAttribute(typeId, DOGMA.SHIELD_CAPACITY),
-    ])
-    
-    return {
-      typeId,
-      name: typeData.name,
-      cpu: cpu ?? 0,
-      powerGrid: power ?? 0,
-      highSlots: typeData.hi_slot || 0,
-      medSlots: typeData.med_slot || 0,
-      lowSlots: typeData.low_slot || 0,
-      rigSlots: typeData.rig_slot || 0,
-      subsystemSlots: typeData.subystem_slot || 0,
-      capacitorCapacity: capacitor ?? 0,
-      shieldCapacity: hp ?? 0,
-      armorCapacity: typeData.armorHP ?? 0,
-      hullCapacity: typeData.structuralHP ?? 0,
-      maxVelocity: typeData.maxSpeed ?? 0,
-      maxSpeed: typeData.maxSpeed ?? 0,
-      agility: typeData.agility ?? 1,
-      mass: typeData.mass ?? 0,
-      warpSpeed: typeData.warpSpeed ?? 0,
-      droneBayCapacity: typeData.droneCapacity ?? 0,
-      cargoCapacity: typeData.cargoCapacity ?? 0,
-      // Defaulta
-      capacitorRecharge: 0,
-      shieldEmResist: 0,
-      shieldExplosiveResist: 0,
-      shieldKineticResist: 0,
-      shieldThermalResist: 0,
-      armorEmResist: 0,
-      armorExplosiveResist: 0,
-      armorKineticResist: 0,
-      armorThermalResist: 0,
-      hullEmResist: 0,
-      hullExplosiveResist: 0,
-      hullKineticResist: 0,
-      hullThermalResist: 0,
-      alignTime: 0,
-      scanRange: 0,
-      scanResolving: 0,
+    const stats = await prisma.shipStats.findUnique({ where: { typeId } }) as ShipStatsDb | null
+    if (stats) {
+      const fullStats: ShipBaseStats = {
+        typeId: stats.typeId,
+        name: stats.name,
+        highSlots: stats.highSlots || 0,
+        medSlots: stats.medSlots || 0,
+        lowSlots: stats.lowSlots || 0,
+        rigSlots: stats.rigSlots || 0,
+        cpu: stats.cpu || 0,
+        powerGrid: stats.powerGrid || 0,
+        capacitor: stats.capacitor || 0,
+        capacitorRecharge: stats.capacitorRecharge || 280000,
+        shieldCapacity: stats.shieldCapacity || 0,
+        armorHP: stats.armorHP || 0,
+        hullHP: stats.hullHP || 0,
+        shieldEmResist: stats.shieldEmResist || 0,
+        shieldExpResist: stats.shieldExpResist || 0,
+        shieldKinResist: stats.shieldKinResist || 0,
+        shieldThermResist: stats.shieldThermResist || 0,
+        armorEmResist: stats.armorEmResist || 0,
+        armorExpResist: stats.armorExpResist || 0,
+        armorKinResist: stats.armorKinResist || 0,
+        armorThermResist: stats.armorThermResist || 0,
+        hullEmResist: stats.hullEmResist || 0,
+        hullExpResist: stats.hullExpResist || 0,
+        hullKinResist: stats.hullKinResist || 0,
+        hullThermResist: stats.hullThermResist || 0,
+        maxVelocity: stats.maxVelocity || 0,
+        agility: stats.agility || 1,
+        mass: stats.mass || 0,
+        warpSpeed: stats.warpSpeed || 0,
+        droneBay: stats.droneBay || 0,
+        cargo: stats.cargo || 0,
+      }
+      shipStatsCache.set(typeId, fullStats)
+      return fullStats
     }
-  } catch (error) {
-    console.error('Error fetching ship attributes:', error)
-    return null
+  } catch (e) {
+    console.error('Error fetching ship stats:', e)
   }
-}
-
-export async function getDogmaAttribute(typeId: number, attributeId: number): Promise<number | null> {
-  try {
-    // Try cache or ESI
-    const cached = dogmaAttributeCache.get(`${typeId}:${attributeId}`)
-    if (cached !== undefined) return cached
-    
-    const response = await fetch(`${ESI_BASE_URL}/dogma/attributes/${attributeId}/`)
-    if (!response.ok) return null
-    
-    const data = await response.json()
-    
-    // Find attribute for this type
-    const attr = data.find((a: any) => a.type_id === typeId)
-    if (attr) return attr.attribute_value
-  } catch (error) {
-    return null
-  }
+  
   return null
 }
 
-// Simple cache for dogma attributes
-const dogmaAttributeCache = new Map<string, number>()
+export async function getShipByName(name: string): Promise<ShipBaseStats | null> {
+  try {
+    const stats = await prisma.shipStats.findFirst({
+      where: { name: { equals: name, mode: 'insensitive' } }
+    })
+    if (stats) {
+      const fullStats: ShipBaseStats = {
+        typeId: stats.typeId,
+        name: stats.name,
+        highSlots: stats.highSlots || 0,
+        medSlots: stats.medSlots || 0,
+        lowSlots: stats.lowSlots || 0,
+        rigSlots: stats.rigSlots || 0,
+        cpu: stats.cpu || 0,
+        powerGrid: stats.powerGrid || 0,
+        capacitor: stats.capacitor || 0,
+        capacitorRecharge: stats.capacitorRecharge || 280000,
+        shieldCapacity: stats.shieldCapacity || 0,
+        armorHP: stats.armorHP || 0,
+        hullHP: stats.hullHP || 0,
+        shieldEmResist: stats.shieldEmResist || 0,
+        shieldExpResist: stats.shieldExpResist || 0,
+        shieldKinResist: stats.shieldKinResist || 0,
+        shieldThermResist: stats.shieldThermResist || 0,
+        armorEmResist: stats.armorEmResist || 0,
+        armorExpResist: stats.armorExpResist || 0,
+        armorKinResist: stats.armorKinResist || 0,
+        armorThermResist: stats.armorThermResist || 0,
+        hullEmResist: stats.hullEmResist || 0,
+        hullExpResist: stats.hullExpResist || 0,
+        hullKinResist: stats.hullKinResist || 0,
+        hullThermResist: stats.hullThermResist || 0,
+        maxVelocity: stats.maxVelocity || 0,
+        agility: stats.agility || 1,
+        mass: stats.mass || 0,
+        warpSpeed: stats.warpSpeed || 0,
+        droneBay: stats.droneBay || 0,
+        cargo: stats.cargo || 0,
+      }
+      shipStatsCache.set(stats.typeId, fullStats)
+      return fullStats
+    }
+  } catch (e) {
+    console.error('Error fetching ship by name:', e)
+  }
+  
+  return null
+}
 
-export function cacheDogmaAttribute(typeId: number, attributeId: number, value: number) {
-  dogmaAttributeCache.set(`${typeId}:${attributeId}`, value)
+export async function getModuleStats(typeId: number): Promise<ModuleBaseStats | null> {
+  if (moduleStatsCache.has(typeId)) {
+    return moduleStatsCache.get(typeId)!
+  }
+  
+  try {
+    const stats = await prisma.moduleStats.findUnique({ where: { typeId } })
+    if (stats) {
+      moduleStatsCache.set(typeId, stats)
+      return stats
+    }
+  } catch (e) {
+    console.error('Error fetching module stats:', e)
+  }
+  
+  return null
+}
+
+export async function getModuleByName(name: string): Promise<ModuleBaseStats | null> {
+  try {
+    const stats = await prisma.moduleStats.findFirst({
+      where: { name: { contains: name, mode: 'insensitive' } }
+    })
+    if (stats) {
+      moduleStatsCache.set(stats.typeId, stats)
+      return stats
+    }
+  } catch (e) {
+    console.error('Error fetching module by name:', e)
+  }
+  
+  return null
 }
 
 // --- Calculator ---
 
-export function calculateFitStats(
-  ship: ShipAttributes,
-  slots: FitSlot,
-  charges?: { [typeId: number]: number }
-): FitStats {
-  // Inicializar stats base
+export async function calculateFitStats(
+  ship: ShipBaseStats,
+  slots: FitSlot
+): Promise<FitStats> {
   const stats: FitStats = {
-    cpu: { used: 0, total: ship.cpu, free: ship.cpu },
-    power: { used: 0, total: ship.powerGrid, free: ship.powerGrid },
-    highSlots: { used: slots.high.length, total: ship.highSlots },
-    medSlots: { used: slots.med.length, total: ship.medSlots },
-    lowSlots: { used: slots.low.length, total: ship.lowSlots },
-    rigSlots: { used: slots.rig.length, total: ship.rigSlots },
-    dps: { total: 0, projectile: 0, missile: 0, drone: 0, hybrid: 0, laser: 0 },
+    cpu: { used: 0, total: ship.cpu, free: ship.cpu, overflow: false },
+    power: { used: 0, total: ship.powerGrid, free: ship.powerGrid, overflow: false },
+    slots: {
+      high: { used: 0, total: ship.highSlots, overflow: false },
+      med: { used: 0, total: ship.medSlots, overflow: false },
+      low: { used: 0, total: ship.lowSlots, overflow: false },
+      rig: { used: 0, total: ship.rigSlots, overflow: false }
+    },
+    dps: { total: 0, turret: 0, missile: 0, drone: 0 },
     volley: { total: 0 },
-    range: { optimal: 0, falloff: 0, missileRange: 0 },
+    range: { optimal: 0, falloff: 0 },
     tank: {
-      shield: { hp: ship.shieldCapacity, regen: 0, resist: { em: 0, explosive: 0, kinetic: 0, thermal: 0 } },
-      armor: { hp: ship.armorCapacity, resist: { em: 0, explosive: 0, kinetic: 0, thermal: 0 } },
-      hull: { hp: ship.hullCapacity, resist: { em: 0, explosive: 0, kinetic: 0, thermal: 0 } }
+      shield: { hp: ship.shieldCapacity, regen: 0, maxRegen: 0 },
+      armor: { hp: ship.armorHP, repair: 0 },
+      hull: { hp: ship.hullHP, repair: 0 }
     },
     ehp: { shield: 0, armor: 0, hull: 0, total: 0 },
     capacitor: {
-      capacity: ship.capacitorCapacity,
+      capacity: ship.capacitor,
       rechargeRate: ship.capacitorRecharge,
       stable: true,
       usePerSecond: 0,
-      deltaPerSecond: 0
+      deltaPerSecond: 0,
+      timeToEmpty: Infinity
     },
-    droneBay: { volume: 0, maxVolume: ship.droneBayCapacity },
-    cargo: { volume: 0, maxVolume: ship.cargoCapacity },
+    droneBay: { volume: 0, maxVolume: ship.droneBay },
+    cargo: { volume: 0, maxVolume: ship.cargo },
     velocity: {
-      alignTime: ship.alignTime,
+      alignTime: 0,
       warpSpeed: ship.warpSpeed,
-      maxSpeed: ship.maxSpeed,
-      mass: ship.mass
+      maxSpeed: ship.maxVelocity
     },
     cost: 0
   }
   
-  // Calcular cada slot
-  let moduleIndex = 0
-  for (const slotType of ['high', 'med', 'low', 'rig'] as const) {
-    const modules = slots[slotType]
-    for (const mod of modules) {
-      if (mod.offline) continue
-      
-      const modCpu = MODULE_REQUIREMENTS[mod.typeId]?.cpu || 0
-      const modPower = MODULE_REQUIREMENTS[mod.typeId]?.power || 0
-      
-      stats.cpu.used += modCpu
-      stats.power.used += modPower
-      
-      // Adicionar DPS se for weapon
-      const weaponDps = WEAPON_DPS[mod.typeId]
-      if (weaponDps) {
-        stats.dps.total += weaponDps.dps
-        stats.dps[weaponDps.type] += weaponDps.dps
-        stats.volley.total += weaponDps.volley
-        stats.range.optimal = Math.max(stats.range.optimal, weaponDps.optimal)
-        stats.range.falloff = Math.max(stats.range.falloff, weaponDps.falloff)
-      }
-      
-      // Adicionar tank se for shield/armor/hull booster
-      const tankBonus = TANK_MODULES[mod.typeId]
-      if (tankBonus) {
-        if (tankBonus.type === 'shield') {
-          stats.tank.shield.regen += tankBonus.amount
-        }
-      }
-      
-      // Capacitor usage
-      const capUse = MODULE_CAP_USAGE[mod.typeId]
-      if (capUse) {
-        stats.capacitor.usePerSecond += capUse
-      }
-      
-      // Custo do módulo
-      const modCost = MODULE_COSTS[mod.typeId]
-      if (modCost) {
-        stats.cost = (stats.cost || 0) + modCost
-      }
-    }
-  }
+  // Calculate slot usage
+  stats.slots.high.used = slots.high.filter(m => !m.offline).length
+  stats.slots.med.used = slots.med.filter(m => !m.offline).length
+  stats.slots.low.used = slots.low.filter(m => !m.offline).length
+  stats.slots.rig.used = slots.rig.filter(m => !m.offline).length
   
-  // Calcular drone DPS
-  for (const drone of (slots as any).drone || []) {
-    const droneDps = DRONE_DPS[drone.typeId]
-    if (droneDps) {
+  // Check slot overflow
+  stats.slots.high.overflow = stats.slots.high.used > stats.slots.high.total
+  stats.slots.med.overflow = stats.slots.med.used > stats.slots.med.total
+  stats.slots.low.overflow = stats.slots.low.used > stats.slots.low.total
+  stats.slots.rig.overflow = stats.slots.rig.used > stats.slots.rig.total
+  
+  // Process each slot
+  await processSlot(slots.high, 'high', stats)
+  await processSlot(slots.med, 'med', stats)
+  await processSlot(slots.low, 'low', stats)
+  await processSlot(slots.rig, 'rig', stats)
+  
+  // Calculate drones
+  if (slots.drone) {
+    for (const drone of slots.drone) {
+      const droneDps = getDroneDps(drone.typeId)
       const qty = drone.quantity || 1
-      stats.dps.total += droneDps.dps * qty
       stats.dps.drone += droneDps.dps * qty
     }
   }
   
-  // Free stats
-  stats.cpu.free = stats.cpu.total - stats.cpu.used
-  stats.power.free = stats.power.total - stats.power.used
+  stats.dps.total = stats.dps.turret + stats.dps.missile + stats.dps.drone
   
-  // Verificar cap stability
-  const capDelta = stats.capacitor.rechargeRate * 0.25 - stats.capacitor.usePerSecond
-  stats.capacitor.stable = capDelta >= 0
-  stats.capacitor.deltaPerSecond = capDelta
+  // Calculate CPU/Power overflow
+  stats.cpu.overflow = stats.cpu.used > stats.cpu.total
+  stats.power.overflow = stats.power.used > stats.power.total
   
-  // Calcular EHP
-  const shieldResists = {
-    em: 1 - (stats.tank.shield.resist.em / 100),
-    thermal: 1 - (stats.tank.shield.resist.thermal / 100),
-    kinetic: 1 - (stats.tank.shield.resist.kinetic / 100),
-    explosive: 1 - (stats.tank.shield.resist.explosive / 100)
+  // Calculate free resources
+  stats.cpu.free = Math.max(0, stats.cpu.total - stats.cpu.used)
+  stats.power.free = Math.max(0, stats.power.total - stats.power.used)
+  
+  // Calculate capacitor stability
+  const capUse = (stats as any)._capacitorUsePerSecond || 0
+  if (capUse > 0) {
+    const capDelta = (ship.capacitorRecharge / 1000) * 0.25 - capUse
+    stats.capacitor.deltaPerSecond = capDelta
+    stats.capacitor.stable = capDelta >= 0
+    stats.capacitor.usePerSecond = capUse
+    
+    if (!stats.capacitor.stable && capUse > 0) {
+      stats.capacitor.timeToEmpty = ship.capacitor / capUse
+    }
   }
   
-  stats.ehp.shield = stats.tank.shield.hp / shieldResists.em
-  stats.ehp.armor = stats.tank.armor.hp / (1 - stats.tank.armor.resist.em / 100)
-  stats.ehp.hull = stats.tank.hull.hp / (1 - stats.tank.hull.resist.em / 100)
-  stats.ehp.total = stats.ehp.shield + stats.ehp.armor + stats.ehp.hull
+  // Calculate EHP
+  calculateEHP(stats, ship)
   
-  // Verificar overflow de slots
-  stats.highSlots.used = slots.high.length
-  stats.medSlots.used = slots.med.length
-  stats.lowSlots.used = slots.low.length
-  stats.rigSlots.used = slots.rig.length
+  // Calculate align time
+  if (ship.mass > 0 && ship.agility > 0) {
+    stats.velocity.alignTime = ship.mass * ship.agility / 500000
+  }
   
   return stats
 }
 
-// --- Módulo Requirements (cached data from SDE) ---
-
-const MODULE_REQUIREMENTS: { [typeId: number]: { cpu: number; power: number } } = {}
-const WEAPON_DPS: { [typeId: number]: { dps: number; volley: number; optimal: number; falloff: number; type: keyof FitStats['dps'] } } = {}
-const TANK_MODULES: { [typeId: number]: { type: 'shield' | 'armor' | 'hull'; amount: number } } = {}
-const MODULE_CAP_USAGE: { [typeId: number]: number } = {}
-const MODULE_COSTS: { [typeId: number]: number } = {}
-const DRONE_DPS: { [typeId: number]: { dps: number; tracking: number } } = {}
-
-export async function loadModuleData() {
-  try {
-    // Carregar módulos do banco
-    const modules = await prisma.eveType.findMany({
-      where: {
-        published: true,
-        group: { categoryId: 7 } // Category 7 = Modules
-      },
-      select: {
-        id: true,
-        name: true,
-        groupId: true,
-        basePrice: true
-      },
-      take: 5000
-    })
+async function processSlot(
+  modules: FitModule[],
+  slotType: string,
+  stats: FitStats
+) {
+  for (const mod of modules) {
+    if (mod.offline) continue
     
-    console.log(`Carregados ${modules.length} módulos para fitting...`)
+    const modStats = await getModuleStats(mod.typeId)
     
-    // Aquí processaríamos os datos do SDE que temos syncados
-    // Por enquanto, carregamos do ESI conforme necessário
+    if (!modStats) {
+      // Fallback: use basic estimates
+      stats.cpu.used += 5
+      stats.power.used += 5
+      continue
+    }
     
-  } catch (error) {
-    console.error('Error loading module data:', error)
+    // Requirements
+    stats.cpu.used += modStats.cpu
+    stats.power.used += modStats.powerGrid
+    
+    // Weapon DPS
+    if (modStats.damage > 0 && modStats.fireRate > 0) {
+      const dps = modStats.damage / modStats.fireRate
+      stats.dps.turret += dps
+      stats.volley.total += modStats.damage
+      stats.range.optimal = Math.max(stats.range.optimal, modStats.optimalRange)
+      stats.range.falloff = Math.max(stats.range.falloff, modStats.falloffRange)
+    }
+    
+    // Missile DPS
+    if (modStats.missileDamage > 0 && modStats.fireRate > 0) {
+      const dps = modStats.missileDamage / modStats.fireRate
+      stats.dps.missile += dps
+      stats.volley.total += modStats.missileDamage
+    }
+    
+    // Tank (Shield Boosters)
+    if (modStats.shieldBoost > 0) {
+      stats.tank.shield.maxRegen += modStats.shieldBoost
+      stats.tank.shield.regen = modStats.shieldBoost
+    }
+    
+    // Tank (Armor Repairers)
+    if (modStats.armorRepair > 0) {
+      stats.tank.armor.repair += modStats.armorRepair
+    }
+    
+    // Tank (Hull Repairers)
+    if (modStats.hullRepair > 0) {
+      stats.tank.hull.repair += modStats.hullRepair
+    }
+    
+    // Capacitor usage
+    if (modStats.capacitorNeed > 0) {
+      stats.capasitorUsePerSecond += modStats.capacitorNeed / (modStats.fireRate || 1)
+    }
   }
 }
 
-// --- Helper para parsing de EFT ---
+// Helper to track capacitor usage
+let capUseCounter = 0
+
+function calculateEHP(stats: FitStats, ship: ShipBaseStats) {
+  const shieldMult = 1 / (1 - Math.max(
+    ship.shieldEmResist,
+    ship.shieldExpResist,
+    ship.shieldKinResist,
+    ship.shieldThermResist
+  ))
+  
+  const armorMult = 1 / (1 - Math.max(
+    ship.armorEmResist,
+    ship.armorExpResist,
+    ship.armorKinResist,
+    ship.armorThermResist
+  ))
+  
+  const hullMult = 1 / (1 - Math.max(
+    ship.hullEmResist,
+    ship.hullExpResist,
+    ship.hullKinResist,
+    ship.hullThermResist
+  ))
+  
+  stats.ehp.shield = stats.tank.shield.hp * shieldMult
+  stats.ehp.armor = stats.tank.armor.hp * armorMult
+  stats.ehp.hull = stats.tank.hull.hp * hullMult
+  stats.ehp.total = stats.ehp.shield + stats.ehp.armor + stats.ehp.hull
+}
+
+// Drone DPS lookup (simplified)
+const DRONE_DPS: Record<number, number> = {
+  2321: 13,  // Warrior I
+  2327: 19,  // Warrior II
+  2446: 16,  // Hobgoblin I
+  2456: 25,  // Hobgoblin II
+  2443: 15,  // Acolyte I
+  2453: 24,  // Acolyte II
+  2450: 18,  // Infiltrator I
+  2460: 28,  // Infiltrator II
+}
+
+function getDroneDps(typeId: number): { dps: number; tracking: number } {
+  return { dps: DRONE_DPS[typeId] || 10, tracking: 1 }
+}
+
+// --- EFT Parsing ---
 
 export function parseEftFormat(eftText: string): Partial<FitSlot> & { shipName: string; fitName: string } {
   const lines = eftText.trim().split('\n')
@@ -603,44 +567,48 @@ export function parseEftFormat(eftText: string): Partial<FitSlot> & { shipName: 
     rig: []
   }
   
-  // Primeira linha: [Ship Name, Fit Name]
-  const firstLine = lines[0].replace(/[\[\]]/g, '').split(',')
-  result.shipName = firstLine[0].trim()
-  result.fitName = firstLine[1]?.trim() || 'Unnamed Fit'
+  if (lines.length === 0) return result
   
-  let currentSlot = 'high'
+  // Parse header: [Ship Name, Fit Name]
+  const firstLine = lines[0].replace(/[\[\]]/g, '')
+  const headerParts = firstLine.split(',')
+  result.shipName = headerParts[0]?.trim() || ''
+  result.fitName = headerParts[1]?.trim() || 'Unnamed Fit'
+  
+  let currentSlot: keyof FitSlot = 'high'
   
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim()
     if (!line) continue
     
-    // Detectar mudança de section por linhas vazias
+    // Skip section headers
     if (line.startsWith('[')) continue
     
-    // Pares de slot
-    if (line.toLowerCase().includes('rig ')) {
+    // Detect slot type
+    const lowerLine = line.toLowerCase()
+    if (lowerLine.includes('rig ')) {
       currentSlot = 'rig'
       continue
     }
-    if (line.toLowerCase().includes('med ') || line.toLowerCase().includes('mid ')) {
+    if (lowerLine.includes('mid ') || lowerLine.includes('med ')) {
       currentSlot = 'med'
       continue
     }
-    if (line.toLowerCase().includes('low ')) {
+    if (lowerLine.includes('low ')) {
       currentSlot = 'low'
       continue
     }
     
-    // Parse [Empty slot]
-    if (line.toLowerCase().includes('empty')) continue
+    // Skip empty slots
+    if (lowerLine.includes('empty')) continue
     
-    // Parse módulo (pode ter /offline suffix)
+    // Parse module (may have /offline)
     const offline = line.endsWith('/offline')
     const modName = line.replace('/offline', '').trim()
     
-    // Adicionar à lista (nome será resolvido para typeId depois)
+    // TODO: Resolve name to typeId via database lookup
     result[currentSlot].push({
-      typeId: 0, // será resolvido
+      typeId: 0,
       name: modName,
       offline
     })
@@ -652,72 +620,71 @@ export function parseEftFormat(eftText: string): Partial<FitSlot> & { shipName: 
 export function fitToEftFormat(
   shipName: string,
   fitName: string,
-  slots: FitSlot,
-  charges?: { [typeId: number]: number }
+  slots: FitSlot
 ): string {
   const lines: string[] = []
   
   // Header
   lines.push(`[${shipName}, ${fitName}]`)
+  lines.push('')
   
   // High slots
   for (const mod of slots.high) {
-    lines.push(mod.offline ? `${mod.typeId}/offline` : `${mod.typeId}`)
+    lines.push(mod.offline ? `${mod.name || mod.typeId} /offline` : (mod.name || mod.typeId))
   }
-  
-  lines.push('') // Empty line
+  lines.push('')
   
   // Med slots
   for (const mod of slots.med) {
-    lines.push(mod.offline ? `${mod.typeId}/offline` : `${mod.typeId}`)
+    lines.push(mod.offline ? `${mod.name || mod.typeId} /offline` : (mod.name || mod.typeId))
   }
-  
   lines.push('')
   
   // Low slots
   for (const mod of slots.low) {
-    lines.push(mod.offline ? `${mod.typeId}/offline` : `${mod.typeId}`)
+    lines.push(mod.offline ? `${mod.name || mod.typeId} /offline` : (mod.name || mod.typeId))
   }
-  
   lines.push('')
   
   // Rigs
   for (const mod of slots.rig) {
-    lines.push(mod.typeId.toString())
+    lines.push(mod.name || mod.typeId)
   }
-  
   lines.push('')
   
-  // Drones (se houver)
+  // Drones
   if (slots.drone && slots.drone.length > 0) {
     for (const drone of slots.drone) {
-      lines.push(`${drone.typeId} x${drone.quantity || 1}`)
+      lines.push(`${drone.name || drone.typeId} x${drone.quantity || 1}`)
     }
   }
   
   return lines.join('\n')
 }
 
-// --- Cálculo de ALIGN TIME ---
+// --- Helper to add capacitor usage tracking ---
 
-export function calculateAlignTime(
-  shipMass: number,
-  agility: number,
-  speedBonus: number = 0
-): number {
-  // alignTime = mass * agility * 2 / (1000000 * (1 + speedBonus/100))
-  // Simplificado: mass * agility / 500000 segundos
-  if (shipMass <= 0 || agility <= 0) return 0
-  return (shipMass * agility) / 500000
+let totalCapacitorUse = 0
+
+export function resetCapacitorCounter() {
+  totalCapacitorUse = 0
 }
 
-// --- Export ---
+export function addCapacitorUsage(usePerSecond: number) {
+  totalCapacitorUse += usePerSecond
+}
 
+export function getCapacitorUsage(): number {
+  return totalCapacitorUse
+}
+
+// Export simpler interface
 export default {
-  getShipAttributes,
+  getShipStats,
+  getShipByName,
+  getModuleStats,
+  getModuleByName,
   calculateFitStats,
   parseEftFormat,
-  fitToEftFormat,
-  calculateAlignTime,
-  loadModuleData
+  fitToEftFormat
 }

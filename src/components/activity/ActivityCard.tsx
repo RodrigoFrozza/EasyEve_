@@ -406,148 +406,16 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
       </CardHeader>
 
       <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-4 -mt-1 px-1">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className={cn("text-[8px] uppercase font-black tracking-widest border-zinc-800", typeInfo?.color)}>
-              {activity.status}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-1">
-            <ActivityDetailDialog 
-              activity={activity} 
-              trigger={
-                <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] font-bold text-zinc-500 hover:text-cyan-400 uppercase tracking-widest">
-                  <History className="h-3.5 w-3.5 mr-1.5" /> Log
-                </Button>
-              }
-            />
-          </div>
-        </div>
-      </CardContent>
-      
-      <CardContent className="space-y-3 p-4">
-        {displayMode === 'compact' ? (
-          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            {/* Ultra Compact Performance Display */}
-            <div className="grid grid-cols-1 gap-4">
-              <div className="relative bg-gradient-to-br from-zinc-900 to-black p-6 rounded-2xl border border-white/[0.03] overflow-hidden group/hud shadow-2xl">
-                {/* Background Sparkline */}
-                <div className="absolute inset-x-0 bottom-0 top-1/2 opacity-20 pointer-events-none transition-opacity group-hover/hud:opacity-40">
-                  <Sparkline 
-                    data={incomeHistory} 
-                    width={400} 
-                    height={80} 
-                    color="#00ffff" 
-                    className="w-full h-full"
-                    strokeWidth={3}
-                  />
-                </div>
-
-                <div className="relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 flex items-center gap-2">
-                       <TrendingUp className="h-3 w-3 text-eve-accent" />
-                       Net Revenue
-                    </p>
-                    <p className="text-4xl font-black text-white font-mono tracking-tighter flex items-baseline gap-2">
-                      <span className="text-eve-accent drop-shadow-[0_0_10px_rgba(0,255,255,0.4)]">
-                        {isMiningActivity ? formatISK(miningTotalValue) : formatISK(totalIsk)}
-                      </span>
-                      <span className="text-xs text-zinc-600 font-bold uppercase tracking-widest">ISK</span>
-                    </p>
-                  </div>
-                  
-                  <div className="text-left sm:text-right space-y-1">
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Hourly Rate</p>
-                    <p className="text-xl font-black text-cyan-400 font-mono tracking-tighter">
-                      {isMiningActivity 
-                        ? formatNumber(Math.round(miningTotalQuantity / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000))) + ' m³/h'
-                        : formatISK(totalIsk / Math.max(0.01, (Date.now() - new Date(activity.startTime).getTime()) / 3600000)) + '/h'
-                      }
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Cluster */}
-              <div className="flex items-center gap-2">
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  disabled={isSyncing}
-                  onClick={handleSyncFinancials}
-                  className={cn(
-                    "flex-1 h-12 bg-white/[0.02] border-white/[0.05] hover:bg-eve-accent/10 hover:border-eve-accent/50 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-eve-accent transition-all duration-500 rounded-xl",
-                    isSyncing && "animate-pulse border-eve-accent/50 bg-eve-accent/5"
-                  )}
-                >
-                  {isSyncing ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <RefreshCw className={cn("h-4 w-4 mr-2", syncStatus === 'success' && "text-green-500")} />
-                  )}
-                  {isSyncing ? 'Linking ESI...' : 'Synchronize'}
-                </Button>
-                
-                <ActivityDetailDialog 
-                  activity={activity} 
-                  trigger={
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="h-12 px-6 bg-white/[0.02] border-white/[0.05] hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl transition-all"
-                    >
-                      <History className="h-4 w-4" />
-                    </Button>
-                  }
-                />
-                
-                <Button 
-                  size="sm"
-                  variant="outline"
-                  onClick={onEnd}
-                  className="h-12 px-6 bg-red-500/5 border-red-500/10 hover:bg-red-500 hover:text-black hover:border-red-500 rounded-xl text-red-500 transition-all group/end"
-                >
-                  <StopCircle className="h-4 w-4 group-hover/end:scale-110 transition-transform" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Quick Fleet Preview */}
-            <div className="flex items-center justify-between px-2 pt-2">
-              <div className="flex -space-x-2">
-                {activity.participants.slice(0, 6).map(p => (
-                  <Avatar key={p.characterId} className="h-8 w-8 border-2 border-[#0a0a0f] ring-1 ring-white/5">
-                    <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
-                    <AvatarFallback className="bg-zinc-900 text-[10px] font-black">
-                      {(p.characterName || '??').slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                ))}
-                {activity.participants.length > 6 && (
-                  <div className="h-8 w-8 rounded-full bg-zinc-900 border-2 border-[#0a0a0f] ring-1 ring-white/5 flex items-center justify-center text-[10px] font-black text-zinc-400">
-                    +{activity.participants.length - 6}
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <div className="text-[10px] font-black uppercase tracking-widest text-zinc-600">
-                  Fleet Status: <span className="text-green-500">Optimal</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        ) : displayMode === 'tabs' ? (
-          <>
-            {isMiningActivity ? (
+        {displayMode !== 'expanded' ? (
+          <div className="space-y-4">
+            {isMining ? (
               <MiningActivityContent 
                 activity={activity} 
                 onSync={handleSyncFinancials}
                 isSyncing={isSyncing}
                 syncStatus={syncStatus}
                 onEnd={onEnd}
+                displayMode={displayMode}
               />
             ) : activity.type === 'ratting' ? (
               <RattingActivityContent 
@@ -556,14 +424,16 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                 isSyncing={isSyncing}
                 syncStatus={syncStatus}
                 essCountdown={essCountdown}
+                displayMode={displayMode}
+                onEnd={onEnd}
               />
-) : (
+            ) : (
               /* Fallback for other activity types */
               <div className="py-4 text-center text-zinc-500 text-sm">
-                {t('activity.detailedModeNotAvailable')}
+                Detailed mode not available for this activity type.
               </div>
             )}
-          </>
+          </div>
         ) : (
           /* Expanded Mode - Full layout */
           <div className="space-y-6 animate-in fade-in duration-500">

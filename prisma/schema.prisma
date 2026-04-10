@@ -241,18 +241,41 @@ model ShipStats {
   
   // Capacidades
   capacitor       Float    @default(0)
+  capacitorRecharge Float  @default(0)
   shieldCapacity  Float    @default(0)
   armorHP         Float    @default(0)
   hullHP          Float    @default(0)
   
+  // Resistências (percentagem - ex: 0.5 = 50%)
+  shieldEmResist  Float    @default(0)
+  shieldExpResist Float    @default(0)
+  shieldKinResist Float    @default(0)
+  shieldThermResist Float  @default(0)
+  
+  armorEmResist   Float    @default(0)
+  armorExpResist  Float    @default(0)
+  armorKinResist  Float    @default(0)
+  armorThermResist Float   @default(0)
+  
+  hullEmResist    Float    @default(0)
+  hullExpResist   Float    @default(0)
+  hullKinResist   Float    @default(0)
+  hullThermResist Float    @default(0)
+  
   // Velocidade
   maxVelocity     Float    @default(0)
-  agility         Float    @default(0)
+  agility         Float    @default(1)
+  mass            Float    @default(0)
   warpSpeed       Float    @default(0)
+  alignTime       Float    @default(0)
   
   // Cargas
   droneBay        Float    @default(0)
   cargo           Float    @default(0)
+  
+  // Scan
+  scanRange       Float    @default(0)
+  scanResolving   Float    @default(0)
   
   // Meta
   syncedAt        DateTime @default(now())
@@ -271,15 +294,47 @@ model ModuleStats {
   powerGrid       Float    @default(0)
   
   // Slot type
-  slotType        String?  // "high", "med", "low", "rig"
+  slotType        String?  // "high", "med", "low", "rig", "subsystem"
   
-  // Effects (JSON)
+  // Combat stats
+  damage          Float    @default(0)        // DPS base
+  fireRate        Float    @default(0)       // Segundos entre shots
+  optimalRange    Float    @default(0)       // Range ótimo (m)
+  falloffRange    Float    @default(0)       // Falloff (m)
+  trackingSpeed   Float    @default(0)       // Tracking
+  
+  // Missile specific
+  missileDamage   Float    @default(0)
+  missileRange    Float    @default(0)
+  missileVelocity Float    @default(0)
+  
+  // Tank stats
+  shieldBoost     Float    @default(0)       // HP/s shield repair
+  armorRepair     Float    @default(0)       // HP/s armor repair
+  hullRepair      Float    @default(0)       // HP/s hull repair
+  
+  // Capacitor
+  capacitorNeed   Float    @default(0)       // Cap por ciclo
+  capacitorDrain  Float    @default(0)       // Cap por segundo
+  
+  // Electronic Warfare
+  ecmStrength     Float    @default(0)
+  sensorDampStrength Float @default(0)
+  trackingDisruptStrength Float @default(0)
+  webSpeedPenalty Float    @default(0)
+  webRangeBonus   Float    @default(0)
+  
+  // Propulsion
+  speedBonus      Float    @default(0)       // % speed bonus
+  mass            Float    @default(0)       // Mass penalty
+  
+  // Effects (JSON for complex effects)
   effects         Json     @default("{}")
   
   // Meta
   syncedAt        DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  
+
   @@index([slotType])
   @@index([groupId])
 }

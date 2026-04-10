@@ -280,16 +280,16 @@ function AdminContent() {
       <Tabs defaultValue="accounts" className="space-y-6" onValueChange={setActiveTab}>
         <TabsList className="bg-eve-panel border-eve-border p-1 gap-1">
           <TabsTrigger value="accounts" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black font-bold">
-            Gerenciar Contas
+            {t('admin.manageAccounts')}
           </TabsTrigger>
           <TabsTrigger value="prices" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black font-bold">
-            Módulos e Preços
+            {t('admin.modulesAndPrices')}
           </TabsTrigger>
           <TabsTrigger value="payments" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black font-bold">
-            Conciliação ESI
+            {t('admin.esconciliation')}
           </TabsTrigger>
           <TabsTrigger value="health" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black font-bold">
-            Saúde do Sistema
+            {t('admin.systemHealth')}
           </TabsTrigger>
         </TabsList>
 
@@ -303,8 +303,8 @@ function AdminContent() {
         <TabsContent value="prices" className="space-y-4">
           <Card className="bg-eve-panel border-eve-border shadow-xl overflow-hidden">
             <CardHeader className="bg-eve-dark/30 border-b border-eve-border/50">
-              <CardTitle>Configuração de Módulos</CardTitle>
-              <CardDescription>Defina o preço em ISK e a disponibilidade de cada funcionalidade</CardDescription>
+              <CardTitle>{t('admin.modulesConfig')}</CardTitle>
+              <CardDescription>{t('admin.modulePriceDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
               <div className="grid gap-3">

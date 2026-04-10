@@ -475,8 +475,39 @@ function ActivityTrackerContent() {
                       </>
                     )}
 
-                    {/* Placeholder for other types - manteniendo funcionalidade original */}
-                    {newActivity.type !== 'ratting' && (
+                    {newActivity.type === 'mining' && (
+                      <>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] text-zinc-400 font-bold uppercase tracking-tight">Mining Category</Label>
+                          <Select onValueChange={(v) => updateData({ miningType: v })}>
+                            <SelectTrigger className="h-10 bg-zinc-900 border-zinc-800 focus:ring-blue-500/20">
+                              <SelectValue placeholder="Select Category" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-zinc-900 border-zinc-800">
+                              {MINING_TYPES.map((type) => (
+                                <SelectItem key={type} value={type} className="text-xs uppercase font-mono">
+                                  {type}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] text-zinc-400 font-bold uppercase tracking-tight">Primary Resource Target</Label>
+                          <div className="relative group">
+                            <Gem className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-blue-500/50 group-focus-within:text-blue-400 transition-colors" />
+                            <Input 
+                              placeholder="e.g. Kernite, Mercoxit, Monazite"
+                              className="h-11 pl-9 bg-zinc-900 border-zinc-800 text-blue-400 placeholder:text-zinc-600 font-mono text-xs focus:ring-blue-500/20 uppercase tracking-tighter"
+                              onChange={(e) => updateData({ siteName: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Placeholder for other types - mantendo funcionalidade original */}
+                    {newActivity.type !== 'ratting' && newActivity.type !== 'mining' && (
                       <div className="col-span-1 sm:col-span-2 py-4 text-center text-zinc-600 text-xs italic">
                         Advanced configuration for {newActivity.type} coming soon.
                       </div>
