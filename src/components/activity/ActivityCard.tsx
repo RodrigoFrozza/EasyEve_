@@ -416,32 +416,39 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
           /* Expanded Mode - Full layout */
           <div className="space-y-6 animate-in fade-in duration-500">
             {/* Top Grid - Fleet & Basics */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              <div className="space-y-3 bg-zinc-950/30 p-4 rounded-xl border border-zinc-900/50 backdrop-blur-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="h-3 w-1 bg-eve-accent rounded-full shadow-[0_0_8px_rgba(0,255,255,0.4)]" />
-                    <span className="text-[10px] uppercase font-black tracking-[0.2em] text-cyan-400">Fleet Operations</span>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 text-[9px] font-bold border border-cyan-500/20">
-                    {activity.participants.length} Members
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
-                  {activity.participants.map(p => (
-                    <div key={p.characterId} className="flex items-center gap-3 p-2 bg-zinc-950/60 border border-zinc-900/50 rounded-lg group transition-all hover:bg-zinc-900/80 hover:border-zinc-800">
-                      <Avatar className="h-9 w-9 border border-zinc-800 transition-transform group-hover:scale-105">
-                        <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
-                        <AvatarFallback className="bg-zinc-900 text-[10px]">{p.characterName?.slice(0, 2)}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-zinc-100 truncate tracking-tight">{p.characterName}</p>
-                        <p className="text-[9px] text-zinc-600 truncate uppercase font-bold tracking-widest leading-none mt-1 group-hover:text-zinc-400 transition-colors">{p.fit || '—'}</p>
-                      </div>
+            <div className={cn(
+              "grid gap-4",
+              activity.type === 'mining' ? "grid-cols-1" : "grid-cols-1 xl:grid-cols-2"
+            )}>
+              {activity.type !== 'mining' && (
+                <div className="space-y-3 bg-zinc-950/30 p-4 rounded-xl border border-zinc-900/50 backdrop-blur-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-1 bg-eve-accent rounded-full shadow-[0_0_8px_rgba(0,255,255,0.4)]" />
+                      <span className="text-[10px] uppercase font-black tracking-[0.2em] text-cyan-400">Fleet Operations</span>
                     </div>
-                  ))}
+                    <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 text-[9px] font-bold border border-cyan-500/20">
+                      {activity.participants.length} Members
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
+                    {activity.participants.map(p => (
+                      <div key={p.characterId} className="flex items-center gap-3 p-2 bg-zinc-950/60 border border-zinc-900/50 rounded-lg group transition-all hover:bg-zinc-900/80 hover:border-zinc-800">
+                        <Avatar className="h-9 w-9 border border-zinc-800 transition-transform group-hover:scale-105">
+                          <AvatarImage src={`https://images.evetech.net/characters/${p.characterId}/portrait?size=64`} />
+                          <AvatarFallback className="bg-zinc-900 text-[10px]">{p.characterName?.slice(0, 2)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-zinc-100 truncate tracking-tight">{p.characterName}</p>
+                          <p className="text-[9px] text-zinc-600 truncate uppercase font-bold tracking-widest leading-none mt-1 group-hover:text-zinc-400 transition-colors">
+                            {p.fit || '—'}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Financial Dashboard - Expanded */}
               <div className="bg-zinc-950/30 p-4 rounded-xl border border-zinc-900/50 space-y-4 backdrop-blur-sm relative overflow-hidden group/fin">
@@ -462,6 +469,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                         (activity.data?.automatedBounties || 0) + 
                         (activity.data?.automatedEss || 0) + 
                         (activity.data?.additionalBounties || 0) +
+                        (activity.data?.miningValue || 0) +
                         estimatedLootValue +
                         estimatedSalvageValue
                       )}
@@ -478,6 +486,7 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                           (activity.data?.automatedBounties || 0) + 
                           (activity.data?.automatedEss || 0) + 
                           (activity.data?.additionalBounties || 0) +
+                          (activity.data?.miningValue || 0) +
                           estimatedLootValue +
                           estimatedSalvageValue;
                         return hours > 0.01 ? formatISK(total / hours) : formatISK(0);
@@ -493,7 +502,9 @@ export function ActivityCard({ activity, onEnd }: ActivityCardProps) {
                   </div>
                   <div className="p-3 rounded-xl bg-zinc-900/40 border border-zinc-900/50 group-hover/fin:border-zinc-800 transition-colors">
                     <p className="text-[8px] text-zinc-600 uppercase font-black tracking-widest mb-1 leading-none">Activity Focus</p>
-                    <p className="text-[11px] font-bold text-zinc-300 truncate tracking-tight">{activity.data?.siteType ||'Combat Operations'}</p>
+                    <p className="text-[11px] font-bold text-zinc-300 truncate tracking-tight">
+                      {activity.data?.siteType || (activity.type === 'mining' ? 'Extraction Operations' : 'Combat Operations')}
+                    </p>
                   </div>
                 </div>
               </div>
