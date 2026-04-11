@@ -5,7 +5,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect } from 'react'
-import * as Tooltip from '@radix-ui/react-tooltip'
+import { Provider as TooltipProvider } from '@radix-ui/react-tooltip'
 import { Target, Zap, Clock, TrendingUp, ChevronLeft, ChevronRight, Minus, Hexagon } from 'lucide-react'
 import { 
   startOfDay, 
@@ -122,7 +122,7 @@ export function LeaderboardList({
   }
 
   return (
-    <Tooltip.Provider delayDuration={200}>
+    <TooltipProvider delayDuration={200}>
       <div className="space-y-3">
         {/* Compact Podium Top 3 */}
         <div className="grid grid-cols-3 gap-2 pb-2">
@@ -247,7 +247,6 @@ export function LeaderboardList({
                         )}
                       />
                     </div>
-                  </div>
                 </motion.div>
               )
             })}
@@ -295,6 +294,6 @@ export function LeaderboardList({
           </div>
         )}
       </div>
-    </Tooltip.Provider>
+    </TooltipProvider>
   )
 }
