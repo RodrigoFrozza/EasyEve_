@@ -20,6 +20,12 @@ interface RattingData {
   participantEarnings?: Record<number, number>
 }
 
+interface MiningData {
+  miningValue?: number
+  totalEstimatedValue?: number
+  totalQuantity?: number
+}
+
 async function getStartOfPeriod(period: string): Promise<Date> {
   const now = new Date()
   const utcNow = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds())
@@ -50,13 +56,14 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || 'daily'
+    const type = searchParams.get('type') || 'ratting'
     const startDate = await getStartOfPeriod(period)
 
-    console.log(`[Leaderboard] period=${period}, startDate=${startDate.toISOString()}, now=${new Date().toISOString()}`)
+    console.log(`[Leaderboard] type=${type}, period=${period}, startDate=${startDate.toISOString()}`)
 
     const activities = await prisma.activity.findMany({
       where: {
-        type: 'ratting',
+        type: type,
         startTime: { gte: startDate }
       },
       include: {
@@ -71,27 +78,45 @@ export async function GET(request: Request) {
       }
     })
 
-    const grouped: Record<string, { userId: string; bounty: number; ess: number; total: number; characterName: string; characterId: number }> = {}
+    const grouped: Record<string, { 
+      userId: string; 
+      total: number; 
+      label1?: number; // bounty or quantity
+      label2?: number; // ess or volume
+      characterName: string; 
+      characterId: number 
+    }> = {}
 
     for (const a of activities) {
+      if (!a.user) continue
       const userId = a.user.id
       const mainChar = a.user.characters[0]
+      
       if (!grouped[userId]) {
         grouped[userId] = {
           userId,
-          bounty: 0,
-          ess: 0,
           total: 0,
+          label1: 0,
+          label2: 0,
           characterName: mainChar?.name || 'Unknown Capsuleer',
           characterId: mainChar?.id || 0
         }
       }
-      const activityData = a.data as RattingData | null
-      const actBounty = Number(activityData?.automatedBounties || 0)
-      const actEss = Number(activityData?.automatedEss || 0)
-      grouped[userId].bounty += actBounty
-      grouped[userId].ess += actEss
-      grouped[userId].total += actBounty + actEss
+
+      if (type === 'ratting') {
+        const activityData = a.data as RattingData | null
+        const actBounty = Number(activityData?.automatedBounties || 0)
+        const actEss = Number(activityData?.automatedEss || 0)
+        grouped[userId].label1! += actBounty
+        grouped[userId].label2! += actEss
+        grouped[userId].total += actBounty + actEss
+      } else if (type === 'mining') {
+        const activityData = a.data as MiningData | null
+        const actValue = Number(activityData?.miningValue || activityData?.totalEstimatedValue || 0)
+        const actQuantity = Number(activityData?.totalQuantity || 0)
+        grouped[userId].total += actValue
+        grouped[userId].label1! += actQuantity // total volume mined
+      }
     }
 
     const result = Object.values(grouped)

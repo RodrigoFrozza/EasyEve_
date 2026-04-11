@@ -77,13 +77,13 @@ export default async function DashboardPage() {
     return startOfMonth(baseDate)
   }
 
-  const getLeaderboard = async (period: 'daily' | 'weekly' | 'monthly' | 'alltime') => {
+  const getLeaderboard = async (period: 'daily' | 'weekly' | 'monthly' | 'alltime', type: 'ratting' | 'mining' = 'ratting') => {
     const startDate = await getStartDateForPeriod(period, now)
 
-    return withCache(`leaderboard_${period}`, async () => {
+    return withCache(`leaderboard_${type}_${period}`, async () => {
       const activities = await prisma.activity.findMany({
         where: {
-          type: 'ratting',
+          type,
           startTime: { gte: startDate }
         },
         include: {
@@ -98,7 +98,7 @@ export default async function DashboardPage() {
         }
       })
 
-      const grouped: Record<string, { userId: string; bounty: number; ess: number; total: number; characterName: string; characterId: number }> = {}
+      const grouped: Record<string, { userId: string; label1: number; label2: number; total: number; characterName: string; characterId: number }> = {}
       for (const a of activities) {
         if (!a.user) continue
         const userId = a.user.id
@@ -106,43 +106,66 @@ export default async function DashboardPage() {
         if (!grouped[userId]) {
           grouped[userId] = {
             userId,
-            bounty: 0,
-            ess: 0,
+            label1: 0,
+            label2: 0,
             total: 0,
             characterName: mainChar?.name || 'Unknown Capsuleer',
             characterId: mainChar?.id || 0
           }
         }
-        const activityData = a.data as RattingData | null
-        const actBounty = Number(activityData?.automatedBounties || 0)
-        const actEss = Number(activityData?.automatedEss || 0)
-        grouped[userId].bounty += actBounty
-        grouped[userId].ess += actEss
-        grouped[userId].total += actBounty + actEss
+
+        if (type === 'ratting') {
+          const activityData = a.data as any
+          const actBounty = Number(activityData?.automatedBounties || 0)
+          const actEss = Number(activityData?.automatedEss || 0)
+          grouped[userId].label1 += actBounty
+          grouped[userId].label2 += actEss
+          grouped[userId].total += actBounty + actEss
+        } else if (type === 'mining') {
+          const activityData = a.data as any
+          const actValue = Number(activityData?.miningValue || activityData?.totalEstimatedValue || 0)
+          const actQuantity = Number(activityData?.totalQuantity || 0)
+          grouped[userId].total += actValue
+          grouped[userId].label1 += actQuantity
+        }
       }
       return Object.values(grouped).sort((a, b) => b.total - a.total).slice(0, 10)
     }, 60 * 1000) // 1 min cache
   }
 
-  let dailyStats: any[] = []
-  let weeklyStats: any[] = []
-  let monthlyStats: any[] = []
-  let allTimeStats: any[] = []
+  let rattingDaily: any[] = []
+  let rattingWeekly: any[] = []
+  let rattingMonthly: any[] = []
+  let rattingAllTime: any[] = []
+
+  let miningDaily: any[] = []
+  let miningWeekly: any[] = []
+  let miningMonthly: any[] = []
+  let miningAllTime: any[] = []
 
   try {
-    const [d, w, m, a] = await Promise.all([
-      getLeaderboard('daily'),
-      getLeaderboard('weekly'),
-      getLeaderboard('monthly'),
-      getLeaderboard('alltime')
+    const [rd, rw, rm, ra, md, mw, mm, ma] = await Promise.all([
+      getLeaderboard('daily', 'ratting'),
+      getLeaderboard('weekly', 'ratting'),
+      getLeaderboard('monthly', 'ratting'),
+      getLeaderboard('alltime', 'ratting'),
+      getLeaderboard('daily', 'mining'),
+      getLeaderboard('weekly', 'mining'),
+      getLeaderboard('monthly', 'mining'),
+      getLeaderboard('alltime', 'mining')
     ])
-    dailyStats = d
-    weeklyStats = w
-    monthlyStats = m
-    allTimeStats = a
+    rattingDaily = rd
+    rattingWeekly = rw
+    rattingMonthly = rm
+    rattingAllTime = ra
+    miningDaily = md
+    miningWeekly = mw
+    miningMonthly = mm
+    miningAllTime = ma
   } catch (error) {
     console.error('Failed to fetch leaderboard data:', error)
   }
+
 
   const characters: Array<{ id: number; name: string; totalSp: number; walletBalance: number; location: string | null; ship: string | null }> = user?.characters || []
   const mainCharacter = characters[0]
@@ -276,39 +299,73 @@ export default async function DashboardPage() {
         </Card>
 
         <Card className="bg-eve-panel border-eve-border overflow-hidden">
-          <CardHeader className="p-3 border-b border-white/5 bg-white/[0.02]">
-            <CardTitle className="text-white text-xs uppercase tracking-widest font-black flex items-center gap-2">
-              <TrendingUp className="h-3 w-3 text-cyan-400" />
-              Ratting Leaderboard
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Tabs defaultValue="daily" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 bg-transparent h-9 border-b border-white/5 rounded-none p-0">
-                <TabsTrigger value="daily" className="text-[9px] font-bold uppercase tracking-tighter data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full">Daily</TabsTrigger>
-                <TabsTrigger value="weekly" className="text-[9px] font-bold uppercase tracking-tighter data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full">Weekly</TabsTrigger>
-                <TabsTrigger value="monthly" className="text-[9px] font-bold uppercase tracking-tighter data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full">Monthly</TabsTrigger>
-                <TabsTrigger value="alltime" className="text-[9px] font-bold uppercase tracking-tighter data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full">All-Time</TabsTrigger>
-              </TabsList>
-              
-              <div className="p-2">
-              
-              <TabsContent value="daily">
-                <LeaderboardWrapper initialData={dailyStats} currentUserId={session?.user?.id} period="daily" refreshInterval={60000} />
+          <Tabs defaultValue="ratting" className="w-full">
+            <CardHeader className="p-0 border-b border-white/5 bg-white/[0.02]">
+               <TabsList className="grid w-full grid-cols-2 bg-transparent h-10 rounded-none p-0">
+                  <TabsTrigger value="ratting" className="text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full flex items-center gap-2">
+                    <Target className="h-3 w-3" /> Ratting
+                  </TabsTrigger>
+                  <TabsTrigger value="mining" className="text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full flex items-center gap-2">
+                    <Zap className="h-3 w-3" /> Mining
+                  </TabsTrigger>
+               </TabsList>
+            </CardHeader>
+            <CardContent className="p-0">
+              <TabsContent value="ratting" className="m-0 focus-visible:ring-0">
+                <Tabs defaultValue="daily" className="w-full">
+                  <TabsList className="grid w-full grid-cols-4 bg-transparent h-9 border-b border-white/5 rounded-none p-0">
+                    <TabsTrigger value="daily" className="text-[9px] font-bold uppercase tracking-tighter data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full">Daily</TabsTrigger>
+                    <TabsTrigger value="weekly" className="text-[9px] font-bold uppercase tracking-tighter data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full">Weekly</TabsTrigger>
+                    <TabsTrigger value="monthly" className="text-[9px] font-bold uppercase tracking-tighter data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full">Monthly</TabsTrigger>
+                    <TabsTrigger value="alltime" className="text-[9px] font-bold uppercase tracking-tighter data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full">All-Time</TabsTrigger>
+                  </TabsList>
+                  
+                  <div className="p-2">
+                    <TabsContent value="daily" className="m-0 focus-visible:ring-0">
+                      <LeaderboardWrapper initialData={rattingDaily} currentUserId={session?.user?.id} period="daily" type="ratting" refreshInterval={60000} />
+                    </TabsContent>
+                    <TabsContent value="weekly" className="m-0 focus-visible:ring-0">
+                      <LeaderboardWrapper initialData={rattingWeekly} currentUserId={session?.user?.id} period="weekly" type="ratting" refreshInterval={60000} />
+                    </TabsContent>
+                    <TabsContent value="monthly" className="m-0 focus-visible:ring-0">
+                      <LeaderboardWrapper initialData={rattingMonthly} currentUserId={session?.user?.id} period="monthly" type="ratting" refreshInterval={60000} />
+                    </TabsContent>
+                    <TabsContent value="alltime" className="m-0 focus-visible:ring-0">
+                      <LeaderboardWrapper initialData={rattingAllTime} currentUserId={session?.user?.id} period="alltime" type="ratting" refreshInterval={60000} />
+                    </TabsContent>
+                  </div>
+                </Tabs>
               </TabsContent>
-              <TabsContent value="weekly">
-                <LeaderboardWrapper initialData={weeklyStats} currentUserId={session?.user?.id} period="weekly" refreshInterval={60000} />
+
+              <TabsContent value="mining" className="m-0 focus-visible:ring-0">
+                <Tabs defaultValue="daily" className="w-full">
+                  <TabsList className="grid w-full grid-cols-4 bg-transparent h-9 border-b border-white/5 rounded-none p-0">
+                    <TabsTrigger value="daily" className="text-[9px] font-bold uppercase tracking-tighter data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full">Daily</TabsTrigger>
+                    <TabsTrigger value="weekly" className="text-[9px] font-bold uppercase tracking-tighter data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full">Weekly</TabsTrigger>
+                    <TabsTrigger value="monthly" className="text-[9px] font-bold uppercase tracking-tighter data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full">Monthly</TabsTrigger>
+                    <TabsTrigger value="alltime" className="text-[9px] font-bold uppercase tracking-tighter data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full">All-Time</TabsTrigger>
+                  </TabsList>
+                  
+                  <div className="p-2">
+                    <TabsContent value="daily" className="m-0 focus-visible:ring-0">
+                      <LeaderboardWrapper initialData={miningDaily} currentUserId={session?.user?.id} period="daily" type="mining" refreshInterval={60000} />
+                    </TabsContent>
+                    <TabsContent value="weekly" className="m-0 focus-visible:ring-0">
+                      <LeaderboardWrapper initialData={miningWeekly} currentUserId={session?.user?.id} period="weekly" type="mining" refreshInterval={60000} />
+                    </TabsContent>
+                    <TabsContent value="monthly" className="m-0 focus-visible:ring-0">
+                      <LeaderboardWrapper initialData={miningMonthly} currentUserId={session?.user?.id} period="monthly" type="mining" refreshInterval={60000} />
+                    </TabsContent>
+                    <TabsContent value="alltime" className="m-0 focus-visible:ring-0">
+                      <LeaderboardWrapper initialData={miningAllTime} currentUserId={session?.user?.id} period="alltime" type="mining" refreshInterval={60000} />
+                    </TabsContent>
+                  </div>
+                </Tabs>
               </TabsContent>
-              <TabsContent value="monthly">
-                <LeaderboardWrapper initialData={monthlyStats} currentUserId={session?.user?.id} period="monthly" refreshInterval={60000} />
-              </TabsContent>
-              <TabsContent value="alltime">
-                <LeaderboardWrapper initialData={allTimeStats} currentUserId={session?.user?.id} period="alltime" refreshInterval={60000} />
-              </TabsContent>
-              </div>
-            </Tabs>
-          </CardContent>
+            </CardContent>
+          </Tabs>
         </Card>
+
       </div>
 
       <Card className="bg-eve-panel border-eve-border">

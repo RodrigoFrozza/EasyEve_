@@ -19,9 +19,9 @@ import {
 
 interface LeaderboardItem {
   userId: string
-  bounty: number
-  ess: number
   total: number
+  label1?: number // bounty (ratting) or quantity (mining)
+  label2?: number // ess (ratting)
   characterName: string
   characterId: number
 }
@@ -30,6 +30,7 @@ interface LeaderboardListProps {
   data: LeaderboardItem[]
   currentUserId?: string
   period?: string
+  type?: string
   userRank?: number
   onRefresh?: () => void
   isRefreshing?: boolean
@@ -73,6 +74,7 @@ export function LeaderboardList({
   data, 
   currentUserId, 
   period,
+  type = 'ratting',
   userRank,
   onRefresh,
   isRefreshing 
@@ -157,6 +159,11 @@ export function LeaderboardList({
                   <p className="text-[11px] font-mono font-black text-cyan-400 mt-0.5">
                     {formatISK(item.total).split(' ')[0]}
                   </p>
+                  {type === 'mining' && item.label1 && (
+                    <p className="text-[9px] font-mono text-gray-400 opacity-70">
+                      {Math.round(item.label1).toLocaleString()} m³
+                    </p>
+                  )}
                 </div>
               </motion.div>
             )
@@ -217,9 +224,16 @@ export function LeaderboardList({
                       )}>
                         {item.characterName}
                       </p>
-                      <p className="text-[11px] font-mono text-gray-400">
-                        {formatISK(item.total)}
-                      </p>
+                      <div className="text-right">
+                        <p className="text-[11px] font-mono text-gray-300">
+                          {formatISK(item.total)}
+                        </p>
+                        {type === 'mining' && item.label1 && (
+                          <p className="text-[9px] font-mono text-gray-500 leading-none mt-0.5">
+                            {Math.round(item.label1).toLocaleString()} m³
+                          </p>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="w-full bg-white/5 h-0.5 mt-1 rounded-full overflow-hidden">

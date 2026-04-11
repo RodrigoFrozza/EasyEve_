@@ -17,6 +17,7 @@ interface LeaderboardWrapperProps {
   initialData: LeaderboardData[]
   currentUserId?: string
   period: string
+  type?: string
   userRank?: number
   refreshInterval?: number // em milliseconds
 }
@@ -25,6 +26,7 @@ export function LeaderboardWrapper({
   initialData,
   currentUserId,
   period,
+  type = 'ratting',
   userRank,
   refreshInterval = 5 * 60 * 1000 // default 5 min
 }: LeaderboardWrapperProps) {
@@ -35,7 +37,7 @@ export function LeaderboardWrapper({
   const handleRefresh = async () => {
     setIsRefreshing(true)
     try {
-      const res = await fetch(`/api/leaderboard?period=${period}`)
+      const res = await fetch(`/api/leaderboard?period=${period}&type=${type}`)
       if (res.ok) {
         const newData = await res.json()
         setData(newData)
@@ -56,7 +58,7 @@ export function LeaderboardWrapper({
     }, refreshInterval)
 
     return () => clearInterval(interval)
-  }, [period, refreshInterval])
+  }, [period, type, refreshInterval])
 
   return (
     <div className="relative">
@@ -73,10 +75,12 @@ export function LeaderboardWrapper({
         data={data} 
         currentUserId={currentUserId} 
         period={period}
+        type={type}
         userRank={userRank}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
       />
+
       
       <div className="text-[10px] text-gray-600 text-center mt-2">
         Last updated: {lastUpdated.toLocaleTimeString()}
