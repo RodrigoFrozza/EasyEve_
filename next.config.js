@@ -5,6 +5,7 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
     cpus: 1,
     workerThreads: false,
+    webpackBuildWorker: true,
   },
   output: 'standalone',
   typescript: {

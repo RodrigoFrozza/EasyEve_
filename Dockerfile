@@ -1,6 +1,4 @@
 FROM node:20-slim AS base
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
 RUN apt-get update && apt-get install -y --no-install-recommends \
     openssl \
     ca-certificates \
@@ -21,13 +19,12 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma Client (only once)
-RUN NODE_OPTIONS="--max-old-space-size=3072" npm run db:generate
-
-# Build Next.js with memory limits for KVM1
+# Generate Prisma Client and Build Next.js
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-RUN NODE_OPTIONS="--max-old-space-size=3072" npm run build
+ENV NODE_OPTIONS="--max-old-space-size=2560"
+
+RUN npm run db:generate && npm run build
 
 # Production image
 FROM base AS runner
