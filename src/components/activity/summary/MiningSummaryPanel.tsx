@@ -28,8 +28,11 @@ export function MiningSummaryPanel({ activity, logs, viewMode }: MiningSummaryPa
     }> = {}
 
     logs.forEach(log => {
-      const charId = log.charId || 0
-      const charName = log.charName || 'Unknown'
+      // Handle both short and long property names from different sync APIs
+      const charId = log.characterId || log.charId || 0
+      const charName = log.characterName || log.charName || 'Unknown Pilot'
+      const val = log.estimatedValue || log.value || 0
+      const vol = log.volumeValue || log.m3 || 0
       
       if (!groups[charId]) {
         groups[charId] = {
@@ -41,7 +44,7 @@ export function MiningSummaryPanel({ activity, logs, viewMode }: MiningSummaryPa
         }
       }
 
-      const oreKey = log.oreName || 'Unknown'
+      const oreKey = log.oreName || 'Unknown Ore'
       if (!groups[charId].ores[oreKey]) {
         groups[charId].ores[oreKey] = {
           oreName: oreKey,
@@ -53,11 +56,11 @@ export function MiningSummaryPanel({ activity, logs, viewMode }: MiningSummaryPa
       }
 
       groups[charId].ores[oreKey].quantity += (log.quantity || 0)
-      groups[charId].ores[oreKey].m3 += (log.volumeValue || 0)
-      groups[charId].ores[oreKey].value += (log.value || 0)
+      groups[charId].ores[oreKey].m3 += vol
+      groups[charId].ores[oreKey].value += val
       
-      groups[charId].totalValue += (log.value || 0)
-      groups[charId].totalM3 += (log.volumeValue || 0)
+      groups[charId].totalValue += val
+      groups[charId].totalM3 += vol
     })
 
     return Object.values(groups).sort((a, b) => b.totalValue - a.totalValue)
@@ -66,13 +69,16 @@ export function MiningSummaryPanel({ activity, logs, viewMode }: MiningSummaryPa
   const globalOreSummary = useMemo(() => {
     const globalOres: Record<string, { oreName: string, typeId: number, quantity: number, m3: number, value: number }> = {}
     logs.forEach(log => {
-      const oreKey = log.oreName || 'Unknown'
+      const oreKey = log.oreName || 'Unknown Ore'
+      const val = log.estimatedValue || log.value || 0
+      const vol = log.volumeValue || log.m3 || 0
+
       if (!globalOres[oreKey]) {
         globalOres[oreKey] = { oreName: oreKey, typeId: log.typeId, quantity: 0, m3: 0, value: 0 }
       }
       globalOres[oreKey].quantity += (log.quantity || 0)
-      globalOres[oreKey].m3 += (log.volumeValue || 0)
-      globalOres[oreKey].value += (log.value || 0)
+      globalOres[oreKey].m3 += vol
+      globalOres[oreKey].value += val
     })
     return Object.values(globalOres).sort((a, b) => b.value - a.value)
   }, [logs])

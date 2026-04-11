@@ -43,8 +43,8 @@ export function RattingSummaryPanel({ activity, logs, viewMode, onOpenMTU }: Rat
     }> = {}
 
     logs.forEach(log => {
-      const charId = log.charId || 0
-      const charName = log.charName || 'Unknown'
+      const charId = log.characterId || log.charId || 0
+      const charName = log.characterName || log.charName || 'Unknown Pilot'
       
       if (!groups[charId]) {
         groups[charId] = {

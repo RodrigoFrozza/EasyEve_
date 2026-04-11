@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getMarketPrices } from '@/lib/esi'
+import { getMarketPrices, getTypeDetails } from '@/lib/esi'
 import { getValidAccessToken } from '@/lib/token-manager'
 import { ESI_BASE_URL, USER_AGENT } from '@/lib/sde'
 

@@ -6,9 +6,9 @@ import { RefreshCw } from 'lucide-react'
 
 interface LeaderboardData {
   userId: string
-  bounty: number
-  ess: number
   total: number
+  label1?: number // bounty or quantity
+  label2?: number // ess or volume
   characterName: string
   characterId: number
 }

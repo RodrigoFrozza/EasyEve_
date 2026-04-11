@@ -157,12 +157,14 @@ export function LeaderboardList({
                     {item.characterName}
                   </p>
                   <p className="text-[11px] font-mono font-black text-cyan-400 mt-0.5">
-                    {formatISK(item.total).split(' ')[0]}
+                    {formatISK(item.total)}
                   </p>
-                  {type === 'mining' && item.label1 && (
-                    <p className="text-[9px] font-mono text-gray-400 opacity-70">
-                      {Math.round(item.label1).toLocaleString()} m³
+                  {type === 'mining' && typeof item.label1 === 'number' ? (
+                    <p className="text-[9px] font-mono text-zinc-500 font-bold uppercase tracking-tight">
+                       {Math.round(item.label1).toLocaleString()} m³
                     </p>
+                  ) : (
+                    <p className="text-[9px] font-mono text-zinc-600 uppercase tracking-tight">Efficiency Leader</p>
                   )}
                 </div>
               </motion.div>
@@ -224,12 +226,11 @@ export function LeaderboardList({
                       )}>
                         {item.characterName}
                       </p>
-                      <div className="text-right">
-                        <p className="text-[11px] font-mono text-gray-300">
+                        <p className="text-[11px] font-mono text-white font-bold">
                           {formatISK(item.total)}
                         </p>
-                        {type === 'mining' && item.label1 && (
-                          <p className="text-[9px] font-mono text-gray-500 leading-none mt-0.5">
+                        {type === 'mining' && typeof item.label1 === 'number' && (
+                          <p className="text-[9px] font-mono text-zinc-500 font-bold leading-none mt-1">
                             {Math.round(item.label1).toLocaleString()} m³
                           </p>
                         )}
