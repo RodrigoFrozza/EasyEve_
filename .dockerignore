@@ -11,8 +11,14 @@ docs
 scripts
 Dockerfile
 .dockerignore
-# package-lock.json is required for npm ci
 npm-debug.log
 yarn-debug.log
 yarn-error.log
-F?EasyEve_*
+.git
+.github
+.vscode
+.idea
+.fleet
+.next
+node_modules
+.env*

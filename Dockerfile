@@ -22,8 +22,10 @@ COPY . .
 # Generate Prisma Client and Build Next.js
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-ENV NODE_OPTIONS="--max-old-space-size=2560"
+# Reduced to 2048 to be more stable on VPS environments
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 
+# Generate prisma client and perform build
 RUN npm run db:generate && npm run build
 
 # Production image
@@ -38,13 +40,10 @@ ENV HOSTNAME="0.0.0.0"
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Standalone output optimizes memory and size
+# Set correct permissions proactively during COPY
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-
-# Setup shared permissions
-RUN mkdir -p /app/.next && chown -R nextjs:nodejs /app
 
 USER nextjs
 
