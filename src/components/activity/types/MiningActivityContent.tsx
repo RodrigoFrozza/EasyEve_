@@ -148,7 +148,7 @@ export function MiningActivityContent({
     return (
       <div className="space-y-4 animate-in fade-in duration-500">
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 rounded-xl p-3 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-8 h-8 bg-blue-500/10 blur-xl rounded-full" />
               <p className="text-[8px] text-blue-400/70 uppercase font-black tracking-wider mb-1">Total Yield</p>
@@ -162,6 +162,14 @@ export function MiningActivityContent({
               <p className="text-[8px] text-green-400/70 uppercase font-black tracking-wider mb-1">Total Value</p>
               <p className="text-sm font-black text-white font-mono tracking-tight">
                 {formatISK(miningTotalValue)}
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20 rounded-xl p-3 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-8 h-8 bg-cyan-500/10 blur-xl rounded-full" />
+              <p className="text-[8px] text-cyan-400/70 uppercase font-black tracking-wider mb-1">Efficiency</p>
+              <p className="text-sm font-black text-white font-mono tracking-tight">
+                {formatISK(iskPerHour)}<span className="text-[8px] text-zinc-500 ml-1">/H</span>
               </p>
             </div>
           </div>
@@ -286,17 +294,23 @@ export function MiningActivityContent({
         <div className="bg-zinc-950/30 border border-white/[0.03] rounded-xl p-4 relative overflow-hidden group/eff">
           <div className="absolute inset-0 bg-cyan-500/[0.02] opacity-0 group-hover/eff:opacity-100 transition-opacity" />
           <div className="flex items-center justify-between mb-1 relative z-10">
-            <p className="text-[9px] text-cyan-400/70 uppercase font-black tracking-widest leading-none">Yield Trend</p>
+            <p className="text-[9px] text-cyan-400/70 uppercase font-black tracking-widest leading-none">Efficiency</p>
             <TrendIcon className={cn("h-3 w-3", trendColor)} />
           </div>
           <p className="text-2xl font-black text-white font-mono tracking-tighter relative z-10">
-            {m3Trend.toUpperCase()}
+            {formatISK(iskPerHour)}
           </p>
-          <div className="h-1 w-full bg-white/5 rounded-full mt-3 overflow-hidden">
-             <div className={cn("h-full rounded-full transition-all duration-1000", 
-               m3Trend === 'up' ? "bg-green-500 w-full" : 
-               m3Trend === 'down' ? "bg-red-500 w-1/2" : "bg-blue-500 w-3/4"
-             )} />
+          <div className="mt-2 flex items-center gap-3 relative z-10" suppressHydrationWarning>
+             <div className="flex-1 h-8">
+               <Sparkline 
+                 data={miningHistory.slice(-10)} 
+                 width={100} 
+                 height={30} 
+                 color={m3Trend === 'up' ? "#22c55e" : m3Trend === 'down' ? "#ef4444" : "#00d4ff"} 
+                 strokeWidth={2}
+               />
+             </div>
+             <span className="text-[8px] text-zinc-600 font-black uppercase whitespace-nowrap">{m3Trend} trend</span>
           </div>
         </div>
       </div>

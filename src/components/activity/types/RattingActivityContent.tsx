@@ -164,7 +164,7 @@ export function RattingActivityContent({
                 onClick={() => setMtuModalOpen(true)}
                 className="h-8 bg-blue-500/5 border-blue-500/20 hover:bg-blue-500/20 hover:border-blue-500/50 text-blue-400 rounded-lg text-[9px] font-black uppercase tracking-wider"
               >
-                + MTU
+                + LOOT
               </Button>
               <Button 
                 size="sm" 
@@ -289,15 +289,23 @@ export function RattingActivityContent({
         <div className="bg-zinc-950/30 border border-white/[0.03] rounded-xl p-4 relative overflow-hidden group/eff">
           <div className="absolute inset-0 bg-cyan-500/[0.02] opacity-0 group-hover/eff:opacity-100 transition-opacity" />
           <div className="flex items-center justify-between mb-1 relative z-10">
-            <p className="text-[9px] text-cyan-400/70 uppercase font-black tracking-widest leading-none">Net Growth</p>
+            <p className="text-[9px] text-cyan-400/70 uppercase font-black tracking-widest leading-none">Efficiency</p>
             <TrendIcon className={cn("h-3 w-3", trendColor)} />
           </div>
           <p className="text-2xl font-black text-white font-mono tracking-tighter relative z-10">
-            {formatISK(totalIsk)}
+            {formatISK(iskPerHour)}
           </p>
-          <div className="mt-2 flex items-center gap-2 relative z-10" suppressHydrationWarning>
-             <span className="text-[10px] font-mono text-zinc-400 font-bold">{iskTrend.toUpperCase()}</span>
-             <span className="text-[8px] text-zinc-600 font-black uppercase">momentum</span>
+          <div className="mt-2 flex items-center gap-3 relative z-10" suppressHydrationWarning>
+             <div className="flex-1 h-8">
+               <Sparkline 
+                 data={incomeHistory.map((v: number, i: number, a: number[]) => i === 0 ? v : Math.max(0, v - a[i-1]))} 
+                 width={100} 
+                 height={30} 
+                 color={iskTrend === 'up' ? "#22c55e" : iskTrend === 'down' ? "#ef4444" : "#00d4ff"} 
+                 strokeWidth={2}
+               />
+             </div>
+             <span className="text-[8px] text-zinc-600 font-black uppercase whitespace-nowrap">{iskTrend} trend</span>
           </div>
         </div>
       </div>
@@ -342,7 +350,7 @@ export function RattingActivityContent({
           </div>
           <div className="h-[120px] w-full relative z-10">
             <Sparkline 
-              data={incomeHistory} 
+              data={incomeHistory.map((v: number, i: number, a: number[]) => i === 0 ? v : Math.max(0, v - a[i-1]))} 
               width={400} 
               height={120} 
               color="#00d4ff" 
@@ -382,7 +390,7 @@ export function RattingActivityContent({
             onClick={() => setMtuModalOpen(true)}
             className="flex-1 h-12 bg-blue-500/5 border-blue-500/10 hover:bg-blue-500/20 hover:border-blue-500/50 text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
           >
-            + Loot
+            + LOOT
           </Button>
           <Button 
             size="sm" 
