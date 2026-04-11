@@ -126,7 +126,7 @@ export function RattingActivityContent({
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <div className="bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 rounded-xl p-3 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-8 h-8 bg-green-500/10 blur-xl rounded-full" />
               <p className="text-[8px] text-green-400/70 uppercase font-black tracking-wider mb-1">Bounty Flow</p>
@@ -145,6 +145,14 @@ export function RattingActivityContent({
               </div>
               <p className="text-sm font-black text-white font-mono tracking-tight">
                 {formatISK(automatedEss)}
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20 rounded-xl p-3 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-8 h-8 bg-cyan-500/10 blur-xl rounded-full" />
+              <p className="text-[8px] text-cyan-400/70 uppercase font-black tracking-wider mb-1">Efficiency</p>
+              <p className="text-sm font-black text-white font-mono tracking-tight">
+                {formatISK(iskPerHour)}<span className="text-[8px] text-zinc-500 ml-1">/H</span>
               </p>
             </div>
           </div>
