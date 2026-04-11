@@ -40,7 +40,10 @@ export async function POST(
     const startTimeManual = new Date(activity.startTime)
     const startTime = new Date(startTimeManual.getTime() - (30 * 60 * 1000))
     // ESS payouts can be delayed. We look 2.5h ahead of endTime if set.
-    const endTimeLimit = activity.endTime ? new Date(new Date(activity.endTime).getTime() + 2.5 * 60 * 60 * 1000) : new Date()
+    // ADDED: 5-minute buffer to account for clock drift between server and EVE (ESI)
+    const endTimeLimit = activity.endTime 
+      ? new Date(new Date(activity.endTime).getTime() + 2.5 * 60 * 60 * 1000) 
+      : new Date(Date.now() + 5 * 60 * 1000)
 
     console.log(`[SYNC] --- START INCREMENTAL SYNC for Activity ID: ${activityId} ---`)
     console.log(`[SYNC] Window (UTC): ${startTime.toISOString()} to ${endTimeLimit.toISOString()}`)
@@ -75,16 +78,22 @@ export async function POST(
             
             // Filter by date range (from startTime-1h to endTimeLimit)
             if (entryDate >= startTime && entryDate <= endTimeLimit) {
-              const amount = Math.abs(entry.amount || 0)
+              const rawAmount = entry.amount || 0
               let type: 'bounty' | 'ess' | 'tax' | null = null
 
-              if (ESI_REF_TYPES.BOUNTY.some(t => refType === t || refType.includes(t))) {
+              // EXACT match for tax first to prevent "bounty_prize_corporation_tax" matching BOUNTY
+              if (ESI_REF_TYPES.TAX.some(t => refType === t || refType.includes(t))) {
+                type = 'tax'
+              } else if (ESI_REF_TYPES.BOUNTY.some(t => refType === t || refType.includes(t))) {
                 type = 'bounty'
               } else if (ESI_REF_TYPES.ESS.some(t => refType === t || refType.includes(t))) {
                 type = 'ess'
               }
 
               if (type && refId) {
+                // Normalize amount: taxes stay negative in data, bounties/ess positive
+                // But in the log list we keep them as they are
+                const amount = type === 'tax' ? rawAmount : Math.abs(rawAmount)
                 // Use composite key with timestamp to prevent duplicates
                 const entryTimestamp = new Date(entry.date).getTime()
                 const compositeKey = `${charId}-${refId}-${type}-${entryTimestamp}`
@@ -115,12 +124,23 @@ export async function POST(
     
     let totalBounties = 0
     let totalEss = 0
+    let totalTaxes = 0
     const participantEarnings: Record<number, number> = {}
 
     allLogs.forEach(log => {
-      if (log.type === 'bounty') totalBounties += log.amount
-      else if (log.type === 'ess') totalEss += log.amount
+      // NOTE: totalBounties should be the GROSS bounty income
+      if (log.type === 'bounty') {
+        totalBounties += log.amount 
+      } else if (log.type === 'ess') {
+        totalEss += log.amount
+      } else if (log.type === 'tax') {
+        // Taxes are recorded as negative values, so we sum them (becomes more negative)
+        // or we use Math.abs if we want a positive "taxes paid" field.
+        // Let's keep totalTaxes as POSITIVE for the data structure:
+        totalTaxes += Math.abs(log.amount)
+      }
 
+      // Participant earnings is the NET (Bounty + ESS + Tax)
       if (!participantEarnings[log.charId]) participantEarnings[log.charId] = 0
       participantEarnings[log.charId] += log.amount
     })
@@ -153,6 +173,7 @@ export async function POST(
       ...activityData,
       automatedBounties: totalBounties,
       automatedEss: totalEss,
+      automatedTaxes: totalTaxes, // Now correctly populating this field
       grossBounties: totalBounties + totalEss + additionalBounties,
       participantEarnings,
       logs: allLogs,

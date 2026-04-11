@@ -348,24 +348,6 @@ export function RattingActivityContent({
           </div>
         </div>
 
-        <div className="bg-zinc-950/30 p-5 rounded-2xl border border-zinc-900/50 relative overflow-hidden group/eff-chart">
-          <div className="absolute inset-0 bg-cyan-500/[0.01] opacity-0 group-hover/eff-chart:opacity-100 transition-opacity" />
-          <div className="flex items-center justify-between mb-6 relative z-10">
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-1 bg-cyan-500 rounded-full" />
-              <p className="text-[10px] text-zinc-400 uppercase font-black tracking-widest">Efficiency Waveform</p>
-            </div>
-          </div>
-          <div className="h-[120px] w-full relative z-10">
-            <Sparkline 
-              data={incomeHistory.map((v: number, i: number, a: number[]) => i === 0 ? v : Math.max(0, v - a[i-1]))} 
-              width={400} 
-              height={120} 
-              color="#00d4ff" 
-              strokeWidth={3}
-            />
-          </div>
-        </div>
       </div>
 
       <div className="flex gap-3 pt-2">
