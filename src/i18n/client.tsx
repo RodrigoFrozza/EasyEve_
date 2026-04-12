@@ -3,12 +3,18 @@
 import { createContext, useContext, useMemo } from 'react'
 import en from './locales/en.json'
 import ptBR from './locales/pt-BR.json'
+import zh from './locales/zh.json'
+import ja from './locales/ja.json'
+import ko from './locales/ko.json'
 
 type Messages = typeof en
 
 const translations: Record<string, Messages> = {
   en,
-  'pt-BR': ptBR
+  'pt-BR': ptBR,
+  zh,
+  ja,
+  ko
 }
 
 type TranslationFunction = (key: string, params?: Record<string, string | number>) => string
@@ -39,7 +45,7 @@ function interpolate(text: string, params?: Record<string, string | number>): st
   return text.replace(/\{(\w+)\}/g, (_, key) => String(params[key] ?? `{${key}}`))
 }
 
-export function I18nProvider({ children, locale = 'en' }: { children: React.ReactNode; locale?: string }) {
+export function I18nProvider({ children, locale = 'en', onLocaleChange }: { children: React.ReactNode; locale?: string; onLocaleChange?: (locale: string) => void }) {
   const value = useMemo(() => {
     const messages = translations[locale] || translations.en
 
@@ -48,12 +54,19 @@ export function I18nProvider({ children, locale = 'en' }: { children: React.Reac
       return interpolate(text, params)
     }
 
+    const handleSetLocale = (newLocale: string) => {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('easyeve-locale', newLocale)
+      }
+      onLocaleChange?.(newLocale)
+    }
+
     return {
       locale,
-      setLocale: () => {},
+      setLocale: handleSetLocale,
       t
     }
-  }, [locale])
+  }, [locale, onLocaleChange])
 
   return (
     <I18nContext.Provider value={value}>

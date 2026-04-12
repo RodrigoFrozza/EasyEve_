@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Loader2, RefreshCw, AlertTriangle, ShieldAlert, Info, Terminal } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTranslations } from '@/i18n/hooks'
 
 interface GlobalLog {
   id: string
@@ -22,6 +23,7 @@ interface GlobalLog {
 }
 
 export function GlobalLogs() {
+  const { t } = useTranslations()
   const [logs, setLogs] = useState<GlobalLog[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -53,9 +55,9 @@ export function GlobalLogs() {
         <div>
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <Terminal className="h-5 w-5 text-red-500" />
-            Últimos Erros do Sistema
+            {t('global.systemErrors')}
           </h2>
-          <p className="text-xs text-gray-500">Monitoramento em tempo real de falhas no navegador dos usuários</p>
+          <p className="text-xs text-gray-500">{t('global.realTimeMonitoring')}</p>
         </div>
         <button 
           onClick={fetchLogs} 

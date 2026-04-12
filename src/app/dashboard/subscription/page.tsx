@@ -10,7 +10,7 @@ import {
   Crown, Calendar, Info, Wallet, CheckCircle2, 
   XCircle, AlertCircle, Copy, Check, History, 
   Target, Rocket, Shield, Users, Trophy, Sparkles,
-  ChevronRight, ArrowRight
+  ChevronRight, ArrowRight, Zap, Loader2
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations } from '@/i18n/hooks'
@@ -39,15 +39,15 @@ export default function SubscriptionPage() {
       })
       const data = await res.json()
       if (res.ok) {
-        toast.success(`Sucesso! Assinatura ativada até ${new Date(data.subscriptionEnd).toLocaleDateString()}`)
+        toast.success(t('subscription.activationSuccess', { date: new Date(data.subscriptionEnd).toLocaleDateString() }))
         setActivationCode('')
         // @ts-ignore
         updateSession()
       } else {
-        toast.error(data.error || 'Erro ao ativar código')
+        toast.error(data.error || t('subscription.activationError'))
       }
     } catch (err) {
-      toast.error('Erro de conexão')
+      toast.error(t('subscription.connectionError'))
     } finally {
       setIsActivating(false)
     }
@@ -56,36 +56,36 @@ export default function SubscriptionPage() {
   const copyCorp = () => {
     navigator.clipboard.writeText(corpName)
     setCopied(true)
-    toast.success("Nome da corporação copiado!")
+    toast.success(t('subscription.corpNameCopied'))
     setTimeout(() => setCopied(false), 2000)
   }
 
   const features = [
-    { name: 'Rastreio de Atividades', free: true, premium: true, desc: 'Acompanhe ISK/h e performance em tempo real' },
-    { name: 'Atividades Simultâneas', free: '1 Ativa', premium: 'Ilimitado', desc: 'Execute múltiplas operações ao mesmo tempo' },
-    { name: 'Contas por Atividade', free: '1 Char', premium: 'Ilimitado', desc: 'Rastreie frotas inteiras em um único log' },
-    { name: 'Gestão de Fits (Em breve)', free: false, premium: true, desc: 'Gerenciamento avançado de inventário e builds' },
-    { name: 'Acesso ao Ranking Global', free: false, premium: true, desc: 'Apareça nos rankings mundiais e conquistas' },
-    { name: 'Exportação de Dados', free: false, premium: true, desc: 'Relatórios detalhados para planilhas e auditoria' },
+    { name: t('subscription.activityTracking'), free: true, premium: true, desc: t('subscription.activityTrackingDesc') },
+    { name: t('subscription.simultaneousActivities'), free: '1', premium: t('subscription.unlimited'), desc: t('subscription.simultaneousActivitiesDesc') },
+    { name: t('subscription.accountsPerActivity'), free: '1', premium: t('subscription.unlimited'), desc: t('subscription.accountsPerActivityDesc') },
+    { name: t('subscription.fitManagement'), free: false, premium: true, desc: t('subscription.fitManagementDesc') },
+    { name: t('subscription.globalRanking'), free: false, premium: true, desc: t('subscription.globalRankingDesc') },
+    { name: t('subscription.dataExport'), free: false, premium: true, desc: t('subscription.dataExportDesc') },
   ]
 
   return (
     <div className="max-w-6xl mx-auto space-y-12 pb-24 px-4">
       {/* Dynamic Header */}
-      <div className="relative text-center space-y-4 py-8">
+<div className="relative text-center space-y-4 py-8">
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-eve-accent/10 border border-eve-accent/20 text-eve-accent text-xs font-bold uppercase tracking-widest"
         >
           <Sparkles className="h-3 w-3" />
-          Vantagem Tática Premium
+          {t('subscription.premiumTacticalAdvantage')}
         </motion.div>
         <h1 className="text-5xl md:text-6xl font-black text-white tracking-tighter">
-          ESCALA O TEU <span className="text-eve-accent">IMPÉRIO</span>
+          {t('subscription.scaleYourEmpire')}
         </h1>
         <p className="text-gray-400 max-w-2xl mx-auto text-lg">
-          Desbloqueie o potencial máximo das suas operações industriais e táticas em New Eden.
+          {t('subscription.unlockPotential')}
         </p>
       </div>
 
@@ -95,9 +95,9 @@ export default function SubscriptionPage() {
           <div className="flex-1 space-y-2">
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
               <Zap className="h-5 w-5 text-eve-accent" />
-              Ativação Manual de Código
+              {t('subscription.manualCodeActivation')}
             </h3>
-            <p className="text-sm text-gray-500">Possui um código de ativação premium? Insira-o abaixo para resgatar seu tempo de assinatura imediatamente.</p>
+            <p className="text-sm text-gray-500">{t('subscription.codeActivationDesc')}</p>
           </div>
           <div className="flex w-full md:w-auto gap-2">
             <div className="relative w-full md:w-64">
@@ -115,7 +115,7 @@ export default function SubscriptionPage() {
                 disabled={isActivating || !activationCode}
                 className="h-12 bg-eve-accent text-black font-black hover:bg-eve-accent/80 px-8 disabled:opacity-50"
             >
-              {isActivating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'RESGATAR'}
+              {isActivating ? <Loader2 className="h-4 w-4 animate-spin" /> : t('subscription.redeem')}
             </Button>
           </div>
         </CardContent>
@@ -131,11 +131,11 @@ export default function SubscriptionPage() {
           <Card className="bg-zinc-950/80 border-zinc-900 border-2 h-full overflow-hidden transition-all group-hover:border-zinc-800">
             <CardHeader className="p-8">
               <div className="space-y-4">
-                <Badge variant="outline" className="text-zinc-600 border-zinc-800 uppercase font-black tracking-widest text-[10px]">Acesso Básico</Badge>
+                <Badge variant="outline" className="text-zinc-600 border-zinc-800 uppercase font-black tracking-widest text-[10px]">{t('subscription.basicAccess')}</Badge>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-black text-white">GRÁTIS</span>
+                  <span className="text-4xl font-black text-white">{t('subscription.freeTier')}</span>
                 </div>
-                <p className="text-zinc-500 text-sm">Ideal para pilotos solo que buscam organização básica.</p>
+                <p className="text-zinc-500 text-sm">{t('subscription.freeDesc')}</p>
               </div>
             </CardHeader>
             <CardContent className="p-8 space-y-6 pt-0">
@@ -168,14 +168,14 @@ export default function SubscriptionPage() {
             <CardHeader className="p-8">
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-eve-accent text-black uppercase font-black tracking-widest text-[10px]">Tactical Suite</Badge>
-                  {!hasPremium && <span className="text-[10px] text-eve-accent font-bold animate-pulse">RECOMENDADO</span>}
+                  <Badge className="bg-eve-accent text-black uppercase font-black tracking-widest text-[10px]">{t('subscription.premiumTier')}</Badge>
+                  {!hasPremium && <span className="text-[10px] text-eve-accent font-bold animate-pulse">{t('subscription.recommended')}</span>}
                 </div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-4xl font-black text-white">PREMIUM</span>
-                  <span className="text-eve-accent text-sm font-bold">ISK/mês</span>
+                  <span className="text-eve-accent text-sm font-bold">{t('subscription.iskMonth')}</span>
                 </div>
-                <p className="text-zinc-400 text-sm">Eficiência máxima para frotas industriais e combatentes profissionais.</p>
+                <p className="text-zinc-400 text-sm">{t('subscription.premiumDesc')}</p>
               </div>
             </CardHeader>
             <CardContent className="p-8 space-y-6 pt-0">
@@ -194,14 +194,14 @@ export default function SubscriptionPage() {
                   </div>
                 ))}
               </div>
-              <div className="bg-zinc-950 p-4 rounded-xl border border-eve-accent/20">
-                 <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-1">Status Atual</p>
-                 <div className="flex items-center justify-between">
-                    <p className={cn("text-sm font-bold", isExpired ? "text-red-400" : hasPremium ? "text-green-400" : "text-zinc-500")}>
-                        {hasPremium ? (isExpired ? "ASSINATURA EXPIRADA" : `ATIVA ATÉ ${new Date(session?.user?.subscriptionEnd!).toLocaleDateString()}`) : "PLANO FREE ATIVO"}
-                    </p>
-                    {hasPremium && !isExpired && <CheckCircle2 className="h-4 w-4 text-green-500 animate-pulse" />}
-                 </div>
+<div className="bg-zinc-950 p-4 rounded-xl border border-eve-accent/20">
+                   <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-1">{t('subscription.currentStatus')}</p>
+                   <div className="flex items-center justify-between">
+                     <p className={cn("text-sm font-bold", isExpired ? "text-red-400" : hasPremium ? "text-green-400" : "text-zinc-500")}>
+                         {hasPremium ? (isExpired ? t('subscription.expired') : `${t('subscription.activeStatus')} ${new Date(session?.user?.subscriptionEnd!).toLocaleDateString()}`) : t('subscription.freeTier')}
+                     </p>
+                     {hasPremium && !isExpired && <CheckCircle2 className="h-4 w-4 text-green-500 animate-pulse" />}
+                  </div>
               </div>
             </CardContent>
           </Card>

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Plus, RefreshCw, Trash2, Copy, Check, Star, Shield, List } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { apiClient } from '@/lib/api-error'
 import {
   Dialog,
   DialogContent,
@@ -73,8 +74,12 @@ export function RemoveCharacterButton({ characterId }: { characterId: number }) 
     
     setLoading(true)
     try {
-      const response = await fetch(`/api/characters/${characterId}`, { method: 'DELETE' })
-      if (response.ok) {
+      const { success } = await apiClient.request(`/api/characters/${characterId}`, { 
+        method: 'DELETE',
+        showToast: true 
+      })
+      
+      if (success) {
         router.refresh()
       }
     } catch (error) {
@@ -105,12 +110,14 @@ export function SetMainButton({ characterId, isMain }: { characterId: number, is
     if (isMain) return
     setLoading(true)
     try {
-      const response = await fetch('/api/characters/set-main', {
+      const { success } = await apiClient.request('/api/characters/set-main', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ characterId })
+        body: JSON.stringify({ characterId }),
+        showToast: true
       })
-      if (response.ok) {
+      
+      if (success) {
         router.refresh()
       }
     } catch (error) {

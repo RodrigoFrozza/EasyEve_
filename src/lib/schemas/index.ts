@@ -88,3 +88,35 @@ export const TypeDetailsSchema = z.object({
   icon_id: z.number().optional(),
   graphic_id: z.number().optional(),
 })
+
+// --- Fittings ---
+export const FitModuleSchema = z.object({
+  typeId: z.number(),
+  name: z.string(),
+  chargeTypeId: z.number().optional(),
+  offline: z.boolean().optional().default(false),
+})
+
+export const CreateFittingSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  shipTypeId: z.number(),
+  shipName: z.string(),
+  modules: z.array(FitModuleSchema).optional().default([]),
+  dps: z.number().optional().nullable(),
+  tank: z.number().optional().nullable(),
+  cost: z.number().optional().nullable(),
+})
+
+// --- Characters ---
+export const LinkCharacterSchema = z.object({
+  characterId: z.number(),
+  accessToken: z.string(),
+  characterOwnerHash: z.string().optional().nullable(),
+})
+
+// --- Admin ---
+export const AdminUpdateAccountSchema = z.object({
+  userId: z.string().min(1, "UserId is required"),
+  allowedActivities: z.array(z.string()).optional(),
+  subscriptionEnd: z.string().optional().nullable(),
+})

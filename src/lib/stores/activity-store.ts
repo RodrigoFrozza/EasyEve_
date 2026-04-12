@@ -1,6 +1,7 @@
 'use client'
 
 import { create } from 'zustand'
+import { apiClient } from '@/lib/api-error'
 
 export interface ActivityParticipant {
   characterId: number
@@ -86,56 +87,49 @@ export const useActivityStore = create<ActivityStore>((set, get) => ({
 
   fetchFromAPI: async (type?: string) => {
     set({ isLoading: true })
-    try {
-      const url = type ? `/api/activities?type=${type}` : '/api/activities'
-      const res = await fetch(url)
-      
-      // Calculate clock offset from server 'Date' header
-      const serverDateStr = res.headers.get('Date')
-      if (serverDateStr) {
-        const serverTime = new Date(serverDateStr).getTime()
-        const localTime = Date.now()
-        set({ serverClockOffset: serverTime - localTime })
-      }
+    const url = type ? `/api/activities?type=${type}` : '/api/activities'
+    
+    // Using apiClient for structured error handling
+    const { data, error } = await apiClient.get<Activity[]>(url)
 
-      if (res.ok) {
-        const data = await res.json()
-        set({ activities: Array.isArray(data) ? data : [] })
-      }
-    } catch (error) {
+    if (error) {
       console.error('Failed to fetch from API:', error)
-      set({ activities: [] })
-    } finally {
-      set({ isLoading: false })
+      set({ activities: [], isLoading: false })
+      return
     }
+
+    if (data) {
+      set({ activities: Array.isArray(data) ? data : [] })
+    }
+    
+    set({ isLoading: false })
   },
 
   syncActivity: async (id: string, type?: string) => {
-    try {
-      // Determine endpoint based on activity type if not provided
-      let syncType = type
-      if (!syncType) {
-        const { activities } = get()
-        syncType = activities.find(a => a.id === id)?.type
-      }
-
-      const endpoint = syncType === 'mining' ? 'sync-mining' : 'sync'
-      const res = await fetch(`/api/activities/${endpoint}?id=${id}`, { method: 'POST' })
-      
-      if (res.ok) {
-        const updated = await res.json()
-        set((state) => ({
-          activities: state.activities.map((a) => 
-            a.id === id ? { ...a, ...updated } : a
-          )
-        }))
-        return updated
-      }
-      return null
-    } catch (error) {
-      console.error('Failed to sync activity:', error)
-      return null
+    // Determine endpoint based on activity type if not provided
+    let syncType = type
+    if (!syncType) {
+      const { activities } = get()
+      syncType = activities.find(a => a.id === id)?.type
     }
+
+    const endpoint = syncType === 'mining' ? 'sync-mining' : 'sync'
+    
+    // Using apiClient.post with showToast: true for better visibility on manual/auto sync errors
+    const { data, error } = await apiClient.post<Activity>(`/api/activities/${endpoint}?id=${id}`, undefined, {
+      showToast: false // We don't want to spam toasts for auto-sync, but maybe true for manual?
+    })
+    
+    if (data) {
+      set((state) => ({
+        activities: state.activities.map((a) => 
+          a.id === id ? { ...a, ...data } : a
+        )
+      }))
+      return data
+    }
+    
+    return null
   },
 
   startPolling: (interval = 30000) => {

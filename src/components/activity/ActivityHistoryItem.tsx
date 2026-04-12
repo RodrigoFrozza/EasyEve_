@@ -17,6 +17,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ActivityDetailDialog } from './ActivityDetailDialog'
+import { useTranslations } from '@/i18n/hooks'
 
 interface ActivityHistoryItemProps {
   activity: any
@@ -24,6 +25,7 @@ interface ActivityHistoryItemProps {
 }
 
 export function ActivityHistoryItem({ activity, onDelete }: ActivityHistoryItemProps) {
+  const { t } = useTranslations()
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
 
@@ -124,7 +126,7 @@ export function ActivityHistoryItem({ activity, onDelete }: ActivityHistoryItemP
                 {formatISK(netEarnings)}
               </p>
               <p className="text-[9px] text-zinc-600 uppercase font-black tracking-widest">
-                Lucro Líquido
+                {t('activity.netProfit')}
               </p>
             </div>
             

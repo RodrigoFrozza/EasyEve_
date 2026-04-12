@@ -3,6 +3,9 @@
 import { useMemo } from 'react'
 import en from './locales/en.json'
 import ptBR from './locales/pt-BR.json'
+import zh from './locales/zh.json'
+import ja from './locales/ja.json'
+import ko from './locales/ko.json'
 
 type NestedKeyOf<T, Prefix extends string = ''> = {
   [K in keyof T]: T[K] extends object
@@ -14,7 +17,10 @@ type MessageKeys = NestedKeyOf<typeof en>
 
 const translations: Record<string, Record<string, unknown>> = {
   en,
-  'pt-BR': ptBR
+  'pt-BR': ptBR,
+  zh,
+  ja,
+  ko
 }
 
 function getNestedValue(obj: unknown, path: string): string | undefined {

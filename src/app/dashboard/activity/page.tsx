@@ -71,7 +71,7 @@ import { ACTIVITY_UI_MAPPING } from '@/lib/constants/activity-ui'
 import { useActivityStore, type Activity, type ActivityParticipant } from '@/lib/stores/activity-store'
 import { useSession } from '@/lib/session-client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { cn, formatISK, formatNumber } from '@/lib/utils'
+import { cn, formatISK, formatNumber, isPremium } from '@/lib/utils'
 
 function getRelativeTime(date: Date): string {
   const now = new Date()

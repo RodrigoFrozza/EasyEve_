@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { formatISK } from '@/lib/utils'
 import { getTypeIconUrl } from '@/lib/sde'
 import { isPremium } from '@/lib/utils'
-import { Lock } from 'lucide-react'
+import { Lock, RefreshCw, Download, Plus, Search, Ship } from 'lucide-react'
 import { PremiumOverlay } from '@/components/dashboard/PremiumOverlay'
 
 interface Fit {

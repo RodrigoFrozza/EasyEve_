@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { cn, formatISK } from '@/lib/utils'
 import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
+import { useTranslations } from '@/i18n/hooks'
 import { ACTIVITY_UI_MAPPING } from '@/lib/constants/activity-ui'
 import { toast } from 'sonner'
 
@@ -57,6 +58,7 @@ interface AccountDetailDialogProps {
 }
 
 export function AccountDetailDialog({ account, isOpen, onClose, onRefresh }: AccountDetailDialogProps) {
+  const { t } = useTranslations()
   const [saving, setSaving] = useState<string | null>(null)
 
   if (!account) return null
@@ -138,7 +140,7 @@ export function AccountDetailDialog({ account, isOpen, onClose, onRefresh }: Acc
             </div>
             {account.isBlocked && (
                 <div className="absolute top-4 right-4 bg-red-500/20 border border-red-500/50 text-red-500 px-3 py-1 rounded-full flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
-                    <Ban className="h-3 w-3" /> Conta Bloqueada
+                    <Ban className="h-3 w-3" /> {t('common.blocked')}
                 </div>
             )}
         </div>

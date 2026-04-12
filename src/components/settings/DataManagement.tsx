@@ -130,7 +130,7 @@ export function DataManagement() {
         disabled={isExporting}
       >
         {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-        Export Data
+        {t('settings.exportData')}
       </Button>
 
       <Button 
@@ -140,7 +140,7 @@ export function DataManagement() {
         disabled={isImporting}
       >
         {isImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-        Import Data
+        {t('settings.importData')}
       </Button>
 
       <Button 
@@ -149,7 +149,7 @@ export function DataManagement() {
         onClick={() => setShowDeleteConfirm(true)}
       >
         <Trash2 className="h-4 w-4" />
-        Delete All Data
+        {t('settings.clearData')}
       </Button>
 
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
@@ -182,7 +182,7 @@ export function DataManagement() {
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Sim, Apagar Tudo
+              {t('settings.yesDeleteAll')}
             </Button>
           </DialogFooter>
         </DialogContent>

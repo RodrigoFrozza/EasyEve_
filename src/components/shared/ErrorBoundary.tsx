@@ -6,6 +6,8 @@ import { AlertTriangle, RefreshCw, Bug } from 'lucide-react'
 import { remoteLogger } from '@/lib/remote-logger'
 import { getErrorCode, isAppError } from '@/lib/app-error'
 import type { ErrorCode } from '@/lib/error-codes'
+import { getTranslation } from '@/i18n/client'
+import { getCurrentLocale } from '@/i18n/hooks'
 
 interface Props {
   children?: ReactNode
@@ -69,13 +71,15 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback
       }
 
+      const locale = getCurrentLocale()
+
       if (this.state.isChunkLoadError) {
         return (
           <div className="flex flex-col items-center justify-center p-8 border border-yellow-500/20 bg-yellow-500/5 rounded-lg text-center">
             <AlertTriangle className="h-10 w-10 text-yellow-500 mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">Atualização necessária</h3>
+            <h3 className="text-lg font-semibold text-white mb-2">{getTranslation('error.updateRequired', locale)}</h3>
             <p className="text-sm text-gray-400 mb-6 max-w-xs">
-              O aplicativo foi atualizado. Por favor, recarregue a página para obter a versão mais recente.
+              {getTranslation('error.updateRequiredDesc', locale)}
             </p>
             <div className="flex gap-3">
               <Button 
@@ -85,7 +89,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
-                Recarregar página
+                {getTranslation('error.reload', locale)}
               </Button>
             </div>
             {this.renderErrorCode()}
@@ -96,9 +100,9 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex flex-col items-center justify-center p-8 border border-red-500/20 bg-red-500/5 rounded-lg text-center">
           <AlertTriangle className="h-10 w-10 text-red-500 mb-4" />
-          <h3 className="text-lg font-semibold text-white mb-2">Algo deu errado</h3>
+          <h3 className="text-lg font-semibold text-white mb-2">{getTranslation('error.generic', locale)}</h3>
           <p className="text-sm text-gray-400 mb-6 max-w-xs">
-            {this.props.name ? `O componente ${this.props.name}` : 'Esta parte do aplicativo'} falhou ao carregar.
+            {this.props.name ? `${getTranslation('error.componentFailed', locale)} ${this.props.name}` : getTranslation('error.appFailed', locale)}
           </p>
           <Button 
             variant="outline" 
@@ -107,7 +111,7 @@ export class ErrorBoundary extends Component<Props, State> {
             className="border-red-500/50 text-red-400 hover:bg-red-500/10"
           >
             <RefreshCw className="mr-2 h-4 w-4" />
-            Tentar novamente
+            {getTranslation('error.retry', locale)}
           </Button>
           {this.renderErrorCode()}
         </div>

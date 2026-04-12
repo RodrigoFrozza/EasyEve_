@@ -1,5 +1,6 @@
-import { ErrorCodes, type ErrorCode } from './error-codes'
+import { ErrorCodes, type ErrorCode, getErrorMessage } from './error-codes'
 import { AppError, isAppError, getErrorCode } from './app-error'
+import { toast } from 'sonner'
 
 interface ApiResponse<T = unknown> {
   data?: T
@@ -8,6 +9,7 @@ interface ApiResponse<T = unknown> {
 
 interface FetchOptions extends RequestInit {
   timeout?: number
+  showToast?: boolean
 }
 
 class ApiClient {
@@ -62,6 +64,11 @@ class ApiClient {
 
       if (!response.ok) {
         const error = this.mapHttpError(response)
+        if (options?.showToast) {
+          toast.error(error.message, {
+            description: `Código: ${error.code}`,
+          })
+        }
         return { error }
       }
 
@@ -81,6 +88,11 @@ class ApiClient {
       if (timeoutId) clearTimeout(timeoutId)
 
       const error = this.mapFetchError(err)
+      if (options?.showToast) {
+        toast.error(error.message, {
+          description: `Erro de conexão`,
+        })
+      }
       return { error }
     }
   }

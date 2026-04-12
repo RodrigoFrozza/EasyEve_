@@ -1,7 +1,8 @@
-export const dynamic = 'force-dynamic'
-
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { withErrorHandling } from '@/lib/api-handler'
+
+export const dynamic = 'force-dynamic'
 
 interface RattingData {
   automatedBounties?: number
@@ -52,83 +53,78 @@ async function getStartOfPeriod(period: string): Promise<Date> {
   }
 }
 
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const period = searchParams.get('period') || 'daily'
-    const type = searchParams.get('type') || 'ratting'
-    const startDate = await getStartOfPeriod(period)
+export const GET = withErrorHandling(async (request: Request) => {
+  const { searchParams } = new URL(request.url)
+  const period = searchParams.get('period') || 'daily'
+  const type = searchParams.get('type') || 'ratting'
+  const startDate = await getStartOfPeriod(period)
 
-    console.log(`[Leaderboard] type=${type}, period=${period}, startDate=${startDate.toISOString()}`)
+  console.log(`[Leaderboard] type=${type}, period=${period}, startDate=${startDate.toISOString()}`)
 
-    const activities = await prisma.activity.findMany({
-      where: {
-        type: type,
-        startTime: { gte: startDate },
-        user: {
-          subscriptionEnd: { gte: new Date() }
-        }
-      },
-      include: {
-        user: {
-          include: {
-            characters: {
-              where: { isMain: true },
-              select: { id: true, name: true }
-            }
+  const activities = await prisma.activity.findMany({
+    where: {
+      type: type,
+      startTime: { gte: startDate },
+      user: {
+        subscriptionEnd: { gte: new Date() }
+      }
+    },
+    include: {
+      user: {
+        include: {
+          characters: {
+            where: { isMain: true },
+            select: { id: true, name: true }
           }
         }
       }
-    })
+    }
+  })
 
-    const grouped: Record<string, { 
-      userId: string; 
-      total: number; 
-      label1?: number; // bounty or quantity
-      label2?: number; // ess or volume
-      characterName: string; 
-      characterId: number 
-    }> = {}
+  const grouped: Record<string, { 
+    userId: string; 
+    total: number; 
+    label1?: number; // bounty or quantity
+    label2?: number; // ess or volume
+    characterName: string; 
+    characterId: number 
+  }> = {}
 
-    for (const a of activities) {
-      if (!a.user) continue
-      const userId = a.user.id
-      const mainChar = a.user.characters[0]
-      
-      if (!grouped[userId]) {
-        grouped[userId] = {
-          userId,
-          total: 0,
-          label1: 0,
-          label2: 0,
-          characterName: mainChar?.name || 'Unknown Capsuleer',
-          characterId: mainChar?.id || 0
-        }
-      }
-
-      if (type === 'ratting') {
-        const activityData = a.data as RattingData | null
-        const actBounty = Number(activityData?.automatedBounties || 0)
-        const actEss = Number(activityData?.automatedEss || 0)
-        grouped[userId].label1! += actBounty
-        grouped[userId].label2! += actEss
-        grouped[userId].total += actBounty + actEss
-      } else if (type === 'mining') {
-        const activityData = a.data as MiningData | null
-        const actValue = Number(activityData?.miningValue || activityData?.totalEstimatedValue || 0)
-        const actQuantity = Number(activityData?.totalQuantity || 0)
-        grouped[userId].total += actValue
-        grouped[userId].label1! += actQuantity // total volume mined
+  for (const a of activities) {
+    if (!a.user) continue
+    const userId = a.user.id
+    const mainChar = a.user.characters[0]
+    
+    if (!grouped[userId]) {
+      grouped[userId] = {
+        userId,
+        total: 0,
+        label1: 0,
+        label2: 0,
+        characterName: mainChar?.name || 'Unknown Capsuleer',
+        characterId: mainChar?.id || 0
       }
     }
 
-    const result = Object.values(grouped)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 20)
-
-    return NextResponse.json(result)
-  } catch (error: any) {
-    console.error('Error fetching leaderboard:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    if (type === 'ratting') {
+      const activityData = a.data as RattingData | null
+      const actBounty = Number(activityData?.automatedBounties || 0)
+      const actEss = Number(activityData?.automatedEss || 0)
+      grouped[userId].label1! += actBounty
+      grouped[userId].label2! += actEss
+      grouped[userId].total += actBounty + actEss
+    } else if (type === 'mining') {
+      const activityData = a.data as MiningData | null
+      const actValue = Number(activityData?.miningValue || activityData?.totalEstimatedValue || 0)
+      const actQuantity = Number(activityData?.totalQuantity || 0)
+      grouped[userId].total += actValue
+      grouped[userId].label1! += actQuantity // total volume mined
+    }
   }
-}
+
+  const result = Object.values(grouped)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 20)
+
+  return NextResponse.json(result)
+})

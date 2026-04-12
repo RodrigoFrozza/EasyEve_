@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { 
-  Loader2, Shield, DollarSign, Activity, History, Search, RefreshCw, Wallet, CheckCircle2, XCircle
+  Loader2, Shield, DollarSign, Activity, History, Search, RefreshCw, Wallet, CheckCircle2, XCircle, Zap
 } from 'lucide-react'
 import { useSession } from '@/lib/session-client'
 import { formatISK, cn } from '@/lib/utils'
@@ -333,9 +333,9 @@ function AdminContent() {
             <div>
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Shield className="h-5 w-5 text-eve-accent" />
-                Gerador de Códigos de Ativação
+                {t('admin.codeGenerator')}
               </h2>
-              <p className="text-xs text-gray-500">Crie códigos para ativação manual de 30 dias ou Premium Vitalício</p>
+              <p className="text-xs text-gray-500">{t('admin.codeGeneratorDesc')}</p>
             </div>
             <div className="flex gap-2">
               <Button 

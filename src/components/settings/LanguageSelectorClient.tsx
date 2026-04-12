@@ -11,7 +11,10 @@ export function LanguageSelector() {
 
   const languages = [
     { code: 'en', name: t('settings.english') },
-    { code: 'pt-BR', name: t('settings.portuguese') }
+    { code: 'pt-BR', name: t('settings.portuguese') },
+    { code: 'zh', name: t('settings.chinese') },
+    { code: 'ja', name: t('settings.japanese') },
+    { code: 'ko', name: t('settings.korean') }
   ]
 
   const currentLang = languages.find(l => l.code === currentLocale) || languages[0]
