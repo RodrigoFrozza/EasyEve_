@@ -9,23 +9,29 @@ datasource db {
 }
 
 model User {
-  id                String       @id @default(cuid())
-  accountCode        String?      @unique
+  id                String   @id @default(cuid())
+  accountCode       String?  @unique
   email             String?
   name              String?
-  role              String       @default("user") // master, user
-  allowedActivities String[]      @default(["ratting"])
-  
+  role              String   @default("user") // master, user
+  allowedActivities String[] @default(["ratting"])
+
   // Subscription & Blocking
   isBlocked         Boolean      @default(false)
   blockedAt         DateTime?
   blockReason       String?
   subscriptionEnd   DateTime?
+  
+  // Future Integrations & Tracking
+  lastLoginAt       DateTime?
+  discordId         String?
+  discordName       String?
 
   characters        Character[]
   fits             Fit[]
   activities        Activity[]
   payments         Payment[]
+  activationCodes   ActivationCode[]
   debugLogs        DebugLog[]
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -36,28 +42,28 @@ model User {
 }
 
 model Character {
-  id              Int       @id
-  name            String
-  ownerHash       String    @unique
-  accessToken     String?
-  refreshToken    String?
-  tokenExpiresAt  DateTime?
-  
-  totalSp         Int       @default(0)
-  walletBalance   Float     @default(0)
-  location        String?
-  ship            String?
-  shipTypeId      Int?
-  
-  isMain          Boolean   @default(false)
-  isCorpManager   Boolean   @default(false) // Designated for corp wallet sync
-  
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  lastFetchedAt   DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id             Int       @id
+  name           String
+  ownerHash      String    @unique
+  accessToken    String?
+  refreshToken   String?
+  tokenExpiresAt DateTime?
+
+  totalSp       Int     @default(0)
+  walletBalance Float   @default(0)
+  location      String?
+  ship          String?
+  shipTypeId    Int?
+
+  isMain        Boolean @default(false)
+  isCorpManager Boolean @default(false) // Designated for corp wallet sync
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  lastFetchedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([userId])
   @@index([name])
@@ -65,21 +71,21 @@ model Character {
 }
 
 model Payment {
-  id                String   @id @default(cuid())
-  userId            String
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  amount            Float
-  monthsPaid        Int      @default(1)
-  payerCharacterId  Int?
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  amount             Float
+  monthsPaid         Int     @default(1)
+  payerCharacterId   Int?
   payerCharacterName String?
-  journalId         String?  @unique // ESI wallet journal ID to prevent duplicates
-  
-  status            String   @default("pending") // pending, approved, rejected
-  modules           String[] // Modules this payment is for
-  
-  createdAt         DateTime @default(now())
-  approvedAt        DateTime?
+  journalId          String? @unique // ESI wallet journal ID to prevent duplicates
+
+  status  String   @default("pending") // pending, approved, rejected
+  modules String[] // Modules this payment is for
+
+  createdAt  DateTime  @default(now())
+  approvedAt DateTime?
 
   @@index([userId])
   @@index([journalId])
@@ -97,60 +103,58 @@ model ModulePrice {
 }
 
 model Fit {
-  id          String   @id @default(cuid())
-  name        String
-  shipTypeId  Int
-  shipName    String
-  modules     Json     @default("[]")
+  id         String @id @default(cuid())
+  name       String
+  shipTypeId Int
+  shipName   String
+  modules    Json   @default("[]")
   dps        Float?
   tank       Float?
   cost       Float?
-  
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
 }
 
-
-
 model Activity {
-  id               String       @id @default(cuid())
-  userId           String
-  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  characterId      Int?
-  
-  type             String       // EX: MINING, RATTING, ABYSSAL, EXPLORATION, ESCALATIONS, CRAB, PVP
-  status           String       @default("active") // active, completed
-  startTime        DateTime     @default(now())
-  endTime          DateTime?
-  
+  id          String @id @default(cuid())
+  userId      String
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterId Int?
+
+  type      String // EX: MINING, RATTING, ABYSSAL, EXPLORATION, ESCALATIONS, CRAB, PVP
+  status    String    @default("active") // active, completed
+  startTime DateTime  @default(now())
+  endTime   DateTime?
+
   // Link to the primary item for this activity (e.g., the ship used or the key item)
-  typeId           Int?
-  item             EveType?     @relation(fields: [typeId], references: [id])
+  typeId Int?
+  item   EveType? @relation(fields: [typeId], references: [id])
 
   // Contextual information
-  region           String?
-  space            String?
-  
+  region String?
+  space  String?
+
   // Dynamic Activity Data (JSON for flexibility and easy copying/pasting)
   // Mining: { oreMined: { typeId: count } }
   // Ratting: { mtuContents: [{ typeId: count }], totalBounty: number }
   // Abyssal: { lootBefore: string, lootAfter: string, tier: string, weather: string }
-  data             Json?        @default("{}")
-  
-  participants     Json         @default("[]") // [{"characterId": 123, "fit": "optional"}]
+  data Json? @default("{}")
+
+  participants Json @default("[]") // [{"characterId": 123, "fit": "optional"}]
 
   // Pause States for time tracking
-  isPaused         Boolean      @default(false)
-  pausedAt         DateTime?
+  isPaused              Boolean   @default(false)
+  pausedAt              DateTime?
   accumulatedPausedTime Int       @default(0) // in milliseconds
 
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([characterId])
@@ -162,53 +166,53 @@ model Activity {
 // --- NEW UNIFIED SDE INFRASTRUCTURE ---
 
 model EveType {
-  id            Int        @id
-  name          String
-  description   String?    @db.Text
-  groupId       Int
-  group         EveGroup   @relation(fields: [groupId], references: [id])
-  volume        Float?
-  basePrice     Float?
-  iconId        Int?
-  published     Boolean    @default(true)
-  
-  activities    Activity[]
-  
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id          Int      @id
+  name        String
+  description String?  @db.Text
+  groupId     Int
+  group       EveGroup @relation(fields: [groupId], references: [id])
+  volume      Float?
+  basePrice   Float?
+  iconId      Int?
+  published   Boolean  @default(true)
+
+  activities Activity[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([groupId])
 }
 
 model EveGroup {
-  id            Int         @id
-  name          String
-  categoryId    Int
-  category      EveCategory @relation(fields: [categoryId], references: [id])
-  types         EveType[]
-  
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id         Int         @id
+  name       String
+  categoryId Int
+  category   EveCategory @relation(fields: [categoryId], references: [id])
+  types      EveType[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([categoryId])
 }
 
 model EveCategory {
-  id            Int        @id
-  name          String
-  groups        EveGroup[]
-  
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id     Int        @id
+  name   String
+  groups EveGroup[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model SdeCache {
-  id        String   @id @default(cuid())
-  key       String   @unique
+  id        String    @id @default(cuid())
+  key       String    @unique
   value     Json
   expiresAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([key])
   @@index([expiresAt])
@@ -224,7 +228,7 @@ model DebugLog {
   stack       String?  @db.Text
   url         String?
   userAgent   String?
-  context     Json?    // Extra contextual data
+  context     Json? // Extra contextual data
   createdAt   DateTime @default(now())
 
   @@index([userId])
@@ -234,115 +238,131 @@ model DebugLog {
 
 // === SDE: Ship Stats ===
 model ShipStats {
-  typeId          Int      @id
-  name            String
-  
+  typeId Int    @id
+  name   String
+
   // Slots
-  highSlots       Int      @default(0)
-  medSlots        Int      @default(0)
-  lowSlots        Int      @default(0)
-  rigSlots        Int      @default(0)
-  
+  highSlots Int @default(0)
+  medSlots  Int @default(0)
+  lowSlots  Int @default(0)
+  rigSlots  Int @default(0)
+
   // Requisitos
-  cpu             Float    @default(0)
-  powerGrid       Float    @default(0)
-  
+  cpu       Float @default(0)
+  powerGrid Float @default(0)
+
   // Capacidades
-  capacitor       Float    @default(0)
-  capacitorRecharge Float  @default(0)
-  shieldCapacity  Float    @default(0)
-  armorHP         Float    @default(0)
-  hullHP          Float    @default(0)
-  
+  capacitor         Float @default(0)
+  capacitorRecharge Float @default(0)
+  shieldCapacity    Float @default(0)
+  armorHP           Float @default(0)
+  hullHP            Float @default(0)
+
   // Resistências (percentagem - ex: 0.5 = 50%)
-  shieldEmResist  Float    @default(0)
-  shieldExpResist Float    @default(0)
-  shieldKinResist Float    @default(0)
-  shieldThermResist Float  @default(0)
-  
-  armorEmResist   Float    @default(0)
-  armorExpResist  Float    @default(0)
-  armorKinResist  Float    @default(0)
-  armorThermResist Float   @default(0)
-  
-  hullEmResist    Float    @default(0)
-  hullExpResist   Float    @default(0)
-  hullKinResist   Float    @default(0)
-  hullThermResist Float    @default(0)
-  
+  shieldEmResist    Float @default(0)
+  shieldExpResist   Float @default(0)
+  shieldKinResist   Float @default(0)
+  shieldThermResist Float @default(0)
+
+  armorEmResist    Float @default(0)
+  armorExpResist   Float @default(0)
+  armorKinResist   Float @default(0)
+  armorThermResist Float @default(0)
+
+  hullEmResist    Float @default(0)
+  hullExpResist   Float @default(0)
+  hullKinResist   Float @default(0)
+  hullThermResist Float @default(0)
+
   // Velocidade
-  maxVelocity     Float    @default(0)
-  agility         Float    @default(1)
-  mass            Float    @default(0)
-  warpSpeed       Float    @default(0)
-  alignTime       Float    @default(0)
-  
+  maxVelocity Float @default(0)
+  agility     Float @default(1)
+  mass        Float @default(0)
+  warpSpeed   Float @default(0)
+  alignTime   Float @default(0)
+
   // Cargas
-  droneBay        Float    @default(0)
-  cargo           Float    @default(0)
-  
+  droneBay Float @default(0)
+  cargo    Float @default(0)
+
   // Scan
-  scanRange       Float    @default(0)
-  scanResolving   Float    @default(0)
-  
+  scanRange     Float @default(0)
+  scanResolving Float @default(0)
+
   // Meta
-  syncedAt        DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  syncedAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // === SDE: Module Stats ===
 model ModuleStats {
-  typeId          Int      @id
-  name            String
-  groupId         Int?
-  groupName       String?
-  
+  typeId    Int     @id
+  name      String
+  groupId   Int?
+  groupName String?
+
   // Requisitos
-  cpu             Float    @default(0)
-  powerGrid       Float    @default(0)
-  
+  cpu       Float @default(0)
+  powerGrid Float @default(0)
+
   // Slot type
-  slotType        String?  // "high", "med", "low", "rig", "subsystem"
-  
+  slotType String? // "high", "med", "low", "rig", "subsystem"
+
   // Combat stats
-  damage          Float    @default(0)        // DPS base
-  fireRate        Float    @default(0)       // Segundos entre shots
-  optimalRange    Float    @default(0)       // Range ótimo (m)
-  falloffRange    Float    @default(0)       // Falloff (m)
-  trackingSpeed   Float    @default(0)       // Tracking
-  
+  damage        Float @default(0) // DPS base
+  fireRate      Float @default(0) // Segundos entre shots
+  optimalRange  Float @default(0) // Range ótimo (m)
+  falloffRange  Float @default(0) // Falloff (m)
+  trackingSpeed Float @default(0) // Tracking
+
   // Missile specific
-  missileDamage   Float    @default(0)
-  missileRange    Float    @default(0)
-  missileVelocity Float    @default(0)
-  
+  missileDamage   Float @default(0)
+  missileRange    Float @default(0)
+  missileVelocity Float @default(0)
+
   // Tank stats
-  shieldBoost     Float    @default(0)       // HP/s shield repair
-  armorRepair     Float    @default(0)       // HP/s armor repair
-  hullRepair      Float    @default(0)       // HP/s hull repair
-  
+  shieldBoost Float @default(0) // HP/s shield repair
+  armorRepair Float @default(0) // HP/s armor repair
+  hullRepair  Float @default(0) // HP/s hull repair
+
   // Capacitor
-  capacitorNeed   Float    @default(0)       // Cap por ciclo
-  capacitorDrain  Float    @default(0)       // Cap por segundo
-  
+  capacitorNeed  Float @default(0) // Cap por ciclo
+  capacitorDrain Float @default(0) // Cap por segundo
+
   // Electronic Warfare
-  ecmStrength     Float    @default(0)
-  sensorDampStrength Float @default(0)
+  ecmStrength             Float @default(0)
+  sensorDampStrength      Float @default(0)
   trackingDisruptStrength Float @default(0)
-  webSpeedPenalty Float    @default(0)
-  webRangeBonus   Float    @default(0)
-  
+  webSpeedPenalty         Float @default(0)
+  webRangeBonus           Float @default(0)
+
   // Propulsion
-  speedBonus      Float    @default(0)       // % speed bonus
-  mass            Float    @default(0)       // Mass penalty
-  
+  speedBonus Float @default(0) // % speed bonus
+  mass       Float @default(0) // Mass penalty
+
   // Effects (JSON for complex effects)
-  effects         Json     @default("{}")
-  
+  effects Json @default("{}")
+
   // Meta
-  syncedAt        DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  syncedAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([slotType])
   @@index([groupId])
+}
+
+model ActivationCode {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  type        String   // "DAYS_30", "LIFETIME"
+  
+  isUsed      Boolean  @default(false)
+  usedAt      DateTime?
+  usedById    String?
+  usedBy      User?    @relation(fields: [usedById], references: [id])
+  
+  createdAt   DateTime @default(now())
+
+  @@index([code])
+  @@index([isUsed])
 }

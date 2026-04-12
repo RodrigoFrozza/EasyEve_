@@ -2,6 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { remoteLogger } from '@/lib/remote-logger'
+import { AppError, throwAppError } from '@/lib/app-error'
+import { ErrorCodes } from '@/lib/error-codes'
 
 /**
  * Custom hook to fetch ESI-related data from the local API endpoints.
@@ -16,7 +18,7 @@ export function useCharacterData(characterId?: number) {
       if (!characterId) return null
       const response = await fetch(`/api/characters/${characterId}`)
       if (!response.ok) {
-        throw new Error('Failed to fetch character data')
+        throwAppError(ErrorCodes.ESI_FETCH_FAILED, `HTTP ${response.status}: Failed to fetch character data`)
       }
       return response.json()
     },
@@ -28,7 +30,7 @@ export function useCharacterData(characterId?: number) {
       if (!characterId) return
       const response = await fetch(`/api/characters/${characterId}`, { method: 'POST' })
       if (!response.ok) {
-        throw new Error('Failed to refresh character data')
+        throwAppError(ErrorCodes.ESI_REFRESH_FAILED, `HTTP ${response.status}: Failed to refresh character data`)
       }
       return response.json()
     },
@@ -56,7 +58,9 @@ export function useCharacterAssets(characterId?: number) {
     queryFn: async () => {
       if (!characterId) return []
       const response = await fetch(`/api/characters/${characterId}/assets`)
-      if (!response.ok) throw new Error('Failed to fetch assets')
+      if (!response.ok) {
+        throwAppError(ErrorCodes.ESI_FETCH_FAILED, `HTTP ${response.status}: Failed to fetch assets`)
+      }
       return response.json()
     },
     enabled: !!characterId,
@@ -72,7 +76,9 @@ export function useCharacterFits(characterId?: number) {
     queryFn: async () => {
       if (!characterId) return []
       const response = await fetch(`/api/characters/${characterId}/fits`)
-      if (!response.ok) throw new Error('Failed to fetch fits')
+      if (!response.ok) {
+        throwAppError(ErrorCodes.ESI_FETCH_FAILED, `HTTP ${response.status}: Failed to fetch fits`)
+      }
       return response.json()
     },
     enabled: !!characterId,

@@ -108,6 +108,7 @@ export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
         name: characterName,
         role: 'user',
         allowedActivities: ['ratting'],
+        lastLoginAt: new Date(),
       },
     })
 
@@ -147,13 +148,19 @@ export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
   }
 
   // Monthly Auto-check (Subscription Expiration)
-  if ((user as any).subscriptionEnd && new Date() > (user as any).subscriptionEnd) {
-    console.log(`[Auth] User ${(user as any).id} subscription expired. Resetting activities.`)
+  if ((user as any).subscriptionEnd && new Date() > new Date((user as any).subscriptionEnd)) {
+    console.log(`[Auth] User ${userId} subscription expired. Resetting activities.`)
     await prisma.user.update({
-      where: { id: (user as any).id },
+      where: { id: userId },
       data: { allowedActivities: ['ratting'] }
     })
   }
+
+  // Update last login timestamp
+  await prisma.user.update({
+    where: { id: userId },
+    data: { lastLoginAt: new Date() }
+  })
 
   return {
     userId,
@@ -254,6 +261,12 @@ export async function handleLinkFlow(
       },
     })
   }
+
+  // Update last login timestamp
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date() }
+  })
 
   return {
     userId: user.id,

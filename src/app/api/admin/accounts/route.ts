@@ -25,11 +25,21 @@ export async function GET(req: Request) {
               id: true,
               name: true,
               isMain: true,
-              location: true,
-              ship: true,
-              walletBalance: true,
+              // walletBalance, location, ship removed as requested
             },
             orderBy: { isMain: 'desc' }
+          },
+          payments: {
+            take: 10,
+            orderBy: { createdAt: 'desc' },
+            select: {
+              id: true,
+              amount: true,
+              status: true,
+              createdAt: true,
+              payerCharacterName: true,
+              journalId: true
+            }
           },
           _count: {
             select: {

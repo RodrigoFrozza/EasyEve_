@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Switch } from '@/components/ui/switch'
 import { 
   Loader2, Ban, Unlock, Trash2, Zap, 
-  Shield, UserCircle, Wallet, MapPin, Rocket, RefreshCw
+  Shield, UserCircle, Wallet, MapPin, Rocket, RefreshCw, History
 } from 'lucide-react'
 import { cn, formatISK } from '@/lib/utils'
 import { ACTIVITY_TYPES } from '@/lib/constants/activity-data'
@@ -25,9 +25,6 @@ interface Character {
   id: number
   name: string
   isMain: boolean
-  location: string | null
-  ship: string | null
-  walletBalance: number
 }
 
 interface AccountData {
@@ -37,8 +34,19 @@ interface AccountData {
   role: string
   isBlocked: boolean
   subscriptionEnd: string | null
+  lastLoginAt: string | null
+  discordId: string | null
+  discordName: string | null
   allowedActivities: string[]
   characters: Character[]
+  payments?: Array<{
+    id: string
+    amount: number
+    status: string
+    createdAt: string
+    payerCharacterName: string | null
+    journalId: string | null
+  }>
 }
 
 interface AccountDetailDialogProps {
@@ -53,31 +61,8 @@ export function AccountDetailDialog({ account, isOpen, onClose, onRefresh }: Acc
 
   if (!account) return null
 
+  const isPremium = account.subscriptionEnd && new Date(account.subscriptionEnd) > new Date()
   const isExpired = account.subscriptionEnd && new Date(account.subscriptionEnd) < new Date()
-
-  const handleToggleActivity = async (activityId: string, currentlyAllowed: boolean) => {
-    setSaving(activityId)
-    const newAllowed = currentlyAllowed
-      ? account.allowedActivities.filter(a => a !== activityId)
-      : [...account.allowedActivities, activityId]
-
-    try {
-      const res = await fetch('/api/admin/accounts', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: account.id, allowedActivities: newAllowed })
-      })
-
-      if (res.ok) {
-        toast.success(`Permissões de ${activityId} atualizadas`)
-        onRefresh()
-      }
-    } catch (err) {
-      toast.error('Erro ao atualizar permissões')
-    } finally {
-      setSaving(null)
-    }
-  }
 
   const handleBlock = async () => {
     setSaving('blocking')
@@ -118,7 +103,6 @@ export function AccountDetailDialog({ account, isOpen, onClose, onRefresh }: Acc
   const handleRenew = async () => {
     setSaving('renewing')
     try {
-      // Calculate new date: if expired, 30 days from now. If active, 30 days from current end date.
       const currentEnd = account.subscriptionEnd ? new Date(account.subscriptionEnd) : new Date()
       const baseDate = currentEnd > new Date() ? currentEnd : new Date()
       const newEndDate = new Date(baseDate.getTime() + 30 * 24 * 60 * 60 * 1000)
@@ -167,8 +151,21 @@ export function AccountDetailDialog({ account, isOpen, onClose, onRefresh }: Acc
                         {account.role === 'master' && (
                             <Badge className="bg-eve-accent text-black font-bold">ADMIN</Badge>
                         )}
+                        <Badge className={cn(
+                          "font-bold",
+                          isPremium ? "bg-green-500/20 text-green-500 border-green-500/50" : "bg-gray-500/20 text-gray-500 border-gray-500/50"
+                        )}>
+                          {isPremium ? 'PREMIUM' : 'FREE'}
+                        </Badge>
                    </div>
-                   <p className="text-sm text-gray-500 font-mono mt-1">ID: {account.accountCode || account.id}</p>
+                   <div className="flex items-center gap-4 mt-1">
+                      <p className="text-xs text-gray-500 font-mono">Easy Eve ID: <span className="text-eve-accent">{account.accountCode || 'N/A'}</span></p>
+                      {account.lastLoginAt && (
+                        <p className="text-[10px] text-gray-500">
+                          Visto por último: <span className="text-gray-400">{new Date(account.lastLoginAt).toLocaleString()}</span>
+                        </p>
+                      )}
+                   </div>
                 </div>
 
                 <div className="flex gap-2">
@@ -205,15 +202,20 @@ export function AccountDetailDialog({ account, isOpen, onClose, onRefresh }: Acc
             <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
                     <div className="flex items-center gap-2 text-gray-400 text-[10px] font-bold uppercase tracking-widest">
-                        <Zap className="h-3 w-3" /> Assinatura e Módulos
+                        <Zap className="h-3 w-3" /> Assinatura & Conexões
                     </div>
                     
-                    <div className="p-4 rounded-xl bg-eve-dark/50 border border-eve-border/50">
-                        <div className="flex items-center justify-between mb-4 pb-4 border-b border-eve-border/30">
+                    <div className="p-4 rounded-xl bg-eve-dark/50 border border-eve-border/50 space-y-4">
+                        <div className="flex items-center justify-between">
                             <div className="space-y-1">
-                                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Status do Plano</p>
+                                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Data de Expiração</p>
                                 <p className={cn("text-xs font-bold", isExpired ? "text-red-400" : "text-green-400")}>
-                                    {account.subscriptionEnd ? new Date(account.subscriptionEnd).toLocaleDateString() : 'VITALÍCIO'}
+                                    {(() => {
+                                        if (!account.subscriptionEnd) return 'FREE'
+                                        const end = new Date(account.subscriptionEnd)
+                                        if (end.getFullYear() > 2090) return 'VITALÍCIO'
+                                        return end.toLocaleDateString()
+                                    })()}
                                     {isExpired && " (EXPIRADO)"}
                                 </p>
                             </div>
@@ -229,42 +231,54 @@ export function AccountDetailDialog({ account, isOpen, onClose, onRefresh }: Acc
                             </Button>
                         </div>
 
-                        <div className="space-y-3">
-                            {ACTIVITY_TYPES.map((activity) => {
-                                const isAllowed = account.allowedActivities?.includes(activity.id) || false
-                                const ui = ACTIVITY_UI_MAPPING[activity.id]
-                                const Icon = ui?.icon
-
-                                return (
-                                    <div key={activity.id} className="flex items-center justify-between group">
-                                        <div className="flex items-center gap-3">
-                                            {(() => {
-                                                const Icon = ui?.icon || Activity
-                                                return <Icon className={cn("h-4 w-4", isAllowed ? (ui?.color || "text-eve-accent") : "text-gray-600")} />
-                                            })()}
-                                            <span className={cn("text-xs transition-colors", isAllowed ? "text-white" : "text-gray-600")}>
-                                                {activity.label}
-                                            </span>
-                                        </div>
-                                        <Switch 
-                                            checked={isAllowed}
-                                            disabled={saving === activity.id}
-                                            onCheckedChange={() => handleToggleActivity(activity.id, isAllowed)}
-                                            className="data-[state=checked]:bg-eve-accent"
-                                        />
-                                    </div>
-                                )
-                            })}
+                        <div className="pt-4 border-t border-eve-border/30">
+                          <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-2">Conexão Discord</p>
+                          <div className="flex items-center gap-2">
+                            <div className={cn("w-2 h-2 rounded-full", account.discordId ? "bg-green-500" : "bg-gray-600")} />
+                            <span className="text-xs text-white">
+                              {account.discordName || 'Não vinculado'}
+                            </span>
+                            {account.discordId && (
+                              <span className="text-[10px] text-gray-500 font-mono italic">({account.discordId})</span>
+                            )}
+                          </div>
                         </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-gray-400 text-[10px] font-bold uppercase tracking-widest pt-2">
+                        <History className="h-3 w-3" /> Histórico Easy Eve Holding&apos;s
+                    </div>
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                        {(!account.payments || account.payments.length === 0) ? (
+                            <p className="text-[10px] text-gray-500 italic text-center py-4">Nenhum histórico de transferências encontrado.</p>
+                        ) : (
+                            account.payments.map((payment) => (
+                                <div key={payment.id} className="p-2 rounded-lg bg-eve-dark/20 border border-eve-border/20 flex items-center justify-between text-[10px]">
+                                    <div>
+                                        <p className="font-bold text-gray-300">{new Date(payment.createdAt).toLocaleDateString()}</p>
+                                        <p className="text-gray-500">{payment.payerCharacterName || 'Desconhecido'}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-mono text-green-400 font-bold">{formatISK(payment.amount)}</p>
+                                        <Badge variant="outline" className={cn(
+                                            "text-[8px] px-1 py-0 h-3 border-none capitalize",
+                                            payment.status === 'approved' ? "text-green-500 bg-green-500/10" : "text-yellow-500 bg-yellow-500/10"
+                                        )}>
+                                            {payment.status}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
 
                 <div className="space-y-4">
                     <div className="flex items-center gap-2 text-gray-400 text-[10px] font-bold uppercase tracking-widest">
-                        <Shield className="h-3 w-3" /> Personagens ({account.characters?.length || 0})
+                        <Shield className="h-3 w-3" /> Personagens Integrados ({account.characters?.length || 0})
                     </div>
                     
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                         {account.characters?.map((char) => (
                             <div key={char.id} className="p-3 rounded-lg bg-eve-dark/30 border border-eve-border/30 flex items-center gap-3">
                                 <Avatar className="h-10 w-10 border border-eve-border">
@@ -272,15 +286,11 @@ export function AccountDetailDialog({ account, isOpen, onClose, onRefresh }: Acc
                                     <AvatarFallback><UserCircle className="h-6 w-6" /></AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center justify-between">
                                         <p className="text-xs font-bold text-white truncate">{char.name}</p>
                                         {char.isMain && <Badge className="text-[8px] h-3 px-1 leading-none bg-eve-accent/20 text-eve-accent border-none">MAIN</Badge>}
                                     </div>
-                                    <div className="flex flex-wrap gap-3 mt-1 text-[9px] text-gray-500 font-medium uppercase tracking-tighter">
-                                        <span className="flex items-center gap-1 text-green-500/80"><Wallet className="h-2 w-2" /> {formatISK(char.walletBalance)}</span>
-                                        <span className="flex items-center gap-1"><MapPin className="h-2 w-2" /> {char.location || 'Unknown'}</span>
-                                        <span className="flex items-center gap-1"><Rocket className="h-2 w-2" /> {char.ship || 'Pods'}</span>
-                                    </div>
+                                    <p className="text-[10px] text-gray-500 font-mono mt-0.5">EVE Online ID: {char.id}</p>
                                 </div>
                             </div>
                         ))}

@@ -85,7 +85,12 @@ export default async function DashboardPage() {
       const activities = await prisma.activity.findMany({
         where: {
           type,
-          startTime: { gte: startDate }
+          startTime: { gte: startDate },
+          user: {
+            subscriptionEnd: {
+              gte: now // Only active subscriptions/premium enter the ranking
+            }
+          }
         },
         include: {
           user: {

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
+import { isPremium } from '@/lib/utils'
 
 export async function GET(request: Request) {
   try {
@@ -82,6 +83,25 @@ export async function POST(request: Request) {
         status: 'active'
       }
     })
+
+    const hasPremium = isPremium(user.subscriptionEnd)
+
+    // CHECK PREMIUM LIMITS
+    if (!hasPremium) {
+      // Limit 1 character per activity
+      if (participants.length > 1) {
+        return NextResponse.json({ 
+          error: 'Free plan is limited to 1 character per activity. Upgrade to Premium for fleet tracking!' 
+        }, { status: 403 })
+      }
+      
+      // Limit 1 concurrent activity
+      if (activeActivities.length > 0) {
+        return NextResponse.json({ 
+          error: 'Free plan is limited to 1 concurrent activity. Upgrade to Premium for multi-activity tracking!' 
+        }, { status: 403 })
+      }
+    }
 
     const activeCharIds = activeActivities.flatMap((a: any) => 
       (a.participants as any[]).map((p: any) => p.characterId)

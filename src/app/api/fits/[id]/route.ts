@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic'
 
-import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
+import { isPremium } from '@/lib/utils'
 
 export async function GET(
   request: Request,
@@ -13,6 +13,10 @@ export async function GET(
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!isPremium(user.subscriptionEnd)) {
+      return NextResponse.json({ error: 'Fit Management is a Premium feature.' }, { status: 403 })
     }
     
     const { id } = await params
@@ -41,6 +45,10 @@ export async function PUT(
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!isPremium(user.subscriptionEnd)) {
+      return NextResponse.json({ error: 'Fit Management is a Premium feature.' }, { status: 403 })
     }
     
     const { id } = await params

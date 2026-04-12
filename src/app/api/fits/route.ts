@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
+import { isPremium } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,6 +9,10 @@ export async function GET() {
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!isPremium(user.subscriptionEnd)) {
+      return NextResponse.json({ error: 'Fit Management is a Premium feature.' }, { status: 403 })
     }
     
     const fits = await prisma.fit.findMany({

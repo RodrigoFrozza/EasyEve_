@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { formatISK } from '@/lib/utils'
-import { Plus, Search, Ship, Trash2, Edit, RefreshCw, Download } from 'lucide-react'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { getTypeIconUrl } from '@/lib/sde'
+import { isPremium } from '@/lib/utils'
+import { Lock } from 'lucide-react'
+import { PremiumOverlay } from '@/components/dashboard/PremiumOverlay'
 
 interface Fit {
   id: string
@@ -160,11 +161,22 @@ export default function FitsPage() {
   const industrialFits = filteredFits.filter(f => categorizeShip(f.shipName) === 'industrial')
   const combatFits = filteredFits.filter(f => categorizeShip(f.shipName) === 'combat')
 
+  const hasPremium = isPremium(session?.user?.subscriptionEnd)
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <RefreshCw className="h-8 w-8 animate-spin text-eve-accent" />
       </div>
+    )
+  }
+
+  if (!hasPremium) {
+    return (
+      <PremiumOverlay 
+        title="Fit Management"
+        description="Fit Management is a Premium feature. Create, manage and import fittings to optimize your fleet operations."
+      />
     )
   }
 

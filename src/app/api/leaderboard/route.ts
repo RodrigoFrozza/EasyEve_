@@ -64,7 +64,10 @@ export async function GET(request: Request) {
     const activities = await prisma.activity.findMany({
       where: {
         type: type,
-        startTime: { gte: startDate }
+        startTime: { gte: startDate },
+        user: {
+          subscriptionEnd: { gte: new Date() }
+        }
       },
       include: {
         user: {

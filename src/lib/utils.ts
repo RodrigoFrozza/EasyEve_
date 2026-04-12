@@ -5,6 +5,20 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function isPremium(subscriptionEnd: string | Date | null | undefined): boolean {
+  if (!subscriptionEnd) return false
+  const end = new Date(subscriptionEnd)
+  return end.getTime() > new Date().getTime()
+}
+
+export function getRemainingDays(subscriptionEnd: string | Date | null | undefined): number {
+  if (!subscriptionEnd) return 0
+  const end = new Date(subscriptionEnd)
+  const diff = end.getTime() - new Date().getTime()
+  const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
+  return days > 0 ? days : 0
+}
+
 export function formatNumber(num: number | undefined | null): string {
   if (num == null || isNaN(num)) return '0'
   return new Intl.NumberFormat('en-US').format(num)

@@ -7,14 +7,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { formatISK } from '@/lib/utils'
 import { 
   Plus, Search, Ship, Trash2, RefreshCw, 
   Zap, Battery, Shield, Cross, Target,
-  ArrowRight, ArrowLeftRight, Maximize2, TrendingUp
+  TrendingUp, Edit, Download,
 } from 'lucide-react'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { getTypeIconUrl } from '@/lib/sde'
+import { isPremium } from '@/lib/utils'
+import { PremiumOverlay } from '@/components/dashboard/PremiumOverlay'
 
 interface Fit {
   id: string
@@ -89,11 +91,22 @@ export default function FitComparePage() {
     { key: 'cap', label: 'Cap', icon: Battery, getValue: (f: Fit) => f.capStable ? 'Stable' : 'Unstable', isString: true },
   ]
   
+  const hasPremium = isPremium(session?.user?.subscriptionEnd)
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <RefreshCw className="h-8 w-8 animate-spin text-eve-accent" />
       </div>
+    )
+  }
+
+  if (!hasPremium) {
+    return (
+      <PremiumOverlay 
+        title="Fit Comparison"
+        description="Premium tactical intelligence. Compare stats between multiple fits side-by-side to find your ideal loadout."
+      />
     )
   }
   

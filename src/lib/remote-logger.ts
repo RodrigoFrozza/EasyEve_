@@ -3,12 +3,16 @@
  * Handles sending client-side errors to the backend for analysis.
  */
 
+import { getErrorCode, isAppError } from './app-error'
+import type { ErrorCode } from './error-codes'
+
 type LogLevel = 'error' | 'warn' | 'info' | 'debug'
 
 interface LogData {
   message: string
   level: LogLevel
   stack?: string
+  code?: ErrorCode
   context?: any
   characterId?: number
 }
@@ -62,10 +66,16 @@ class RemoteLogger {
   error(message: string, error?: Error | any, context?: any) {
     let finalMessage = message
     let stack = undefined
+    let code = undefined
 
-    if (error instanceof Error) {
+    if (isAppError(error)) {
       if (!finalMessage) finalMessage = error.message
       stack = error.stack
+      code = error.code
+    } else if (error instanceof Error) {
+      if (!finalMessage) finalMessage = error.message
+      stack = error.stack
+      code = getErrorCode(error) || undefined
     } else if (typeof error === 'string') {
       stack = new Error(error).stack
     } else if (error) {
@@ -76,6 +86,7 @@ class RemoteLogger {
       level: 'error',
       message: finalMessage || 'Unknown error',
       stack,
+      code,
       context: {
         ...context,
         timestamp: new Date().toISOString(),

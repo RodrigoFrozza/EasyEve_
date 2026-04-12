@@ -128,8 +128,10 @@ function ActivityTrackerContent() {
   
   const { activities, setActivities, addActivity, updateActivity, removeActivity, isCharacterBusy, fetchFromAPI, startPolling, stopPolling, startRattingAutoSync, stopRattingAutoSync, startMiningAutoSync, stopMiningAutoSync } = useActivityStore()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [userFits, setUserFits] = useState<any[]>([])
+  
+  const hasPremium = isPremium(session?.user?.subscriptionEnd)
+  const activeActivities = activities.filter(a => a.status === 'active')
+  const canStartNewActivity = hasPremium || activeActivities.length === 0
 
   // Fetch fits on load
   useEffect(() => {
@@ -286,6 +288,11 @@ function ActivityTrackerContent() {
         participants: current.filter(p => p.characterId !== characterId)
       })
     } else {
+      // PREMIUM CHECK: Limit to 1 character if not premium
+      if (!hasPremium && current.length >= 1) {
+        return // Only allow 1 character
+      }
+
       setNewActivity({
         ...newActivity,
         participants: [...current, { characterId, characterName }]
@@ -312,7 +319,6 @@ function ActivityTrackerContent() {
     }))
   }
 
-  const activeActivities = activities.filter(a => a.status === 'active')
   const completedActivities = activities.filter(a => a.status === 'completed').slice(0, 10)
 
   const currentTypeInfo = ACTIVITY_TYPES.find(t => t.id === typeParam)
@@ -358,11 +364,31 @@ function ActivityTrackerContent() {
           <p className="text-gray-400">Track your fleet activities and income performance.</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          if (open && !canStartNewActivity) return
+          setIsDialogOpen(open)
+        }}>
           <DialogTrigger asChild>
-            <Button className="bg-eve-accent text-black hover:bg-eve-accent/80 font-bold gap-2">
-              <Play className="h-4 w-4 fill-current" />
-              Start New Activity
+            <Button 
+              disabled={!canStartNewActivity}
+              className={cn(
+                "font-bold gap-2",
+                canStartNewActivity 
+                  ? "bg-eve-accent text-black hover:bg-eve-accent/80" 
+                  : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+              )}
+            >
+              {canStartNewActivity ? (
+                <>
+                  <Play className="h-4 w-4 fill-current" />
+                  Start New Activity
+                </>
+              ) : (
+                <>
+                  <Lock className="h-4 w-4" />
+                  Premium Required for 2+ Activities
+                </>
+              )}
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-[#050507] border-eve-border/30 text-white max-w-4xl max-h-[90vh] overflow-y-auto p-0 gap-0 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
@@ -567,12 +593,19 @@ function ActivityTrackerContent() {
                           
                           {selected && (
                             <div className="pl-4 border-l-2 border-eve-border/30 ml-5 py-1">
+                              {!hasPremium && (
+                                <p className="text-[9px] uppercase font-black text-eve-accent/40 mb-1 flex items-center gap-1">
+                                  <Lock className="h-2 w-2" />
+                                  Fleet Tracking is Premium
+                                </p>
+                              )}
                               <Select 
                                 value={participant.fit || ''} 
                                 onValueChange={(v) => setParticipantFit(char.id, v)}
+                                disabled={!hasPremium} // Disable fits for free users as per requirement
                               >
                                 <SelectTrigger className="h-9 text-[10px] bg-zinc-900/50 border-zinc-800 font-bold uppercase tracking-tighter">
-                                  <SelectValue placeholder="SELECT LOADOUT/FIT" />
+                                  <SelectValue placeholder={hasPremium ? "SELECT LOADOUT/FIT" : "FITS ARE PREMIUM"} />
                                 </SelectTrigger>
                                 <SelectContent className="bg-zinc-900 border-zinc-800">
                                   {userFits.map(fit => (
@@ -580,9 +613,6 @@ function ActivityTrackerContent() {
                                       {fit.name} <span className="text-zinc-500">[{fit.shipName}]</span>
                                     </SelectItem>
                                   ))}
-                                  {userFits.length === 0 && (
-                                     <div className="p-2 text-[10px] text-gray-500 italic">No fits available.</div>
-                                  )}
                                 </SelectContent>
                               </Select>
                             </div>

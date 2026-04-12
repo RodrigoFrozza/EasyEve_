@@ -14,7 +14,7 @@ import {
   Users, Search, Shield, Ban, Zap, Clock, ChevronRight, Terminal
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
+import { cn, getRemainingDays } from '@/lib/utils'
 import { useTranslations } from '@/i18n/hooks'
 
 interface Character {
@@ -33,6 +33,7 @@ interface AccountData {
   role: string
   isBlocked: boolean
   subscriptionEnd: string | null
+  lastLoginAt: string | null
   allowedActivities: string[]
   characters: Character[]
   createdAt: string
@@ -104,9 +105,9 @@ export function AccountList({ accounts, onSelectAccount }: AccountListProps) {
           <TableHeader className="bg-eve-dark/50">
             <TableRow className="border-eve-border/50 hover:bg-transparent">
               <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest pl-6">{t('account.tableHeader')}</TableHead>
-              <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Status/Role</TableHead>
+              <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Plano / Status</TableHead>
+              <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Último Login</TableHead>
               <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">{t('admin.subscription')}</TableHead>
-              <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">{t('admin.modulesHeader')}</TableHead>
               <TableHead className="text-gray-400 font-bold text-[10px] uppercase tracking-widest text-right pr-6"></TableHead>
             </TableRow>
           </TableHeader>
@@ -146,31 +147,46 @@ export function AccountList({ accounts, onSelectAccount }: AccountListProps) {
                             </TableCell>
                             <TableCell>
                                 <div className="flex flex-col gap-1.5">
-                                    <div className="flex gap-1.5">
+                                    <div className="flex gap-1.5 items-center">
+                                        <Badge className={cn(
+                                            "text-[9px] px-1.5 py-0",
+                                            !isExpired && acc.subscriptionEnd 
+                                                ? "bg-purple-500 text-white" 
+                                                : "bg-zinc-800 text-zinc-400"
+                                        )}>
+                                            {!isExpired && acc.subscriptionEnd ? 'PREMIUM' : 'FREE'}
+                                        </Badge>
                                         <Badge variant="outline" className={cn(
                                             "text-[9px] px-1.5 py-0 border-none",
                                             acc.isBlocked ? "bg-red-500/20 text-red-500" : "bg-green-500/20 text-green-500"
                                         )}>
                                             {acc.isBlocked ? 'BLOQUEADO' : 'ATIVO'}
                                         </Badge>
-                                        {acc.role === 'master' && (
-                                            <Badge className="bg-orange-500/20 text-orange-500 border-none text-[9px] px-1.5 py-0">ADMIN</Badge>
-                                        )}
                                     </div>
+                                </div>
+                            </TableCell>
+                            <TableCell>
+                                <div className="flex flex-col">
+                                    <p className="text-xs text-gray-300 font-medium whitespace-nowrap">
+                                        {acc.lastLoginAt ? new Date(acc.lastLoginAt).toLocaleDateString() : 'Nunca'}
+                                    </p>
+                                    <p className="text-[10px] text-gray-500 font-mono">
+                                        {acc.lastLoginAt ? new Date(acc.lastLoginAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                    </p>
                                 </div>
                             </TableCell>
                             <TableCell>
                                 <div className="flex items-center gap-2">
                                     <Clock className={cn("h-3 w-3", isExpired ? "text-red-500" : "text-gray-500")} />
                                     <span className={cn("text-xs font-medium", isExpired ? "text-red-400" : "text-gray-300")}>
-                                        {acc.subscriptionEnd ? new Date(acc.subscriptionEnd).toLocaleDateString() : 'VITALÍCIO'}
+                                        {(() => {
+                                            if (!acc.subscriptionEnd) return 'FREE'
+                                            const days = getRemainingDays(acc.subscriptionEnd)
+                                            if (days <= 0) return 'EXPIRADO'
+                                            if (days > 20000) return 'LIFETIME'
+                                            return `${days} DIAS`
+                                        })()}
                                     </span>
-                                </div>
-                            </TableCell>
-                            <TableCell>
-                                <div className="flex items-center gap-1">
-                                    <span className="text-xs font-bold text-white">{acc.allowedActivities?.length || 0}</span>
-                                    <span className="text-[10px] text-gray-500 uppercase font-bold px-1">Ativos</span>
                                 </div>
                             </TableCell>
                             <TableCell className="text-right pr-6">

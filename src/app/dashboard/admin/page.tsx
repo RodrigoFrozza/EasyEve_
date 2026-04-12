@@ -48,15 +48,15 @@ interface AccountData {
   role: string
   isBlocked: boolean
   subscriptionEnd: string | null
+  lastLoginAt: string | null
+  discordId: string | null
+  discordName: string | null
   allowedActivities: string[]
   createdAt: string
   characters: Array<{
     id: number
     name: string
     isMain: boolean
-    location: string | null
-    ship: string | null
-    walletBalance: number
   }>
   _count: {
     characters: number
@@ -114,7 +114,20 @@ function AdminContent() {
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null)
   const [selectedModules, setSelectedModules] = useState<string[]>(['ratting'])
   const [isSyncing, setIsSyncing] = useState(false)
+  const [adminCodes, setAdminCodes] = useState<any[]>([])
   const [paymentSearch, setPaymentSearch] = useState('')
+
+  const fetchCodes = async () => {
+    try {
+      const res = await fetch('/api/admin/codes')
+      if (res.ok) {
+        const data = await res.json()
+        setAdminCodes(data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch codes:', err)
+    }
+  }
 
   const [serverStats, setServerStats] = useState({
     totalAccounts: 0,
@@ -186,7 +199,10 @@ function AdminContent() {
         setServerStats(sData || serverStats)
       }
       
-      await fetchPayments()
+      await Promise.all([
+        fetchPayments(),
+        fetchCodes()
+      ])
     } catch (err) {
       console.error('Failed to fetch admin data:', err)
     } finally {
@@ -296,6 +312,10 @@ function AdminContent() {
           <TabsTrigger value="payments" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black font-bold">
             {t('admin.esconciliation')}
           </TabsTrigger>
+          <TabsTrigger value="codes" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black font-bold">
+            <Zap className="h-3 w-3 mr-2" />
+            Códigos Premium
+          </TabsTrigger>
           <TabsTrigger value="health" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black font-bold">
             {t('admin.systemHealth')}
           </TabsTrigger>
@@ -306,6 +326,119 @@ function AdminContent() {
             accounts={accounts} 
             onSelectAccount={(acc) => setSelectedAccount(acc)} 
           />
+        </TabsContent>
+
+        <TabsContent value="codes" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Shield className="h-5 w-5 text-eve-accent" />
+                Gerador de Códigos de Ativação
+              </h2>
+              <p className="text-xs text-gray-500">Crie códigos para ativação manual de 30 dias ou Premium Vitalício</p>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={async () => {
+                  const res = await fetch('/api/admin/codes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'DAYS_30', count: 1 })
+                  })
+                  if (res.ok) {
+                    toast.success('Código de 30 dias gerado!')
+                    fetchCodes()
+                  }
+                }}
+                className="bg-eve-accent text-black hover:bg-eve-accent/80 font-bold h-9"
+              >
+                + 30 DIAS
+              </Button>
+              <Button 
+                onClick={async () => {
+                  const res = await fetch('/api/admin/codes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'LIFETIME', count: 1 })
+                  })
+                  if (res.ok) {
+                    toast.success('Código VITALÍCIO gerado!')
+                    fetchCodes()
+                  }
+                }}
+                variant="outline"
+                className="border-eve-accent text-eve-accent hover:bg-eve-accent/10 font-bold h-9"
+              >
+                + VITALÍCIO
+              </Button>
+            </div>
+          </div>
+
+          <Card className="bg-eve-panel border-eve-border shadow-2xl overflow-hidden">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-eve-dark/50 border-b border-eve-border/50 text-gray-400 uppercase text-[10px] font-bold tracking-widest">
+                    <tr>
+                      <th className="px-6 py-4">Código</th>
+                      <th className="px-6 py-4">Tipo</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4">Data Criação</th>
+                      <th className="px-6 py-4">Uso</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-eve-border/30">
+                    {adminCodes.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12 text-center text-gray-500 italic">Nenhum código gerado.</td>
+                      </tr>
+                    ) : (
+                      adminCodes.map(code => (
+                        <tr key={code.id} className="hover:bg-eve-dark/10 transition-colors">
+                          <td className="px-6 py-4 font-mono font-bold text-eve-accent flex items-center gap-2">
+                            {code.code}
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-6 w-6 p-0 hover:bg-eve-accent/10"
+                              onClick={() => {
+                                navigator.clipboard.writeText(code.code)
+                                toast.success('Copiado!')
+                              }}
+                            >
+                              <RefreshCw className="h-3 w-3" />
+                            </Button>
+                          </td>
+                          <td className="px-6 py-4">
+                            <Badge className={cn(
+                              "text-[10px] font-bold",
+                              code.type === 'LIFETIME' ? "bg-purple-500/20 text-purple-400 border-purple-500/50" : "bg-blue-500/20 text-blue-400 border-blue-500/50"
+                            )}>
+                              {code.type === 'LIFETIME' ? 'VITALÍCIO' : '30 DIAS'}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4">
+                            <Badge variant="outline" className={cn(
+                              "text-[10px] px-2 py-0 border-none",
+                              code.isUsed ? "text-red-500 bg-red-500/10" : "text-green-500 bg-green-500/10"
+                            )}>
+                              {code.isUsed ? 'USADO' : 'DISPONÍVEL'}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 text-xs text-gray-500">
+                            {new Date(code.createdAt).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 text-xs text-gray-400">
+                             {code.usedBy ? `Conta ID: ${code.usedBy}` : '-'}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="prices" className="space-y-4">
