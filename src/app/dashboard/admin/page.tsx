@@ -115,6 +115,7 @@ function AdminContent() {
   const [selectedModules, setSelectedModules] = useState<string[]>(['ratting'])
   const [isSyncing, setIsSyncing] = useState(false)
   const [adminCodes, setAdminCodes] = useState<any[]>([])
+  const [premiumUsers, setPremiumUsers] = useState<any[]>([])
   const [paymentSearch, setPaymentSearch] = useState('')
   const [holdingStatus, setHoldingStatus] = useState({ connected: false, loading: true, characterName: '', isExpired: false })
 
@@ -127,6 +128,41 @@ function AdminContent() {
       }
     } catch (err) {
       console.error('Failed to fetch codes:', err)
+    }
+  }
+
+  const fetchPremiumUsers = async () => {
+    try {
+      const res = await fetch('/api/admin/subscription')
+      if (res.ok) {
+        const data = await res.json()
+        setPremiumUsers(data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch premium users:', err)
+    }
+  }
+
+  const grantPremium = async (userId: string, type: 'LIFETIME' | 'DAYS_30' | 'PL8R') => {
+    try {
+      const res = await fetch('/api/admin/subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, type })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        toast.success(`${type === 'LIFETIME' ? 'Vitalício' : type === 'PL8R' ? 'PL8R' : '30 dias'} concedido a ${data.userName || userId}!`)
+        fetchPremiumUsers()
+        return true
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'Erro ao conceder premium')
+        return false
+      }
+    } catch (err) {
+      toast.error('Erro ao conceder premium')
+      return false
     }
   }
 
@@ -155,6 +191,7 @@ function AdminContent() {
     if (sessionStatus === 'authenticated') {
       fetchAllData()
       fetchCodes()
+      fetchPremiumUsers()
       fetchHoldingStatus()
     }
   }, [sessionStatus, session])
@@ -336,6 +373,10 @@ function AdminContent() {
             <Zap className="h-3 w-3 mr-2" />
             Códigos Premium
           </TabsTrigger>
+          <TabsTrigger value="subscriptions" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black font-bold">
+            <Shield className="h-3 w-3 mr-2" />
+            Premium
+          </TabsTrigger>
           <TabsTrigger value="health" className="data-[state=active]:bg-eve-accent data-[state=active]:text-black font-bold">
             {t('admin.systemHealth')}
           </TabsTrigger>
@@ -455,6 +496,100 @@ function AdminContent() {
                                 code.usedBy.name || code.usedBy.accountCode || `Conta: ${code.usedBy.accountCode?.slice(0, 8)}` || code.usedById?.slice(0, 8)
                               ) : '-'}
                             </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="subscriptions" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Shield className="h-5 w-5 text-eve-accent" />
+                Gestão de Premium
+              </h2>
+              <p className="text-xs text-gray-500">Conceder ou gerenciar acesso premium dos usuários</p>
+            </div>
+            <Button 
+              onClick={fetchPremiumUsers}
+              variant="outline"
+              className="border-eve-border text-gray-400 hover:text-white"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Atualizar
+            </Button>
+          </div>
+
+          <Card className="bg-eve-panel border-eve-border shadow-xl overflow-hidden">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-eve-dark/50 border-b border-eve-border/50 text-gray-400 uppercase text-[10px] font-bold tracking-widest">
+                    <tr>
+                      <th className="px-6 py-4">Usuário</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4">Expira</th>
+                      <th className="px-6 py-4">Tipo</th>
+                      <th className="px-6 py-4">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-eve-border/30">
+                    {(premiumUsers || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12 text-center text-gray-500 italic">Nenhum usuário premium ativo.</td>
+                      </tr>
+                    ) : (
+                      premiumUsers.map(user => (
+                        <tr key={user.id} className="hover:bg-eve-dark/10 transition-colors">
+                          <td className="px-6 py-4">
+                            <div>
+                              <p className="text-white font-medium">{user.name || user.accountCode || 'Sem nome'}</p>
+                              <p className="text-xs text-gray-500">{user.accountCode || '-'}</p>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <Badge className={cn(
+                              "text-[10px] font-bold",
+                              user.hasPremium ? "bg-green-500/20 text-green-400 border-green-500/50" : "bg-red-500/20 text-red-400 border-red-500/50"
+                            )}>
+                              {user.hasPremium ? 'ATIVO' : 'EXPIRADO'}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 text-xs text-gray-400">
+                            {user.subscriptionEnd ? new Date(user.subscriptionEnd).toLocaleDateString() : '-'}
+                          </td>
+                          <td className="px-6 py-4">
+                            {user.isPulaLeeroy && (
+                              <Badge className="text-[10px] bg-amber-500/20 text-amber-400 border-amber-500/50">
+                                PL8R
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm"
+                                variant="outline"
+                                className="h-8 border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                                onClick={() => grantPremium(user.id, 'LIFETIME')}
+                              >
+                                Vitalício
+                              </Button>
+                              <Button 
+                                size="sm"
+                                variant="outline"
+                                className="h-8 border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
+                                onClick={() => grantPremium(user.id, 'DAYS_30')}
+                              >
+                                +30 dias
+                              </Button>
+                            </div>
+                          </td>
                         </tr>
                       ))
                     )}
