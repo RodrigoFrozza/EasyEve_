@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV NODE_OPTIONS="--max-old-space-size=2048"
 ENV npm_config_jobs=1
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOME=/root
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -58,4 +59,5 @@ USER nextjs
 EXPOSE 80
 
 # Final command to run the app
-CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+# Use node binary for prisma to avoid npx downloading it
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && node server.js"]
