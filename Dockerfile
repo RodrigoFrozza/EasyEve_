@@ -3,7 +3,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssl \
     ca-certificates \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && npm install -g prisma@5.10.0
 
 # Global build optimizations for low-resource VPS (1 Core / 4GB RAM)
 ENV NODE_OPTIONS="--max-old-space-size=2048"
@@ -60,5 +61,5 @@ USER nextjs
 EXPOSE 80
 
 # Final command to run the app
-# Use node binary for prisma to avoid npx downloading it
-CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && node server.js"]
+# Use global prisma command
+CMD ["sh", "-c", "prisma migrate deploy && node server.js"]
