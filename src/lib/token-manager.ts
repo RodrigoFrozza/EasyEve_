@@ -9,14 +9,17 @@ interface TokenResponse {
   refresh_token: string
 }
 
-export async function refreshAccessToken(refreshToken: string): Promise<TokenResponse | null> {
+export async function refreshAccessToken(refreshToken: string, esiApp: string = 'main'): Promise<TokenResponse | null> {
+  const clientId = esiApp === 'holding' ? process.env.HOLDING_EVE_CLIENT_ID : process.env.EVE_CLIENT_ID
+  const clientSecret = esiApp === 'holding' ? process.env.HOLDING_EVE_CLIENT_SECRET : process.env.EVE_CLIENT_SECRET
+
   try {
     const response = await fetch(EVE_SSO_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Authorization': `Basic ${Buffer.from(
-          `${process.env.EVE_CLIENT_ID}:${process.env.EVE_CLIENT_SECRET}`
+          `${clientId}:${clientSecret}`
         ).toString('base64')}`,
       },
       body: new URLSearchParams({
@@ -55,6 +58,7 @@ export async function getValidAccessToken(characterId: number): Promise<{ access
           accessToken: true,
           refreshToken: true,
           tokenExpiresAt: true,
+          esiApp: true,
         },
       })
 
@@ -70,8 +74,8 @@ export async function getValidAccessToken(characterId: number): Promise<{ access
         return { accessToken: character.accessToken, characterId }
       }
 
-      console.log(`[TokenManager] Refreshing token for character ${characterId}...`)
-      const newTokens = await refreshAccessToken(character.refreshToken)
+      console.log(`[TokenManager] Refreshing token for character ${characterId} (App: ${character.esiApp})...`)
+      const newTokens = await refreshAccessToken(character.refreshToken, character.esiApp)
       
       if (!newTokens) {
         return { accessToken: null, characterId }

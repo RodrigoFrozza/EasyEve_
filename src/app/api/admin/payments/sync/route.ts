@@ -11,12 +11,17 @@ export async function POST() {
 
   try {
     // 1. Find a manager character
+    // Priority: 1. Character with 'holding' app 2. Marked as isCorpManager 3. Specific CEO name
     const managerChar = await prisma.character.findFirst({
       where: { 
         OR: [
+          { esiApp: 'holding' },
           { isCorpManager: true },
           { name: 'Zeca Setaum' }
         ]
+      },
+      orderBy: {
+        esiApp: 'desc' // 'holding' comes before 'main'
       }
     })
 

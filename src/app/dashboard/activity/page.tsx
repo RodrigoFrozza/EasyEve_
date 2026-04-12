@@ -128,6 +128,7 @@ function ActivityTrackerContent() {
   
   const { activities, setActivities, addActivity, updateActivity, removeActivity, isCharacterBusy, fetchFromAPI, startPolling, stopPolling, startRattingAutoSync, stopRattingAutoSync, startMiningAutoSync, stopMiningAutoSync } = useActivityStore()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [userFits, setUserFits] = useState<any[]>([])
   
   const hasPremium = isPremium(session?.user?.subscriptionEnd)
   const activeActivities = activities.filter(a => a.status === 'active')
@@ -161,7 +162,6 @@ function ActivityTrackerContent() {
   // Fetch activities on load + start polling
   useEffect(() => {
     fetchFromAPI(typeParam)
-    setIsLoading(false)
     
     // Start polling for active activities (every 30s)
     startPolling(30000)
@@ -441,7 +441,7 @@ function ActivityTrackerContent() {
                               const ui = ACTIVITY_UI_MAPPING[type.id]
                               const Icon = ui?.icon
                               if (!hasAccess) return <Lock className="h-6 w-6 text-gray-500" />
-                              return Icon ? <Icon className={cn("h-6 w-6 transition-transform group-hover:scale-110", ui?.color)} /> : <Activity className="h-6 w-6 text-gray-500" />
+                              return Icon ? <Icon className={cn("h-6 w-6 transition-transform group-hover:scale-110", ui?.color)} /> : <Box className="h-6 w-6 text-gray-500" />
                             })()}
                           </div>
                           <span className={cn("text-[10px] font-bold uppercase tracking-widest", isSelected ? "text-white" : "text-zinc-500 group-hover:text-zinc-400")}>{type.label}</span>

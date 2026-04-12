@@ -116,6 +116,7 @@ function AdminContent() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [adminCodes, setAdminCodes] = useState<any[]>([])
   const [paymentSearch, setPaymentSearch] = useState('')
+  const [holdingStatus, setHoldingStatus] = useState({ connected: false, loading: true, characterName: '', isExpired: false })
 
   const fetchCodes = async () => {
     try {
@@ -150,10 +151,29 @@ function AdminContent() {
       router.push('/dashboard')
       return
     }
+
     if (sessionStatus === 'authenticated') {
       fetchAllData()
+      fetchCodes()
+      fetchHoldingStatus()
     }
-  }, [session, sessionStatus])
+  }, [sessionStatus, session])
+
+  const fetchHoldingStatus = async () => {
+    try {
+      const res = await fetch('/api/admin/holding/status')
+      if (res.ok) {
+        setHoldingStatus({ ...(await res.json()), loading: false })
+      }
+    } catch (err) {
+      console.error('Failed to fetch holding status:', err)
+      setHoldingStatus(prev => ({ ...prev, loading: false }))
+    }
+  }
+
+  const handleConnectHolding = () => {
+    window.location.href = '/api/auth/signin?app=holding'
+  }
 
   useEffect(() => {
     if (sessionStatus === 'authenticated') {
@@ -509,6 +529,48 @@ function AdminContent() {
         </TabsContent>
 
         <TabsContent value="payments" className="space-y-4">
+          <Card className="bg-eve-dark/40 border-eve-border/50 border-dashed">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "p-2 rounded-full",
+                  holdingStatus.connected ? (holdingStatus.isExpired ? "bg-yellow-500/10" : "bg-green-500/10") : "bg-red-500/10"
+                )}>
+                  <Shield className={cn(
+                    "h-5 w-5",
+                    holdingStatus.connected ? (holdingStatus.isExpired ? "text-yellow-500" : "text-green-500") : "text-red-500"
+                  )} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    Wallet CEO (App Holding)
+                    {holdingStatus.connected && (
+                      <Badge variant="outline" className={cn(
+                        "text-[9px] h-4",
+                        holdingStatus.isExpired ? "text-yellow-500 border-yellow-500/30" : "text-green-500 border-green-500/30"
+                      )}>
+                        {holdingStatus.isExpired ? 'TOKEN EXPIRADO' : 'TOKEN ATIVO'}
+                      </Badge>
+                    )}
+                  </h3>
+                  <p className="text-[10px] text-gray-500">
+                    {holdingStatus.connected 
+                      ? `Conectado via: ${holdingStatus.characterName}` 
+                      : 'Nenhuma conta CEO conectada para sincronização corporativa.'}
+                  </p>
+                </div>
+              </div>
+              <Button 
+                onClick={handleConnectHolding} 
+                variant="outline" 
+                size="sm"
+                className="h-8 text-[10px] bg-eve-dark border-eve-border hover:bg-eve-accent hover:text-black transition-all"
+              >
+                {holdingStatus.connected ? 'Alternar/Reconectar CEO' : 'Conectar Wallet CEO'}
+              </Button>
+            </CardContent>
+          </Card>
+
           <div className="flex items-center justify-between">
              <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <History className="h-5 w-5 text-eve-accent" />

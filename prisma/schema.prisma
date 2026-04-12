@@ -55,6 +55,7 @@ model Character {
   ship          String?
   shipTypeId    Int?
 
+  esiApp         String    @default("main") // "main" or "holding"
   isMain        Boolean @default(false)
   isCorpManager Boolean @default(false) // Designated for corp wallet sync
 

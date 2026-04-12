@@ -6,6 +6,8 @@ const EVE_SSO_BASE_URL = 'https://login.eveonline.com/v2/oauth'
 
 export interface OAuthState {
   accountCode?: string
+  esiApp?: string
+  callbackUrl?: string
 }
 
 export function parseState(state: string | null): OAuthState | null {
@@ -18,15 +20,18 @@ export function parseState(state: string | null): OAuthState | null {
   }
 }
 
-export async function exchangeCodeForToken(code: string): Promise<{
+export async function exchangeCodeForToken(code: string, esiApp: string = 'main'): Promise<{
   access_token: string
   refresh_token: string
   expires_in: number
 }> {
   const callbackUrl = `${process.env.NEXTAUTH_URL || 'https://easyeve.cloud'}/api/auth/callback/eveonline`
   
+  const clientId = esiApp === 'holding' ? process.env.HOLDING_EVE_CLIENT_ID : process.env.EVE_CLIENT_ID
+  const clientSecret = esiApp === 'holding' ? process.env.HOLDING_EVE_CLIENT_SECRET : process.env.EVE_CLIENT_SECRET
+
   const credentials = Buffer.from(
-    `${process.env.EVE_CLIENT_ID}:${process.env.EVE_CLIENT_SECRET}`
+    `${clientId}:${clientSecret}`
   ).toString('base64')
   
   console.log('[OAuth] Exchanging code for token...')
@@ -57,15 +62,15 @@ export async function exchangeCodeForToken(code: string): Promise<{
   return data
 }
 
-export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
+export async function handleLoginFlow(code: string, baseUrl: string, esiApp: string = 'main'): Promise<{
   userId: string
   characterId: number
   ownerHash: string
   redirectUrl: string
 }> {
-  console.log('[OAuth Login] Starting login flow...')
+  console.log(`[OAuth Login] Starting login flow for app: ${esiApp}...`)
   
-  const tokenData = await exchangeCodeForToken(code)
+  const tokenData = await exchangeCodeForToken(code, esiApp)
   console.log('[OAuth Login] Token obtained, fetching character info...')
   
   const charInfo = await getCharacterInfo(tokenData.access_token)
@@ -95,6 +100,7 @@ export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
         refreshToken: tokenData.refresh_token,
         tokenExpiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
         name: characterName,
+        esiApp,
       },
     })
     userId = existingChar.userId
@@ -129,6 +135,7 @@ export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
         ship: charData.ship,
         shipTypeId: charData.shipTypeId,
         isMain: true,
+        esiApp,
       },
     })
     userId = user.id
@@ -173,7 +180,8 @@ export async function handleLoginFlow(code: string, baseUrl: string): Promise<{
 export async function handleLinkFlow(
   code: string,
   accountCode: string,
-  baseUrl: string
+  baseUrl: string,
+  esiApp: string = 'main'
 ): Promise<{
   userId: string
   characterId: number
@@ -199,7 +207,7 @@ export async function handleLinkFlow(
     }
   }
 
-  const tokenData = await exchangeCodeForToken(code)
+  const tokenData = await exchangeCodeForToken(code, esiApp)
   const charInfo = await getCharacterInfo(tokenData.access_token)
 
   const characterId = charInfo.character_id
@@ -258,6 +266,7 @@ export async function handleLinkFlow(
         ship: charData.ship,
         shipTypeId: charData.shipTypeId,
         isMain: false,
+        esiApp,
       },
     })
   }

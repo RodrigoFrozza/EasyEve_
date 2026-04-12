@@ -52,14 +52,15 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  console.log('[OAuth Callback] Flow:', accountCode ? 'LINK' : 'LOGIN')
+  const esiApp = state?.esiApp || 'main'
+  console.log('[OAuth Callback] Flow:', accountCode ? 'LINK' : 'LOGIN', 'App:', esiApp)
 
   try {
     let result: { userId: string; characterId: number; ownerHash: string; redirectUrl: string }
 
     if (accountCode) {
       console.log('[OAuth Callback] Calling handleLinkFlow...')
-      const linkResult = await handleLinkFlow(code, accountCode, baseUrl)
+      const linkResult = await handleLinkFlow(code, accountCode, baseUrl, esiApp)
       
       if ('error' in linkResult) {
         return NextResponse.redirect(new URL(linkResult.redirectUrl, baseUrl))
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
       result = linkResult
     } else {
       console.log('[OAuth Callback] Calling handleLoginFlow...')
-      result = await handleLoginFlow(code, baseUrl)
+      result = await handleLoginFlow(code, baseUrl, esiApp)
     }
 
     const jwt = await createJWT(result.userId, result.characterId, result.ownerHash)
