@@ -8,10 +8,11 @@ import {
   Home,
   Users,
   Target,
-  Ship,
+  Rocket,
   Settings,
   LogOut,
   ChevronDown,
+  ChevronRight,
   Shield,
   Crown,
 } from 'lucide-react'
@@ -24,16 +25,30 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useState } from 'react'
 
-const navigation = [
+interface NavItem {
+  name: string
+  href?: string
+  icon: any
+  children?: { name: string; href: string }[]
+}
+
+const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Characters', href: '/dashboard/characters', icon: Users },
   { name: 'Activity Tracker', href: '/dashboard/activity', icon: Target },
-  { name: 'Subscription', href: '/dashboard/subscription', icon: Crown },
-  { name: 'Fits', href: '/dashboard/fits', icon: Ship },
-  { name: 'Fit Editor', href: '/dashboard/fits/editor', icon: Ship },
-  { name: 'Fit Compare', href: '/dashboard/fits/compare', icon: Target },
+  { 
+    name: 'Fit Management', 
+    icon: Rocket,
+    children: [
+      { name: 'Fits', href: '/dashboard/fits' },
+      { name: 'Fit Compare', href: '/dashboard/fits/compare' },
+    ]
+  },
 ]
+
+const subscriptionItem = { name: 'Subscription', href: '/dashboard/subscription', icon: Crown }
 
 const adminNavigation = [
   { name: 'Admin', href: '/dashboard/admin', icon: Shield },
@@ -42,9 +57,18 @@ const adminNavigation = [
 export function Sidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
+  const [openMenus, setOpenMenus] = useState<string[]>(['Fit Management'])
 
   const handleSignOut = () => {
     clientSignOut()
+  }
+
+  const toggleMenu = (name: string) => {
+    setOpenMenus(prev => 
+      prev.includes(name) 
+        ? prev.filter(m => m !== name) 
+        : [...prev, name]
+    )
   }
 
   const characterName = session?.user?.characters?.find(c => c.id === session?.user?.characterId)?.name || 'User'
@@ -58,13 +82,59 @@ export function Sidebar() {
         <span className="text-xl font-bold text-white tracking-tight">Easy <span className="text-eve-accent">Eve</span></span>
       </div>
 
-      <nav className="flex-1 space-y-1 p-4">
+      <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
         {navigation.map((item) => {
-          const isActive = pathname === item.href
+          const hasChildren = item.children && item.children.length > 0
+          const isOpen = openMenus.includes(item.name)
+          const isActive = item.href ? pathname === item.href : item.children?.some(child => pathname === child.href)
+
+          if (hasChildren) {
+            return (
+              <div key={item.name} className="space-y-1">
+                <button
+                  onClick={() => toggleMenu(item.name)}
+                  className={cn(
+                    'flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    isActive && !isOpen
+                      ? 'bg-eve-accent/20 text-eve-accent'
+                      : 'text-gray-400 hover:bg-eve-panel hover:text-white'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <item.icon className="h-5 w-5" />
+                    {item.name}
+                  </div>
+                  {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </button>
+                {isOpen && (
+                  <div className="ml-9 space-y-1">
+                    {item.children?.map((child) => {
+                      const isChildActive = pathname === child.href
+                      return (
+                        <Link
+                          key={child.name}
+                          href={child.href}
+                          className={cn(
+                            'block rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                            isChildActive
+                              ? 'text-eve-accent'
+                              : 'text-gray-500 hover:text-white'
+                          )}
+                        >
+                          {child.name}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          }
+
           return (
             <Link
               key={item.name}
-              href={item.href}
+              href={item.href!}
               title={item.name}
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
@@ -79,6 +149,21 @@ export function Sidebar() {
           )
         })}
         
+        <div className="pt-4 mt-4 border-t border-eve-border">
+          <Link
+            href={subscriptionItem.href}
+            className={cn(
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors border border-transparent',
+              pathname === subscriptionItem.href
+                ? 'bg-eve-accent2/20 text-eve-accent2 border-eve-accent2/30'
+                : 'text-eve-accent2 hover:bg-eve-accent2/10 hover:text-eve-accent2'
+            )}
+          >
+            <subscriptionItem.icon className="h-5 w-5 fill-current" />
+            {subscriptionItem.name}
+          </Link>
+        </div>
+
         {session?.user?.role === 'master' && (
           <div className="pt-4 mt-4 border-t border-eve-border">
             {adminNavigation.map((item) => {
