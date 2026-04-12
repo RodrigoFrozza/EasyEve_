@@ -65,7 +65,7 @@ export function LeaderboardWrapper({
       <button
         onClick={handleRefresh}
         disabled={isRefreshing}
-        className="absolute top-0 right-0 p-1.5 rounded-lg bg-eve-dark/50 border border-eve-border hover:bg-eve-dark transition-colors disabled:opacity-50"
+        className="absolute top-1 right-1 z-20 p-1.5 rounded-lg bg-eve-dark/80 border border-eve-border hover:bg-eve-dark transition-colors disabled:opacity-50 shadow-lg"
         title="Refresh leaderboard"
       >
         <RefreshCw className={`h-3.5 w-3.5 text-gray-400 ${isRefreshing ? 'animate-spin' : ''}`} />

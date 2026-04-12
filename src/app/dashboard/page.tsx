@@ -13,7 +13,8 @@ import {
   MapPin,
   Ship,
   Clock,
-  Target,
+  Swords,
+  Gem,
   ArrowUpRight,
   ArrowDownRight,
   Bell,
@@ -303,10 +304,10 @@ export default async function DashboardPage() {
             <CardHeader className="p-0 border-b border-white/5 bg-white/[0.02]">
                <TabsList className="grid w-full grid-cols-2 bg-transparent h-10 rounded-none p-0">
                   <TabsTrigger value="ratting" className="text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full flex items-center gap-2">
-                    <Target className="h-3 w-3" /> Ratting
+                    <Swords className="h-3 w-3" /> Ratting
                   </TabsTrigger>
                   <TabsTrigger value="mining" className="text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white/5 data-[state=active]:text-cyan-400 rounded-none h-full flex items-center gap-2">
-                    <Zap className="h-3 w-3" /> Mining
+                    <Gem className="h-3 w-3" /> Mining
                   </TabsTrigger>
                </TabsList>
             </CardHeader>
