@@ -38,6 +38,7 @@ export function LanguageSelector() {
             <button
               key={lang.code}
               onClick={() => {
+                console.log('[LanguageSelector] Changing locale to:', lang.code)
                 setLocale(lang.code)
                 setIsOpen(false)
               }}

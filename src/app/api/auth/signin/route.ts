@@ -76,10 +76,15 @@ export async function GET(request: NextRequest) {
 
   const clientId = app === 'holding' ? process.env.HOLDING_EVE_CLIENT_ID : process.env.EVE_CLIENT_ID
   const scopes = app === 'holding' ? HOLDING_SCOPES : EVE_SCOPES
+  const endCallback = app === 'holding' ? '/api/auth/callback/holding' : '/api/auth/callback/eveonline'
+
+  console.log(`[OAuth Signin] App: ${app}`)
+  console.log(`[OAuth Signin] Client ID: ${clientId}`)
+  console.log(`[OAuth Signin] Redirect URI: ${baseUrl}${endCallback}`)
 
   const url = new URL('https://login.eveonline.com/v2/oauth/authorize')
   url.searchParams.set('client_id', clientId!)
-  url.searchParams.set('redirect_uri', `${baseUrl}/api/auth/callback/eveonline`)
+  url.searchParams.set('redirect_uri', `${baseUrl}${endCallback}`)
   url.searchParams.set('response_type', 'code')
   url.searchParams.set('scope', scopes)
   url.searchParams.set('state', stateStr)

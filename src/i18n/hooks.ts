@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import en from './locales/en.json'
 import ptBR from './locales/pt-BR.json'
 import zh from './locales/zh.json'
@@ -49,8 +49,12 @@ function getStoredLocale(): string {
 }
 
 export function useTranslations() {
-  const locale = getStoredLocale()
+  const [locale, setLocale] = useState<string>('en')
   
+  useEffect(() => {
+    setLocale(getStoredLocale())
+  }, [])
+
   const messages = useMemo(() => {
     return translations[locale] || translations.en
   }, [locale])
@@ -68,6 +72,7 @@ export function useTranslations() {
 export function setLocale(newLocale: string) {
   if (typeof window !== 'undefined') {
     localStorage.setItem(LOCALE_KEY, newLocale)
+    console.log('[i18n] Locale saved:', newLocale)
     window.location.reload()
   }
 }
