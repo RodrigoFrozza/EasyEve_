@@ -7,9 +7,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && npm install -g prisma@5.10.0
 
 # Global build optimizations for low-resource VPS (1 Core / 4GB RAM)
-ENV NODE_OPTIONS="--max-old-space-size=2048"
+ENV NODE_OPTIONS="--max-old-space-size=1536"
 ENV npm_config_jobs=1
+ENV NEXT_CPU_COUNT=1
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV CI=true
 ENV HOME=/root
 
 # Install dependencies only when needed
