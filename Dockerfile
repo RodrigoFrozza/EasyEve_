@@ -5,12 +5,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Global build optimizations for low-resource VPS (1 Core / 4GB RAM)
+ENV NODE_OPTIONS="--max-old-space-size=2048"
+ENV npm_config_jobs=1
+ENV NEXT_TELEMETRY_DISABLED=1
+
 # Install dependencies only when needed
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-# Using npm ci for faster, more reliable builds on VPS
-RUN npm ci --legacy-peer-deps && \
+# Using npm ci with memory-saving flags
+RUN npm ci --legacy-peer-deps --no-audit --no-fund --prefer-offline && \
     npm cache clean --force
 
 # Rebuild the source code only when needed
@@ -20,15 +25,14 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Generate Prisma Client and Build Next.js
-ENV NEXT_TELEMETRY_DISABLED=1
+# Note: Global NODE_OPTIONS and NEXT_TELEMETRY_DISABLED set in base stage
 ENV NODE_ENV=production
-# Skip Prisma postinstall since we generate it manually later
 ENV PRISMA_SKIP_POSTINSTALL_GENERATE=1
-# Optimized for stability on low-RAM VPS environments
-ENV NODE_OPTIONS="--max-old-space-size=2048"
 
 # Generate prisma client and perform build in one layer to save space
-RUN npm run db:generate && npm run build
+# Generate prisma client and perform build in separate steps to reduce peak RAM usage
+RUN npm run db:generate
+RUN npm run build
 
 # Production image
 FROM base AS runner
