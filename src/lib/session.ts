@@ -16,6 +16,7 @@ export interface SessionUser {
     id: number
     name: string
     isMain: boolean
+    corporationId: number | null
   }>
 }
 
@@ -38,7 +39,7 @@ export async function getSession(): Promise<Session | null> {
       user: {
         include: {
           characters: {
-            select: { id: true, name: true, isMain: true },
+            select: { id: true, name: true, isMain: true, corporationId: true },
           },
         },
       },
@@ -83,7 +84,12 @@ export async function getSession(): Promise<Session | null> {
       isBlocked: user.isBlocked,
       blockReason: user.blockReason,
       subscriptionEnd: user.subscriptionEnd,
-      characters: user.characters,
+      characters: user.characters.map(c => ({
+        id: c.id,
+        name: c.name,
+        isMain: c.isMain,
+        corporationId: c.corporationId
+      })),
     },
   }
 }

@@ -163,6 +163,7 @@ export interface FetchCharacterDataResult {
   location?: string
   ship?: string
   shipTypeId?: number
+  corporationId?: number
 }
 
 export async function fetchCharacterData(characterId: number, accessToken: string): Promise<FetchCharacterDataResult> {
@@ -181,6 +182,7 @@ export async function fetchCharacterData(characterId: number, accessToken: strin
     location: location.location,
     ship: ship.ship,
     shipTypeId: ship.shipTypeId,
+    corporationId: info.corporation_id,
   }
 }
 

@@ -7,12 +7,17 @@ import { remoteLogger } from '@/lib/remote-logger'
 import { getErrorCode, isAppError } from '@/lib/app-error'
 import type { ErrorCode } from '@/lib/error-codes'
 import { getTranslation } from '@/i18n/client'
-import { getCurrentLocale } from '@/i18n/hooks'
+import { useTranslations } from '@/i18n/hooks'
 
 interface Props {
   children?: ReactNode
   fallback?: ReactNode
   name?: string
+}
+
+export function ErrorBoundary(props: Props) {
+  const { locale } = useTranslations()
+  return <ErrorBoundaryBase {...props} locale={locale} />
 }
 
 interface State {
@@ -22,7 +27,7 @@ interface State {
   isChunkLoadError: boolean
 }
 
-export class ErrorBoundary extends Component<Props, State> {
+class ErrorBoundaryBase extends Component<Props & { locale: string }, State> {
   public state: State = {
     hasError: false,
     error: null,
@@ -71,7 +76,7 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback
       }
 
-      const locale = getCurrentLocale()
+      const { locale } = this.props
 
       if (this.state.isChunkLoadError) {
         return (

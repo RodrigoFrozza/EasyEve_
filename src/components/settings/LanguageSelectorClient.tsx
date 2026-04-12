@@ -1,13 +1,12 @@
 'use client'
 
-import { useTranslations, getCurrentLocale, setLocale } from '@/i18n/hooks'
+import { useTranslations } from '@/i18n/hooks'
 import { Globe, ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 
 export function LanguageSelector() {
-  const { t, locale } = useTranslations()
+  const { t, locale, setLocale } = useTranslations()
   const [isOpen, setIsOpen] = useState(false)
-  const currentLocale = getCurrentLocale()
 
   const languages = [
     { code: 'en', name: t('settings.english') },
@@ -17,7 +16,7 @@ export function LanguageSelector() {
     { code: 'ko', name: t('settings.korean') }
   ]
 
-  const currentLang = languages.find(l => l.code === currentLocale) || languages[0]
+  const currentLang = languages.find(l => l.code === locale) || languages[0]
 
   return (
     <div className="relative">
@@ -38,12 +37,11 @@ export function LanguageSelector() {
             <button
               key={lang.code}
               onClick={() => {
-                console.log('[LanguageSelector] Changing locale to:', lang.code)
                 setLocale(lang.code)
                 setIsOpen(false)
               }}
               className={`w-full p-2 text-left text-sm hover:bg-eve-dark/50 transition-colors ${
-                lang.code === currentLocale ? 'text-eve-accent bg-eve-dark/30' : 'text-gray-300'
+                lang.code === locale ? 'text-eve-accent bg-eve-dark/30' : 'text-gray-300'
               }`}
             >
               {lang.name}

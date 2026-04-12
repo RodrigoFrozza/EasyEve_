@@ -9,10 +9,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Switch } from '@/components/ui/switch'
 import { Settings, User, Bell, Shield, Database, Palette, Link2, Globe } from 'lucide-react'
 import { getSession } from '@/lib/session'
+import { getTranslations } from '@/i18n/server'
 import { DataManagement } from '@/components/settings/DataManagement'
 import { LanguageSelector } from '@/components/settings/LanguageSelectorClient'
 
 export default async function SettingsPage() {
+  const { t } = await getTranslations()
   const session = await getSession()
 
   const user = session?.user ? await prisma.user.findUnique({
@@ -23,8 +25,8 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white">Settings</h1>
-        <p className="text-gray-400">Manage your account and preferences</p>
+        <h1 className="text-3xl font-bold text-white">{t('settings.title')}</h1>
+        <p className="text-gray-400">{t('settings.manageAccount')}</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -33,9 +35,9 @@ export default async function SettingsPage() {
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <User className="h-5 w-5 text-eve-accent" />
-                Profile
+                {t('settings.profile')}
               </CardTitle>
-              <CardDescription>Your EVE Online account information</CardDescription>
+              <CardDescription>{t('settings.profileDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center gap-4">
@@ -44,9 +46,9 @@ export default async function SettingsPage() {
                   <AvatarFallback>{(user?.characters[0]?.name || 'U')[0]}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-lg font-medium text-white">{user?.characters[0]?.name || 'Capsuleer'}</h3>
+                  <h3 className="text-lg font-medium text-white">{user?.characters[0]?.name || t('settings.capsuleer')}</h3>
                   <p className="text-sm text-gray-400">
-                    {user?.characters?.length || 0} linked characters
+                    {t('settings.linkedCharactersCount', { count: user?.characters?.length || 0 })}
                   </p>
                 </div>
               </div>
@@ -56,24 +58,24 @@ export default async function SettingsPage() {
               <div className="grid gap-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-white">Email Notifications</p>
-                    <p className="text-sm text-gray-400">Receive updates about your activities</p>
+                    <p className="font-medium text-white">{t('settings.emailNotifications')}</p>
+                    <p className="text-sm text-gray-400">{t('settings.emailNotificationsDesc')}</p>
                   </div>
                   <Switch defaultChecked />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-white">Skill Queue Alerts</p>
-                    <p className="text-sm text-gray-400">Get notified when skills complete</p>
+                    <p className="font-medium text-white">{t('settings.skillQueueAlerts')}</p>
+                    <p className="text-sm text-gray-400">{t('settings.skillQueueAlertsDesc')}</p>
                   </div>
                   <Switch defaultChecked />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-white">Market Price Alerts</p>
-                    <p className="text-sm text-gray-400">Notifications for price changes</p>
+                    <p className="font-medium text-white">{t('settings.marketPriceAlerts')}</p>
+                    <p className="text-sm text-gray-400">{t('settings.marketPriceAlertsDesc')}</p>
                   </div>
                   <Switch />
                 </div>
@@ -85,15 +87,15 @@ export default async function SettingsPage() {
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <Shield className="h-5 w-5 text-eve-accent" />
-                Security
+                {t('settings.security')}
               </CardTitle>
-              <CardDescription>Manage your account security</CardDescription>
+              <CardDescription>{t('settings.securityDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-white">Active Characters</p>
-                  <p className="text-sm text-gray-400">Characters linked to your account</p>
+                  <p className="font-medium text-white">{t('settings.activeCharacters')}</p>
+                  <p className="text-sm text-gray-400">{t('settings.activeCharactersDesc')}</p>
                 </div>
                 <Badge variant="secondary">{user?.characters?.length || 0}</Badge>
               </div>
@@ -101,7 +103,7 @@ export default async function SettingsPage() {
               <Separator className="bg-eve-border" />
 
               <div>
-                <h4 className="font-medium text-white mb-2">Linked Characters</h4>
+                <h4 className="font-medium text-white mb-2">{t('settings.linkedCharactersTitle')}</h4>
                 <div className="space-y-2">
                   {user?.characters?.map((char) => (
                     <div key={char.id} className="flex items-center justify-between p-2 rounded-lg bg-eve-dark/50">
@@ -116,7 +118,7 @@ export default async function SettingsPage() {
                         </div>
                       </div>
                       <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300">
-                        Remove
+                        {t('settings.remove')}
                       </Button>
                     </div>
                   ))}
@@ -131,19 +133,19 @@ export default async function SettingsPage() {
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <Palette className="h-5 w-5 text-eve-accent" />
-                Appearance
+                {t('settings.appearance')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Theme</span>
-                <Badge variant="eve">Dark (EVE Style)</Badge>
+                <span className="text-gray-400">{t('settings.theme')}</span>
+                <Badge variant="eve">{t('settings.darkEveStyle')}</Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Accent Color</span>
+                <span className="text-gray-400">{t('settings.accentColor')}</span>
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-4 rounded-full bg-[#00d4ff]" />
-                  <span className="text-sm text-white">Cyan</span>
+                  <span className="text-sm text-white">{t('settings.cyan')}</span>
                 </div>
               </div>
             </CardContent>
@@ -153,9 +155,9 @@ export default async function SettingsPage() {
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <Globe className="h-5 w-5 text-eve-accent" />
-                Language
+                {t('settings.language')}
               </CardTitle>
-              <CardDescription>Select your preferred language</CardDescription>
+              <CardDescription>{t('settings.languageDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <LanguageSelector />
@@ -166,8 +168,9 @@ export default async function SettingsPage() {
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <Database className="h-5 w-5 text-eve-accent" />
-                Data Management
+                {t('settings.dataManagement')}
               </CardTitle>
+              <CardDescription>{t('settings.dataManagementDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <DataManagement />
@@ -178,21 +181,21 @@ export default async function SettingsPage() {
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <Link2 className="h-5 w-5 text-eve-accent" />
-                Connected Services
+                {t('settings.connectedServices')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-400">EVE Online ESI</span>
-                <Badge variant="success">Connected</Badge>
+                <Badge variant="success">{t('settings.esiConnected')}</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-400">zKillboard</span>
-                <Badge variant="secondary">Not Connected</Badge>
+                <Badge variant="secondary">{t('settings.esiNotConnected')}</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-400">Discord</span>
-                <Badge variant="secondary">Not Connected</Badge>
+                <Badge variant="secondary">{t('settings.esiNotConnected')}</Badge>
               </div>
             </CardContent>
           </Card>

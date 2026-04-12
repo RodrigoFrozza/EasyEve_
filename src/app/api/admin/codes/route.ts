@@ -48,9 +48,9 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { type, count = 1 } = body // type: "DAYS_30" or "LIFETIME"
 
-    if (!['DAYS_30', 'LIFETIME'].includes(type)) {
-      return NextResponse.json({ error: 'Invalid code type' }, { status: 400 })
-    }
+  if (!['DAYS_30', 'LIFETIME', 'PL8R'].includes(type)) {
+    return NextResponse.json({ error: 'Invalid code type' }, { status: 400 })
+  }
 
     const codes = []
     for (let i = 0; i < count; i++) {

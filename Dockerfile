@@ -9,8 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-# We need devDependencies to build (Next.js, Prisma CLI)
-RUN npm install --legacy-peer-deps && \
+# Using npm ci for faster, more reliable builds on VPS
+RUN npm ci --legacy-peer-deps && \
     npm cache clean --force
 
 # Rebuild the source code only when needed
@@ -22,10 +22,12 @@ COPY . .
 # Generate Prisma Client and Build Next.js
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-# Reduced to 2048 to be more stable on VPS environments
+# Skip Prisma postinstall since we generate it manually later
+ENV PRISMA_SKIP_POSTINSTALL_GENERATE=1
+# Optimized for stability on low-RAM VPS environments
 ENV NODE_OPTIONS="--max-old-space-size=2048"
 
-# Generate prisma client and perform build
+# Generate prisma client and perform build in one layer to save space
 RUN npm run db:generate && npm run build
 
 # Production image

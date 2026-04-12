@@ -49,10 +49,21 @@ function getStoredLocale(): string {
 }
 
 export function useTranslations() {
-  const [locale, setLocale] = useState<string>('en')
+  const [locale, setLocaleState] = useState<string>('en')
+  
+  const setLocale = (newLocale: string) => {
+    localStorage.setItem(LOCALE_KEY, newLocale)
+    document.cookie = `${LOCALE_KEY}=${newLocale}; path=/; max-age=31536000`
+    setLocaleState(newLocale)
+  }
   
   useEffect(() => {
-    setLocale(getStoredLocale())
+    const stored = getStoredLocale()
+    setLocaleState(stored)
+    // Sync cookie just in case
+    if (typeof document !== 'undefined') {
+      document.cookie = `${LOCALE_KEY}=${stored}; path=/; max-age=31536000`
+    }
   }, [])
 
   const messages = useMemo(() => {
@@ -66,12 +77,13 @@ export function useTranslations() {
     }
   }, [messages])
 
-  return { t, locale }
+  return { t, locale, setLocale }
 }
 
 export function setLocale(newLocale: string) {
   if (typeof window !== 'undefined') {
     localStorage.setItem(LOCALE_KEY, newLocale)
+    document.cookie = `${LOCALE_KEY}=${newLocale}; path=/; max-age=31536000`
     console.log('[i18n] Locale saved:', newLocale)
     window.location.reload()
   }

@@ -16,6 +16,9 @@ import {
   Shield,
   Crown,
   Lock,
+  LayoutGrid,
+  Link as LinkIcon,
+  MessageCircle,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -53,6 +56,16 @@ const navigation: NavItem[] = [
 
 const subscriptionItem = { name: 'Subscription', href: '/dashboard/subscription', icon: Crown }
 
+const quickLinks = [
+  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+  { name: 'Discord', href: DISCORD_LINK, icon: LinkIcon, external: true },
+]
+
+const sectionLabels = {
+  main: 'NAVIGATION',
+  subscription: 'ACCOUNT',
+  quickLinks: 'QUICK LINKS',
+}
 
 
 export function Sidebar() {
@@ -77,186 +90,231 @@ export function Sidebar() {
   const characterName = session?.user?.characters?.find(c => c.id === session?.user?.characterId)?.name || 'User'
 
   return (
-    <div className="flex h-screen w-64 flex-col bg-eve-dark border-r border-eve-border">
-      <div className="flex h-16 items-center gap-2 border-b border-eve-border px-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded bg-eve-accent">
-          <span className="text-lg font-bold text-black" title="Easy Eve Holding's">E</span>
+    <div className="flex h-screen w-64 flex-col bg-gradient-to-b from-[#0d1117] via-[#080b10] to-[#050708] border-r border-white/[0.06] relative overflow-hidden">
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.018)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.018)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-eve-accent/[0.08] via-transparent to-transparent opacity-50 pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-[200px] bg-gradient-to-b from-eve-accent/[0.03] to-transparent pointer-events-none" />
+      
+      <div className="relative flex h-16 items-center gap-3 border-b border-white/[0.06] px-5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#1a1f2e] via-[#151a24] to-[#0d1117] border border-white/[0.08] shadow-[0_4px_20px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)]">
+          <span className="text-xl font-black bg-gradient-to-b from-white to-white/70 bg-clip-text text-transparent" title="Easy Eve Holding's">E</span>
         </div>
-        <span className="text-xl font-bold text-white tracking-tight">Easy <span className="text-eve-accent">Eve</span></span>
+        <div className="flex flex-col">
+          <span className="text-lg font-bold text-white tracking-tight">Easy <span className="text-eve-accent">Eve</span></span>
+          <span className="text-[10px] font-medium text-white/40 tracking-widest uppercase">Dashboard</span>
+        </div>
       </div>
 
-      <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
-        {navigation.map((item) => {
-          const hasChildren = item.children && item.children.length > 0
-          const isOpen = openMenus.includes(item.name)
-          const isActive = item.href ? pathname === item.href : item.children?.some(child => pathname === child.href)
+      <nav className="relative flex-1 space-y-6 p-4 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/[0.08] [&::-webkit-scrollbar-thumb]:rounded-full">
+        <div className="space-y-3">
+          <span className="text-[10px] font-bold text-white/[0.25] tracking-[0.2em] uppercase px-3 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-eve-accent/60" />
+            {sectionLabels.main}
+          </span>
+          <div className="space-y-1.5">
+            {navigation.map((item) => {
+              const hasChildren = item.children && item.children.length > 0
+              const isOpen = openMenus.includes(item.name)
+              const isActive = item.href ? pathname === item.href : item.children?.some(child => pathname === child.href)
 
-          if (hasChildren) {
-            return (
-              <div key={item.name} className="space-y-1">
-                <button
-                  onClick={() => toggleMenu(item.name)}
+              if (hasChildren) {
+                return (
+                  <div key={item.name} className="space-y-1.5">
+                    <button
+                      onClick={() => toggleMenu(item.name)}
+                      className={cn(
+                        'group flex w-full items-center justify-between rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ease-out',
+                        isActive && !isOpen
+                          ? 'bg-gradient-to-r from-eve-accent/15 to-transparent text-eve-accent border-l-[2.5px] border-eve-accent ml-[-2px] pl-[13px] shadow-[0_0_25px_-8px_rgba(0,200,255,0.35)]'
+                          : 'text-white/[0.55] hover:bg-white/[0.06] hover:text-white hover:scale-[1.02] hover:shadow-[0_0_20px_-5px_rgba(255,255,255,0.08)]'
+                      )}
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <item.icon className={cn("h-5 w-5 transition-all duration-200", isActive && !isOpen ? "text-eve-accent" : "group-hover:text-eve-accent/70")} />
+                        <span className={cn("transition-colors duration-200", !hasPremium && item.name === 'Fit Management' && "text-white/[0.3]")}>
+                          {item.name}
+                        </span>
+                        {!hasPremium && item.name === 'Fit Management' && (
+                          <Lock className="h-3.5 w-3.5 text-eve-accent/40" />
+                        )}
+                      </div>
+                      <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isOpen && "rotate-180")} />
+                    </button>
+                    <div className={cn(
+                      "overflow-hidden transition-all duration-300 ease-out",
+                      isOpen ? "max-h-48 opacity-100 ml-4 mt-1" : "max-h-0 opacity-0"
+                    )}>
+                      <div className="space-y-1 border-l border-white/[0.08] ml-2.5 pl-2.5">
+                        {item.children?.map((child) => {
+                          const isChildActive = pathname === child.href
+                          const isRestricted = !hasPremium && item.name === 'Fit Management'
+                          
+                          if (isRestricted) {
+                            return (
+                              <div
+                                key={child.name}
+                                className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-white/[0.25] cursor-not-allowed"
+                              >
+                                {child.name}
+                                <Lock className="h-3 w-3 text-white/[0.15]" />
+                              </div>
+                            )
+                          }
+
+                          return (
+                            <Link
+                              key={child.name}
+                              href={child.href}
+                              className={cn(
+                                "block rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                                isChildActive
+                                  ? "text-eve-accent bg-eve-accent/[0.1] border-l-[2px] border-eve-accent ml-[-2px] pl-[14px]"
+                                  : "text-white/[0.45] hover:text-white hover:bg-white/[0.05] hover:pl-4"
+                              )}
+                            >
+                              {child.name}
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href!}
+                  title={item.name}
                   className={cn(
-                    'flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                    isActive && !isOpen
-                      ? 'bg-eve-accent/20 text-eve-accent'
-                      : 'text-gray-400 hover:bg-eve-panel hover:text-white'
+                    "group flex items-center gap-3.5 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ease-out",
+                    isActive
+                      ? "bg-gradient-to-r from-eve-accent/15 to-transparent text-eve-accent border-l-[2.5px] border-eve-accent ml-[-2px] pl-[13px] shadow-[0_0_25px_-8px_rgba(0,200,255,0.35)]"
+                      : "text-white/[0.55] hover:bg-white/[0.06] hover:text-white hover:scale-[1.02] hover:shadow-[0_0_20px_-5px_rgba(255,255,255,0.08)]"
                   )}
                 >
-                  <div className="flex items-center gap-3">
-                    <item.icon className="h-5 w-5" />
-                    {item.name}
-                    {!hasPremium && item.name === 'Fit Management' && (
-                      <Lock className="h-3 w-3 text-eve-accent/50" />
-                    )}
-                  </div>
-                  {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                </button>
-                {isOpen && (
-                  <div className="ml-9 space-y-1">
-                    {item.children?.map((child) => {
-                      const isChildActive = pathname === child.href
-                      const isRestricted = !hasPremium && item.name === 'Fit Management'
-                      
-                      if (isRestricted) {
-                        return (
-                          <div
-                            key={child.name}
-                            className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-600 cursor-not-allowed"
-                          >
-                            {child.name}
-                            <Lock className="h-3 w-3" />
-                          </div>
-                        )
-                      }
-
-                      return (
-                        <Link
-                          key={child.name}
-                          href={child.href}
-                          className={cn(
-                            'block rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                            isChildActive
-                              ? 'text-eve-accent'
-                              : 'text-gray-500 hover:text-white'
-                          )}
-                        >
-                          {child.name}
-                        </Link>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )
-          }
-
-          return (
+                  <item.icon className={cn("h-5 w-5 transition-all duration-200", isActive && "text-eve-accent group-hover:text-eve-accent")} />
+                  {item.name}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+        
+        <div className="space-y-3">
+          <span className="text-[10px] font-bold text-white/[0.25] tracking-[0.2em] uppercase px-3 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-eve-accent2/60" />
+            {sectionLabels.subscription}
+          </span>
+          <div className="space-y-1.5 p-2 rounded-xl bg-gradient-to-br from-white/[0.02] to-transparent border border-white/[0.04]">
             <Link
-              key={item.name}
-              href={item.href!}
-              title={item.name}
+              href={subscriptionItem.href}
               className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-eve-accent/20 text-eve-accent'
-                  : 'text-gray-400 hover:bg-eve-panel hover:text-white'
+                "group flex items-center gap-3.5 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ease-out border border-transparent",
+                pathname === subscriptionItem.href
+                  ? "bg-gradient-to-r from-eve-accent2/20 to-transparent text-eve-accent2 border-eve-accent2/30 border-l-[2.5px] border-l-eve-accent2 ml-[-2px] pl-[13px] shadow-[0_0_25px_-8px_rgba(255,200,0,0.25)]"
+                  : "text-eve-accent2/60 hover:bg-eve-accent2/10 hover:text-eve-accent2 hover:scale-[1.02] hover:shadow-[0_0_20px_-5px_rgba(255,200,0,0.12)]"
               )}
             >
-              <item.icon className="h-5 w-5" />
-              {item.name}
+              <subscriptionItem.icon className={cn("h-5 w-5 transition-all duration-200", pathname === subscriptionItem.href ? "text-eve-accent2" : "group-hover:text-eve-accent2/80")} />
+              {subscriptionItem.name}
             </Link>
-          )
-        })}
-        
-        <div className="pt-4 mt-4 border-t border-eve-border">
-          <Link
-            href={subscriptionItem.href}
-            className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors border border-transparent',
-              pathname === subscriptionItem.href
-                ? 'bg-eve-accent2/20 text-eve-accent2 border-eve-accent2/30'
-                : 'text-eve-accent2 hover:bg-eve-accent2/10 hover:text-eve-accent2'
-            )}
-          >
-            <subscriptionItem.icon className="h-5 w-5 fill-current" />
-            {subscriptionItem.name}
-          </Link>
+          </div>
         </div>
+
+        {session?.user?.role === 'master' && (
+          <div className="space-y-3">
+            <span className="text-[10px] font-bold text-white/[0.25] tracking-[0.2em] uppercase px-3 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-400/60" />
+              Admin
+            </span>
+            <div className="space-y-1.5">
+              <Link
+                href="/dashboard/admin"
+                className={cn(
+                  "group flex items-center gap-3.5 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ease-out",
+                  pathname === '/dashboard/admin'
+                    ? "bg-gradient-to-r from-red-500/15 to-transparent text-red-400 border-l-[2.5px] border-red-400 ml-[-2px] pl-[13px] shadow-[0_0_25px_-8px_rgba(255,50,50,0.25)]"
+                    : "text-red-400/60 hover:bg-red-500/10 hover:text-red-400 hover:scale-[1.02] hover:shadow-[0_0_20px_-5px_rgba(255,50,50,0.1)]"
+                )}
+              >
+                <Shield className="h-5 w-5 transition-all duration-200" />
+                Admin Panel
+              </Link>
+            </div>
+          </div>
+        )}
       </nav>
 
-      <div className="border-t border-eve-border p-4">
-        {session?.user?.role === 'master' && (
-          <Link
-            href="/dashboard/admin"
-            className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-              pathname === '/dashboard/admin'
-                ? 'bg-eve-accent/20 text-eve-accent'
-                : 'text-eve-accent hover:bg-eve-accent/10 hover:text-eve-accent'
-            )}
-          >
-            <Shield className="h-5 w-5" />
-            Admin
-          </Link>
-        )}
-
-        <Link
-          href="/dashboard/settings"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-eve-panel hover:text-white"
-        >
-          <Settings className="h-5 w-5" />
-          Settings
-        </Link>
-
-        <a
-          href={DISCORD_LINK}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Join our Discord"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#5865F2] transition-colors hover:bg-[#5865F2]/10 hover:text-[#5865F2]"
-        >
-          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
-          </svg>
-        </a>
+      <div className="relative border-t border-white/[0.06] p-4 space-y-3">
+        <span className="text-[10px] font-bold text-white/[0.25] tracking-[0.2em] uppercase px-3 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-purple-400/60" />
+          {sectionLabels.quickLinks}
+        </span>
+        
+        <div className="grid grid-cols-2 gap-2">
+          {quickLinks.map((item) => (
+            item.external ? (
+              <a
+                key={item.name}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-white/[0.55] transition-all duration-200 ease-out hover:bg-white/[0.06] hover:text-[#5865F2] hover:scale-[1.02] hover:shadow-[0_0_15px_-5px_rgba(88,101,242,0.15)]"
+              >
+                <MessageCircle className="h-5 w-5 transition-all duration-200 group-hover:fill-[#5865F2]/20" />
+                <span className="truncate">{item.name}</span>
+              </a>
+            ) : (
+              <Link
+                key={item.name}
+                href={item.href}
+                className="group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-white/[0.55] transition-all duration-200 ease-out hover:bg-white/[0.06] hover:text-white hover:scale-[1.02] hover:shadow-[0_0_15px_-5px_rgba(255,255,255,0.08)]"
+              >
+                <item.icon className="h-5 w-5 transition-all duration-200 group-hover:text-eve-accent/80" />
+                <span className="truncate">{item.name}</span>
+              </Link>
+            )
+          ))}
+        </div>
       </div>
 
-      <div className="border-t border-eve-border p-4">
+      <div className="relative border-t border-white/[0.06] p-3 bg-gradient-to-b from-transparent to-black/20">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-eve-panel hover:text-white">
-              <Avatar className="h-8 w-8">
+            <button className="group flex w-full items-center gap-3 rounded-xl bg-white/[0.03] p-2.5 text-sm font-medium text-white/80 transition-all duration-200 hover:bg-white/[0.06] hover:text-white hover:scale-[1.01] hover:shadow-[0_0_20px_-5px_rgba(255,255,255,0.06)] border border-white/[0.04]">
+              <Avatar className="h-10 w-10 ring-2 ring-white/[0.08] transition-all duration-200 group-hover:ring-eve-accent/40 group-hover:shadow-[0_0_15px_rgba(0,200,255,0.2)]">
                 <AvatarImage src={session?.user?.characterId ? `https://images.evetech.net/characters/${session.user.characterId}/portrait?size=32` : ''} />
-                <AvatarFallback>{characterName[0]}</AvatarFallback>
+                <AvatarFallback className="bg-white/[0.08] text-white/[0.6]">{characterName[0]}</AvatarFallback>
               </Avatar>
-              <div className="flex-1 text-left">
-                <p className="text-sm font-medium text-white">
+              <div className="flex-1 text-left min-w-0">
+                <p className="text-sm font-semibold text-white truncate">
                   {characterName}
                 </p>
-                <p className="text-xs text-gray-500">
-                  {session?.user?.characters?.length || 0} characters
+                <p className="text-xs text-white/[0.35]">
+                  {session?.user?.characters?.length || 0} character{(session?.user?.characters?.length || 0) !== 1 ? 's' : ''}
                 </p>
               </div>
-              <ChevronDown className="h-4 w-4" />
+              <ChevronDown className="h-4 w-4 text-white/[0.35] group-hover:text-white/[0.6] transition-colors duration-200" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
+          <DropdownMenuContent align="end" className="w-56 bg-[#0d1117]/95 backdrop-blur-2xl border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+            <DropdownMenuLabel className="text-white/[0.5] font-normal">My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-white/[0.08]" />
             {session?.user?.characters?.map((char) => (
-              <DropdownMenuItem key={char.id} className="text-xs">
-                <Avatar className="mr-2 h-5 w-5">
+              <DropdownMenuItem key={char.id} className="text-white/[0.6] focus:bg-white/[0.08] focus:text-white cursor-pointer">
+                <Avatar className="mr-2 h-6 w-6">
                   <AvatarImage src={`https://images.evetech.net/characters/${char.id}/portrait?size=32`} />
-                  <AvatarFallback>{char.name[0]}</AvatarFallback>
+                  <AvatarFallback className="bg-white/[0.08] text-white/[0.5] text-xs">{char.name[0]}</AvatarFallback>
                 </Avatar>
                 {char.name}
               </DropdownMenuItem>
             ))}
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="bg-white/[0.08]" />
             <DropdownMenuItem
               onClick={handleSignOut}
-              className="text-red-400 cursor-pointer"
+              className="text-red-400/70 focus:bg-red-500/[0.1] focus:text-red-400 cursor-pointer"
             >
               <LogOut className="mr-2 h-4 w-4" />
               Log out

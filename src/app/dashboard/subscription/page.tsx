@@ -1,32 +1,53 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useSession } from '@/lib/session-client'
 import { cn, formatISK, isPremium } from '@/lib/utils'
+import Link from 'next/link'
 import { 
   Crown, Calendar, Info, Wallet, CheckCircle2, 
   XCircle, AlertCircle, Copy, Check, History, 
   Target, Rocket, Shield, Users, Trophy, Sparkles,
-  ChevronRight, ArrowRight, Zap, Loader2
+  ChevronRight, ArrowRight, Zap, Loader2, Star, X
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations } from '@/i18n/hooks'
 import { SUBSCRIPTION_PLANS } from '@/lib/constants/subscription-plans'
 import { motion } from 'framer-motion'
 
+const PULALEEROY_CORP_ID = 98651213
+const PULALEEROY_BANNER_KEY = 'pulaLeeroy_banner_dismissed'
+
 export default function SubscriptionPage() {
-  const { data: session, update: updateSession } = useSession()
+  const { data: session } = useSession()
   const [copied, setCopied] = useState(false)
   const [activationCode, setActivationCode] = useState('')
   const [isActivating, setIsActivating] = useState(false)
+  const [showPulaLeeroyBanner, setShowPulaLeeroyBanner] = useState(true)
   const corpName = "Easy Eve Holding's"
   const { t } = useTranslations()
 
+  useEffect(() => {
+    const dismissed = localStorage.getItem(PULALEEROY_BANNER_KEY)
+    if (dismissed === 'true') {
+      setShowPulaLeeroyBanner(false)
+    }
+  }, [])
+
   const hasPremium = isPremium(session?.user?.subscriptionEnd)
   const isExpired = session?.user?.subscriptionEnd && new Date(session.user.subscriptionEnd) < new Date()
+
+  const isPulaLeeroy = session?.user?.characters?.some(
+    char => char.corporationId === PULALEEROY_CORP_ID
+  )
+
+  const dismissPulaLeeroyBanner = () => {
+    localStorage.setItem(PULALEEROY_BANNER_KEY, 'true')
+    setShowPulaLeeroyBanner(false)
+  }
 
   const handleActivateCode = async () => {
     if (!activationCode) return
@@ -41,8 +62,11 @@ export default function SubscriptionPage() {
       if (res.ok) {
         toast.success(t('subscription.activationSuccess', { date: new Date(data.subscriptionEnd).toLocaleDateString() }))
         setActivationCode('')
-        // @ts-ignore
-        updateSession()
+        
+        // If PulaLeeroy member, redirect to thank you page
+        if (data.isPulaLeeroy) {
+          window.location.href = '/dashboard/subscription/leroy'
+        }
       } else {
         toast.error(data.error || t('subscription.activationError'))
       }
@@ -71,6 +95,39 @@ export default function SubscriptionPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-12 pb-24 px-4">
+      {/* PulaLeeroy Special Banner */}
+      {isPulaLeeroy && showPulaLeeroyBanner && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <Card className="bg-gradient-to-r from-amber-900/40 to-yellow-900/20 border-amber-500/30 overflow-hidden group relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={dismissPulaLeeroyBanner}
+              className="absolute top-2 right-2 z-20 h-8 w-8 p-0 text-amber-400/70 hover:text-amber-400 hover:bg-amber-500/20"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            <Link href="/dashboard/subscription/leroy" className="block">
+              <CardContent className="p-4 flex items-center justify-between cursor-pointer">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                    <Star className="h-5 w-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-amber-400 font-bold">Membro da PulaLeeroy Detectado!</p>
+                    <p className="text-amber-200/70 text-sm">Você tem acesso premium vitalício. Clique aqui para reclamar.</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-amber-500 group-hover:translate-x-1 transition-transform" />
+              </CardContent>
+            </Link>
+          </Card>
+        </motion.div>
+      )}
+
       {/* Dynamic Header */}
 <div className="relative text-center space-y-4 py-8">
         <motion.div 

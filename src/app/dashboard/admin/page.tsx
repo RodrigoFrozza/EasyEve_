@@ -432,9 +432,11 @@ function AdminContent() {
                           <td className="px-6 py-4">
                             <Badge className={cn(
                               "text-[10px] font-bold",
-                              code.type === 'LIFETIME' ? "bg-purple-500/20 text-purple-400 border-purple-500/50" : "bg-blue-500/20 text-blue-400 border-blue-500/50"
+                              code.type === 'LIFETIME' ? "bg-purple-500/20 text-purple-400 border-purple-500/50" : 
+                              code.type === 'PL8R' ? "bg-amber-500/20 text-amber-400 border-amber-500/50" :
+                              "bg-blue-500/20 text-blue-400 border-blue-500/50"
                             )}>
-                              {code.type === 'LIFETIME' ? 'VITALÍCIO' : '30 DIAS'}
+                              {code.type === 'LIFETIME' ? 'VITALÍCIO' : code.type === 'PL8R' ? 'PL8R' : '30 DIAS'}
                             </Badge>
                           </td>
                           <td className="px-6 py-4">
@@ -448,9 +450,11 @@ function AdminContent() {
                           <td className="px-6 py-4 text-xs text-gray-500">
                             {new Date(code.createdAt).toLocaleString()}
                           </td>
-                          <td className="px-6 py-4 text-xs text-gray-400">
-                             {code.usedBy ? `Conta ID: ${code.usedBy}` : '-'}
-                          </td>
+<td className="px-6 py-4 text-xs text-gray-400">
+                              {code.usedBy ? (
+                                code.usedBy.name || code.usedBy.accountCode || `Conta: ${code.usedBy.accountCode?.slice(0, 8)}` || code.usedById?.slice(0, 8)
+                              ) : '-'}
+                            </td>
                         </tr>
                       ))
                     )}

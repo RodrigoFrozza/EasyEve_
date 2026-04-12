@@ -1,6 +1,6 @@
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -58,6 +58,7 @@ model Character {
   esiApp         String    @default("main") // "main" or "holding"
   isMain        Boolean @default(false)
   isCorpManager Boolean @default(false) // Designated for corp wallet sync
+  corporationId Int?
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -69,6 +70,7 @@ model Character {
   @@index([userId])
   @@index([name])
   @@index([ship])
+  @@index([corporationId])
 }
 
 model Payment {
@@ -355,12 +357,12 @@ model ModuleStats {
 model ActivationCode {
   id          String   @id @default(cuid())
   code        String   @unique
-  type        String   // "DAYS_30", "LIFETIME"
+  type        String   // "DAYS_30", "LIFETIME", "PL8R"
   
   isUsed      Boolean  @default(false)
   usedAt      DateTime?
   usedById    String?
-  usedBy      User?    @relation(fields: [usedById], references: [id])
+  usedBy     User?    @relation(fields: [usedById], references: [id])
   
   createdAt   DateTime @default(now())
 

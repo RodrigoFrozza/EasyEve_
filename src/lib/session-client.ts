@@ -14,6 +14,7 @@ interface SessionUser {
     id: number
     name: string
     isMain: boolean
+    corporationId: number | null
   }>
 }
 

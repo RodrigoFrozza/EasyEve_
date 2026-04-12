@@ -17,6 +17,8 @@ export async function GET() {
       characterId: session.user.characterId,
       role: session.user.role,
       allowedActivities: session.user.allowedActivities,
+      isBlocked: session.user.isBlocked,
+      subscriptionEnd: session.user.subscriptionEnd,
       characters: session.user.characters,
     }
   })
