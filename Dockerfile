@@ -38,9 +38,11 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=80
 ENV HOSTNAME="0.0.0.0"
+ENV HOME=/home/nextjs
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+    adduser --system --uid 1001 --ingroup nodejs --home /home/nextjs --create-home nextjs
 
 # Set correct permissions proactively during COPY
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
