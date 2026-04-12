@@ -64,4 +64,5 @@ EXPOSE 80
 
 # Final command to run the app
 # Use 'db push' instead of 'migrate deploy' to sync schema with existing database
-CMD ["sh", "-c", "prisma db push && node server.js"]
+# Added --skip-generate because the client was already generated during build stage
+CMD ["sh", "-c", "prisma db push --skip-generate && node server.js"]
