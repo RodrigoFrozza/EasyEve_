@@ -61,5 +61,5 @@ USER nextjs
 EXPOSE 80
 
 # Final command to run the app
-# Use global prisma command
-CMD ["sh", "-c", "prisma migrate deploy && node server.js"]
+# Use 'db push' instead of 'migrate deploy' to sync schema with existing database
+CMD ["sh", "-c", "prisma db push && node server.js"]
