@@ -60,16 +60,16 @@ export async function getSession(): Promise<Session | null> {
   if (user.subscriptionEnd && new Date() > user.subscriptionEnd) {
     // If expired and not already reset
     if (user.allowedActivities.length > 0) {
-      console.log(`[Session] User ${user.id} subscription expired. Removing all access.`)
+      console.log(`[Session] User ${user.id} subscription expired. Removing premium access.`)
       await prisma.user.update({
         where: { id: user.id },
         data: { 
           allowedActivities: [],
-          isBlocked: true,
-          blockReason: 'Assinatura expirada. Por favor, regularize seu pagamento.'
+          // Keep account active so they can renew
         }
       })
-      return null // Consider blocked
+      // Refetch user or just return with empty activities
+      user.allowedActivities = []
     }
   }
 

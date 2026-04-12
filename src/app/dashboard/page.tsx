@@ -261,8 +261,8 @@ export default async function DashboardPage() {
                   className="flex items-center gap-3 rounded-lg border border-eve-border bg-eve-dark/50 p-3"
                 >
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={`https://images.evetech.net/characters/${char.id}/portrait?size=128`} />
-                    <AvatarFallback>{char.name[0]}</AvatarFallback>
+                    {char.id && <AvatarImage src={`https://images.evetech.net/characters/${char.id}/portrait?size=128`} />}
+                    <AvatarFallback>{char.name ? char.name[0] : '?'}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">

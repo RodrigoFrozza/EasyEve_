@@ -51,4 +51,5 @@ USER nextjs
 
 EXPOSE 80
 
-CMD ["node", "server.js"]
+# Final command to run the app
+CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
